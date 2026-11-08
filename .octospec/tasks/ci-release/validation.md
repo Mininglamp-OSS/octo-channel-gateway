@@ -11,6 +11,6 @@ tags: [validation, release]
 
 code-review 两个独立审查者分别审 Standards/Spec，最终均 approve，无剩余 finding；这不是 GitHub 审批。Spec 最初的尾随换行正则疑点经真实 Node 验证后撤回。
 
-干净 pnpm 冻结安装返回 Runtime 2.0.0 tarball 404，CI 的隔离消费者安装返回 client ^2.0.0 ETARGET。成功的源码测试使用原工作树已安装候选包的本地副本，不能代表注册表安装成功。用户要求版本修正独立工作树，故本分支不修改这些依赖；另一个 PR 改为 ^1.1.12，仍须等官方包发布并更新锁。actionlint 二进制下载因网络失败未运行，未声称完成该检查。
+干净 pnpm 冻结安装返回 Runtime 2.0.0 tarball 404，CI 的隔离消费者安装返回 client ^2.0.0 ETARGET。成功的源码测试使用原工作树已安装候选包的本地副本，不能代表注册表安装成功。用户要求版本修正独立工作树，故本分支不修改这些依赖；另一个 PR 改为 ^1.1.12，仍须等官方包发布并更新锁。actionlint 1.7.12 下载重试后成功，全部工作流检查通过（未启用外部 shellcheck/pyflakes）。
 
 GitHub Actions 已启用；repo secrets 列表未显示 NPM_TOKEN，不能据此确认组织级 secret 可用，正式发布前需维护者确认配置。未改 branch protection；首次 CI 成功后应添加 CI Gate/Dependency Review 为必需检查，保留原 code-review 与外部审批。未发布 npm、tag 或合并。原三归档验证入口完整保留。
