@@ -1,0 +1,55 @@
+{
+  "name": "@mininglamp-oss/octo-channel-gateway",
+  "version": "0.0.0",
+  "description": "Independent Octo Channel Gateway SDK and CLI for an existing Runtime Kernel",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mininglamp-OSS/octo-channel-gateway.git"
+  },
+  "engines": {
+    "node": "^24.0.0 || ^26.0.0"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "exports": {
+    ".": {
+      "types": "./dist/packages/gateway/src/index.d.ts",
+      "import": "./dist/packages/gateway/src/index.js"
+    }
+  },
+  "types": "./dist/packages/gateway/src/index.d.ts",
+  "bin": {
+    "octo-channel-gateway": "dist/apps/cli/src/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test test/*.test.js",
+    "prepack": "pnpm run build",
+    "lint:spec": "python3 .octospec/scripts/lint.py",
+    "docs:check": "tsc -p docs/examples/tsconfig.json && node scripts/check-developer-docs.mjs && node --test docs/checks/*.test.mjs"
+  },
+  "dependencies": {
+    "@mininglamp-oss/octo-runtime-client": "^2.0.0",
+    "commander": "^15.0.0",
+    "iconv-lite": "0.7.3",
+    "mdast-util-from-markdown": "^2.1.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@mininglamp-oss/octo-runtime": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
+    "ajv": "^8.20.0",
+    "typescript": "^6.0.3"
+  }
+}
