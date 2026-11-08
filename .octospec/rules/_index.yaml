@@ -1,0 +1,34 @@
+rules:
+- id: gateway-architecture
+  priority: 100
+  load_bearing: true
+  inject_when:
+    paths:
+    - '**'
+    touches:
+    - architecture
+    - channel
+    - lifecycle
+- id: gateway-channel-behavior
+  priority: 90
+  load_bearing: true
+  inject_when:
+    paths:
+    - packages/gateway/**
+    - test/im-*
+    - test/gateway-*
+    touches:
+    - channel
+    - session
+    - context
+    - delivery
+- id: gateway-documentation
+  priority: 80
+  load_bearing: false
+  inject_when:
+    paths:
+    - docs/**
+    - README.md
+    - scripts/check-developer-docs.mjs
+    touches:
+    - docs
