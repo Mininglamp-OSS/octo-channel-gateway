@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
-// 尚未发布的破坏性版本：用真实发行包元数据生成锁，不手改 integrity。
+// 尚未发布的候选版本：用真实发行包元数据生成锁，不手改 integrity。
 // 只为锁解析提供本地元数据；最终锁里的下载地址仍是正式 npm registry。
 const files = process.argv.slice(2);
 assert.equal(files.length, 2, "Usage: node scripts/lock-runtime-candidates.mjs RUNTIME.tgz CLIENT.tgz");
@@ -14,7 +14,9 @@ const expected = new Set(["@mininglamp-oss/octo-runtime", "@mininglamp-oss/octo-
 for (const file of files) {
   const manifest = JSON.parse(execFileSync("tar", ["-xOf", resolve(file), "package/package.json"], { encoding: "utf8" }));
   assert.ok(expected.delete(manifest.name), "Expected one Runtime and one Client release archive");
-  assert.equal(manifest.version, "2.0.0", "This migration verifies the 2.0.0 release candidates");
+  assert.match(manifest.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, "Expected a stable release version");
+  assert.notEqual(manifest.version, "0.0.0");
+  for (const value of metadata.values()) assert.equal(manifest.version, value["dist-tags"].latest, "Runtime and Client must have matching versions");
   const base = manifest.name.split("/").at(-1);
   manifest.dist = {
     integrity: `sha512-${createHash("sha512").update(readFileSync(file)).digest("base64")}`,
@@ -39,7 +41,7 @@ try {
   assert.equal(code, 0, "pnpm candidate resolution failed");
   const lock = readFileSync("pnpm-lock.yaml", "utf8");
   for (const value of metadata.values()) {
-    const { dist } = value.versions["2.0.0"];
+    const { dist } = value.versions[value["dist-tags"].latest];
     assert.ok(lock.includes(dist.integrity), `Candidate integrity missing from lock: ${value.name}`);
     assert.ok(lock.includes(dist.tarball), `Candidate registry URL missing from lock: ${value.name}`);
   }

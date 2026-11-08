@@ -9,14 +9,14 @@ SDK 的入口是 `ChannelRegistry.register(endpoint, definition)`。endpoint 必
 CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务。若使用 Runtime CLI，先执行：
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 ```
 
 2.0 候选未发布时使用匹配 tgz；自定义 --home 时启动与诊断保持一致。Gateway 的 start/restart/run 在启动前检查 Runtime，失败时给出上述指引。SDK 也会查询 Kernel 状态；SDK 宿主可自行使用完整 Runtime 公开 API 创建并维护服务。
 
-安装包见[依赖与发行](../guides/dependencies.md)。当前 client 2.0.0 是未发布候选，不能把下面的目标版本安装命令理解为已上线。
+安装包见[依赖与发行](../guides/dependencies.md)。当前 client 1.1.12 是未发布候选，不能把下面的目标版本安装命令理解为已上线。
 
 ```sh
 npm install @mininglamp-oss/octo-channel-gateway

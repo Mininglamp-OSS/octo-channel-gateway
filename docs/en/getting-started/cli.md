@@ -9,7 +9,7 @@ Use Node.js 24 or 26, a ready local Runtime Kernel, a platform Bot with valid cr
 Both CLI and SDK modes require the execution service supplied by the full Runtime. When using its CLI, run:
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 ```

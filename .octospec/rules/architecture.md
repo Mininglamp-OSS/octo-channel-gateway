@@ -28,4 +28,4 @@ supersedes: []
 
 ## agentEnv 合同
 
-公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务材料只在 Gateway 转为模型 parts；执行信封只承载环境配置，凭据不进入正文。使用 2.x 公开 client 与 IPC v2；不保留旧 request/contexts/signal 兼容层。
+公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务材料只在 Gateway 转为模型 parts；执行信封只承载环境配置，凭据不进入正文。使用 1.1.12 起的公开 client 与 IPC v2；不保留旧 request/contexts/signal 兼容层。

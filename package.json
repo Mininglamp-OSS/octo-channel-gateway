@@ -39,14 +39,14 @@
     "docs:check": "tsc -p docs/examples/tsconfig.json && node scripts/check-developer-docs.mjs && node --test docs/checks/*.test.mjs"
   },
   "dependencies": {
-    "@mininglamp-oss/octo-runtime-client": "^2.0.0",
+    "@mininglamp-oss/octo-runtime-client": "^1.1.12",
     "commander": "^15.0.0",
     "iconv-lite": "0.7.3",
     "mdast-util-from-markdown": "^2.1.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {
-    "@mininglamp-oss/octo-runtime": "^2.0.0",
+    "@mininglamp-oss/octo-runtime": "^1.1.12",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
     "ajv": "^8.20.0",

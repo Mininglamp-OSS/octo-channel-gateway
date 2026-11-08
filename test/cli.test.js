@@ -235,7 +235,7 @@ test("startup explains the Runtime prerequisite before changing Gateway services
       const message = json
         ? JSON.parse(output[0]).error.message
         : output.join("\n");
-      assert.match(message, /npm install -g @mininglamp-oss\/octo-runtime@\^2/);
+      assert.match(message, /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.12/);
       assert.match(message, /octo-runtime executor-kernel start/);
       assert.match(message, /octo-runtime doctor --json/);
       assert.match(message, /--endpoint/);

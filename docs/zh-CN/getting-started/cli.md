@@ -9,7 +9,7 @@
 CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务。若使用 Runtime CLI，先执行：
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 ```

@@ -3,8 +3,8 @@ import { GatewayCommandError } from "./command-types.js";
 
 /** 固定操作指引，不拼接配置、凭据或底层异常正文。 */
 export const runtimeSetupHelp = [
-  "Channel Gateway 的 CLI 和 SDK 模式都需要已就绪的 octo-runtime Kernel（2.x / IPC v2）。",
-  "1. 安装匹配版本：npm install -g @mininglamp-oss/octo-runtime@^2",
+  "Channel Gateway 的 CLI 和 SDK 模式都需要已就绪的 octo-runtime Kernel（1.1.12 起 / IPC v2）。",
+  "1. 安装匹配版本：npm install -g @mininglamp-oss/octo-runtime@^1.1.12",
   "2. 启动 Runtime：octo-runtime executor-kernel start",
   "3. 检查 Runtime：octo-runtime doctor --json",
   "4. 将 Gateway 的 --endpoint 或配置 endpoint 指向该 Kernel 的 socket / named pipe，再执行 start。",

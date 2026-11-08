@@ -9,7 +9,7 @@
 start/restart/run 在修改服务或启动前台注册前通过公开 client 查询 execution_ready。缺 endpoint 返回 KERNEL_ENDPOINT_REQUIRED；连接失败、协议不匹配或未就绪返回 KERNEL_UNAVAILABLE。普通输出和 JSON error.message 都附安装、启动、诊断及 endpoint 指引。
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 ```

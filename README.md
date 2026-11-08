@@ -9,7 +9,7 @@
 支持 Node.js 24 或 26。CLI 和 SDK 模式都依赖已有 octo-runtime Kernel；安装 client 依赖不会自动安装或启动 Runtime。先完成 [Runtime 准备与启动](docs/zh-CN/getting-started/cli.md)。
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
@@ -86,7 +86,7 @@ Gateway 使用 `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv
 
 调用立即返回含 invocationId/runId/sessionId 的迭代句柄。停止指定执行使用 `client.interrupt(handle.invocationId, reason)`；sessionId 是业务会话标识，providerSession 是 Adapter 返回的 Provider 续聊信息，均不能替代 invocationId 取消某一轮。取消受理后仍消费原迭代器直至终态；Adapter 内部负责原生取消映射。API 不再接收旧 request 外壳、contexts 或 signal 参数。
 
-生产依赖为 client `^2.0.0`；`npm install -g` 会自动安装依赖，重新安装或显式更新时才按版本范围解析，不会后台自动升级，也不会跨到 3.x。Runtime/Client 2.0.0 为本次本地候选，尚未发布；注册表安装需先发布匹配版本。联调使用实际 tgz，不依赖 Runtime checkout 内部模块。
+生产依赖为 client `^1.1.12`；`npm install -g` 会自动安装依赖，重新安装或显式更新时才按版本范围解析，不会后台自动升级，也不会跨到 2.x。Runtime/Client 1.1.12 为本次本地候选，尚未发布；注册表安装需先发布匹配版本。联调使用实际 tgz，不依赖 Runtime checkout 内部模块。
 
 包外验证：`node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz`。三个候选包显式安装到独立临时目录，验证公开类型、CLI 和真实 Kernel 互操作；不安装系统服务。测试用完整 Runtime 是 devDependency，不是 Gateway 的生产依赖。
 

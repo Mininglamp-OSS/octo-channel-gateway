@@ -9,7 +9,7 @@ Distinguish Runtime readiness, Gateway service readiness, Bot connectivity, and 
 Before changing a service or starting foreground registration, start/restart/run queries execution_ready through the public client. A missing endpoint produces KERNEL_ENDPOINT_REQUIRED. Connection failure, protocol mismatch, or an unready Kernel produces KERNEL_UNAVAILABLE. Both human output and JSON error.message include installation, startup, diagnostics, and endpoint guidance.
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^2
+npm install -g @mininglamp-oss/octo-runtime@^1.1.12
 octo-runtime executor-kernel start
 octo-runtime doctor --json
 ```
