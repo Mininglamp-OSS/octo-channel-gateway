@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { validateImBots } from "@mininglamp-oss/octo-channel-gateway";
 
-// 显式文档检查，不扩展默认测试或 CI；共享示例用公开 SDK 校验。
+// 本地与 CI 共用文档检查；共享示例用公开 SDK 校验。
 const root = resolve(import.meta.dirname, "..");
 async function files(directory) {
   const found = [];

@@ -20,4 +20,4 @@ supersedes: []
 
 API、默认值、错误、CLI 或所有权变更同时更新两语言。保持 CLI 与 SDK 都需要已有 Runtime 的说明；安装 client 不等于安装或启动 Kernel。Runtime 未就绪提示须给出匹配版本安装、启动、诊断与 endpoint 步骤，不接管共享 Runtime。
 
-显式运行 npm run docs:check（配合已构建的公开 SDK）检查双语、本地链接、配置 JSON、共享示例类型与真实受控 Kernel。记录实际日期、版本和未验范围，不扩大 CI，不将候选包写成已发布。外部链接存在性不由本地链接检查证明。
+显式运行 npm run docs:check（配合已构建的公开 SDK）检查双语、本地链接、配置 JSON、共享示例类型与真实受控 Kernel。记录实际日期、版本和未验范围，文档检查纳入 CI，不将候选包写成已发布。外部链接存在性不由本地链接检查证明。

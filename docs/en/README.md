@@ -30,3 +30,5 @@ Octo Channel Gateway connects platform messages to an existing Runtime Kernel an
 | Bot, authorization, Adapter, execution, and artifact settings | [Configuration](reference/configuration.md) |
 
 The layout follows Runtime's paired language paths and shared examples. Content describes this repository's current implementation. See [Maintenance and validation](maintenance.md) for versions, evidence, and update rules.
+
+[CI and npm publishing](guides/ci-release.md)
