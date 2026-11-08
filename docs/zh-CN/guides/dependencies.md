@@ -13,7 +13,7 @@
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^2
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
 ```

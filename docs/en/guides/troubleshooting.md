@@ -10,7 +10,7 @@ Before changing a service or starting foreground registration, start/restart/run
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^2
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 ```
 

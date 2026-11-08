@@ -10,7 +10,7 @@ start/restart/run 在修改服务或启动前台注册前通过公开 client 查
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^2
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 ```
 
