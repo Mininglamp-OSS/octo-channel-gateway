@@ -61,6 +61,7 @@ export async function getMentionPref(params: {
   const url = `${trimTrailingSlashes(params.apiUrl)}/v1/bot/groups/${encodeURIComponent(params.groupNo)}/mention_pref`;
   try {
     const resp = await fetch(url, {
+      redirect: "error",
       method: "GET",
       headers: {
         Authorization: `Bearer ${params.botToken}`,
@@ -134,6 +135,7 @@ export async function getGroupMd(params: {
 }> {
   const url = `${trimTrailingSlashes(params.apiUrl)}/v1/bot/groups/${encodeURIComponent(params.groupNo)}/md`;
   const resp = await fetch(url, {
+    redirect: "error",
     method: "GET",
     headers: {
       Authorization: `Bearer ${params.botToken}`,
@@ -174,6 +176,7 @@ export async function getThreadMd(params: {
 }> {
   const url = `${trimTrailingSlashes(params.apiUrl)}/v1/bot/groups/${encodeURIComponent(params.groupNo)}/threads/${encodeURIComponent(params.shortId)}/md`;
   const resp = await fetch(url, {
+    redirect: "error",
     method: "GET",
     headers: { Authorization: `Bearer ${params.botToken}` },
     signal: params.signal

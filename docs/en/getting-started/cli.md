@@ -34,6 +34,8 @@ octo-channel-gateway logs --lines 200 --follow
 
 configure only saves configuration; it does not authenticate or start a service. No credential is written by this example. Before first startup, import a protected configuration file containing a valid bf_token, or supply a credentials callback through the SDK. `--bf_token` is also supported, but command arguments may appear in shell history and process listings. Do not treat extraget output as redacted diagnostics.
 
+configure updates the normalized API URL and Bot ID pair. It preserves omitted fields only for that exact identity and leaves other endpoints unchanged. Configuring the same Bot ID at a new API endpoint requires a new `--bf_token`; credentials and Adapter settings are never copied from another endpoint. Authenticated REST requests reject redirects. On Windows, service changes require a confirmed current-user task identity; an unknown or mismatched account blocks installation and lifecycle commands.
+
 install saves the endpoint and installs a service definition with automatic startup enabled by default. Explicit start requests startup and waits for Gateway readiness. If absent, start installs the service with automatic startup enabled. Use restart after configuration changes; the CLI does not promise hot reload.
 
 ## Stop and remove

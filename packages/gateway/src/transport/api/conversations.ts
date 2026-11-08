@@ -21,6 +21,7 @@ export async function fetchBotGroups(params: {
 }): Promise<Array<{ group_no: string; name: string }>> {
   const url = `${params.apiUrl}/v1/bot/groups`;
   const resp = await fetch(url, {
+    redirect: "error",
     method: "GET",
     headers: {
       Authorization: `Bearer ${params.botToken}`,
@@ -214,6 +215,7 @@ export async function fetchUserInfo(params: {
   const url = `${trimTrailingSlashes(params.apiUrl)}/v1/bot/user/info?uid=${encodeURIComponent(params.uid)}`;
   try {
     const resp = await fetch(url, {
+      redirect: "error",
       method: "GET",
       headers: { Authorization: `Bearer ${params.botToken}` },
       signal: AbortSignal.timeout(5000),
@@ -264,6 +266,7 @@ export async function searchSpaceMembers(params: {
   if (params.limit) query.set("limit", String(params.limit));
   const url = `${trimTrailingSlashes(params.apiUrl)}/v1/bot/space/members?${query.toString()}`;
   const resp = await fetch(url, {
+    redirect: "error",
     headers: { Authorization: `Bearer ${params.botToken}` },
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });

@@ -15,11 +15,11 @@
 | status    | 输出系统服务与 Gateway 状态                                             |
 | doctor    | 另加服务管理器可用性与 Kernel 状态；成功退出不代表各组件健康            |
 | logs      | --lines 默认 200；--follow 跟随；配置损坏时仍可读日志                   |
-| configure | 按 bot_id 更新或新增一个 Bot，仅保存配置，省略可选字段保留旧值          |
+| configure | 按规范化 API 地址与 bot_id 更新或新增 Bot，仅保存，同一身份保留省略字段 |
 | extraset  | 从 stdin 整体替换配置，接受旧 config 外壳，要求重启生效                 |
 | extraget  | 输出完整配置，包括凭据                                                  |
 
-configure 必填 `--bot_id`、`--api_url`；可选 `--adapter_type`、`--workdir`、`--model`、`--effort`（low/medium/high/xhigh）、`--provider_agent_id`（仅 OpenClaw）、`--bf_token`。同 bot_id 更新 API 地址不会追加第二个 Bot，旧重复项会合并为一项；注意业务身份的变化需重新认证。
+configure 必填 `--bot_id`、`--api_url`；可选 `--adapter_type`、`--workdir`、`--model`、`--effort`（low/medium/high/xhigh）、`--provider_agent_id`（仅 OpenClaw）、`--bf_token`。规范化 API 地址与 bot_id 联合标识一个 Bot，其他端点的配置分别保留。在新端点新增已有同名 Bot 时，必须显式提供新 bf_token，不继承旧端点的凭据或 adapter 设置。省略可选字段仅对已存在的同一身份保留旧值；首次离线准备配置可省略凭据。
 
 ## Home 与输出
 

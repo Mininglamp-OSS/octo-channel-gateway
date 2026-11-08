@@ -4,7 +4,10 @@ import {
   type GatewayCommandExtension,
   type JsonObject,
 } from "./command-types.js";
-import { validateImBots } from "../../../packages/gateway/src/lifecycle/configuration.js";
+import {
+  imBotIdentity,
+  validateImBots,
+} from "../../../packages/gateway/src/lifecycle/configuration.js";
 
 /** 离线业务校验复用运行时 Bot 合同；不认证、不构造 manager 或服务。 */
 function validate(config: JsonObject): void {
@@ -77,13 +80,14 @@ function validate(config: JsonObject): void {
   }
 }
 
-/** 单 Bot 配置命令按 bot_id upsert；省略字段保留，重复调用不会追加相同 Bot。 */
+/** 按规范化 API+bot_id upsert；省略字段只从同一身份保留。 */
 const extension: GatewayCommandExtension = {
   apiVersion: 1,
   commands: [
     {
       name: "configure",
-      description: "Add or update one Bot by bot_id; saves config only",
+      description:
+        "Add or update one Bot by API URL and bot_id; saves config only",
       options: [
         {
           name: "bot_id",
@@ -137,12 +141,32 @@ const extension: GatewayCommandExtension = {
           bot_id: input.options["bot_id"],
           api_url: input.options["api_url"],
         };
-        // configure 用 bot_id 定位，更新 endpoint 不产生第二个 Bot。
-        // 旧 extraset 可能含跨 endpoint 的同名 Bot：保留首项未提供的字段，合并为一项。
+        if (
+          typeof identityFields.bot_id !== "string" ||
+          typeof identityFields.api_url !== "string"
+        )
+          throw new GatewayCommandError(
+            "EXTRA_CONFIG_INVALID",
+            "--bot_id and --api_url are required.",
+          );
+        const identity = imBotIdentity({
+          bot_id: identityFields.bot_id,
+          api_url: identityFields.api_url,
+        });
         const position = bots.findIndex(
-          (bot) => bot.bot_id === identityFields.bot_id,
+          (bot) => imBotIdentity(bot) === identity,
         );
         const old = position < 0 ? undefined : bots[position];
+        // 新端点是独立身份，不从同名 Bot 继承凭据或执行配置。
+        if (
+          !old &&
+          bots.some((bot) => bot.bot_id === identityFields.bot_id) &&
+          typeof input.options.bf_token !== "string"
+        )
+          throw new GatewayCommandError(
+            "EXTRA_CONFIG_INVALID",
+            "--bf_token is required for a new API endpoint of an existing Bot ID.",
+          );
         const adapter: JsonObject = { ...old?.adapter };
         for (const field of [
           "adapter_type",
@@ -178,10 +202,7 @@ const extension: GatewayCommandExtension = {
           // 与 extraset 的业务字段同名；保存传入原文，省略时保留已有凭据。
           bot.bf_token = credential;
         }
-        const nextBots = bots.filter(
-          (bot, index) =>
-            index === position || bot.bot_id !== identityFields.bot_id,
-        ) as unknown as JsonObject[];
+        const nextBots = [...bots] as unknown as JsonObject[];
         if (position < 0) nextBots.push(bot);
         else nextBots[position] = bot;
         const config: JsonObject = { ...snapshot.config, bots: nextBots };

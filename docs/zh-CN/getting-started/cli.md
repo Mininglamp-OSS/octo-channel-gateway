@@ -34,6 +34,8 @@ octo-channel-gateway logs --lines 200 --follow
 
 configure 只保存配置，不认证、不启动服务。示例未写入凭据；首次启动前用受保护的配置文件导入有效 bf_token，或在 SDK 中提供 credentials 回调。`--bf_token` 也可用，但参数可能进入 shell 历史及进程列表。不要把 extraget 输出作为脱敏诊断。
 
+configure 按规范化 API 地址与 Bot ID 的组合更新，只为同一身份保留省略字段，其他端点不变。同一 Bot ID 配置到新 API 端点时，必须重新提供 `--bf_token`，不会从其他端点复制凭据或 Adapter 设置。带鉴权的 REST 请求拒绝重定向。Windows 服务变更须确认任务属于当前用户，账号未知或不匹配会阻止安装和生命周期命令。
+
 install 保存 endpoint 并安装服务定义，默认开启自动启动；显式 start 才请求启动并等待 Gateway 就绪。未安装时 start 会自动安装并开启自启。修改配置后 restart 应用新值，CLI 没有配置热更新承诺。
 
 ## 停止和移除

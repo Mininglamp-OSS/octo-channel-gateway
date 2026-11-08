@@ -183,7 +183,9 @@ export function validateImConfig(config: ImBotConfig): void {
 }
 
 /** Stable local lookup key, not a caller-supplied identity or authorization token. */
-export function imBotIdentity(config: ImBotConfig): string {
+export function imBotIdentity(
+  config: Pick<ImBotConfig, "api_url" | "bot_id">,
+): string {
   const identity = [
     "octo",
     trimTrailingSlashes(new URL(config.api_url).href),

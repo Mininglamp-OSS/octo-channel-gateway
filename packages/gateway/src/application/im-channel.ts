@@ -1635,7 +1635,12 @@ export class ImRuntime {
         }
         if (!projector.snapshot().terminal)
           throw new Error("IM_RUN_WITHOUT_TERMINAL");
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "IM_FINAL_OUTPUT_LIMIT_EXCEEDED"
+        )
+          this.#diagnostic("IM_FINAL_OUTPUT_LIMIT_EXCEEDED", request.runId);
         if (!executionStarted || task.notSubmittedFailure) {
           localFailure =
             task.notSubmittedFailure ??
@@ -1662,10 +1667,7 @@ export class ImRuntime {
             this.#drainErrors.push(new Error("IM_EXECUTION_RESULT_UNKNOWN"));
           // 流断开无法证明执行失败；尽力取消并提示核查，不自动重跑潜在的业务副作用。
           await this.dependencies.kernel
-            .interrupt(
-              request.invocationId,
-              "IM execution stream failed",
-            )
+            .interrupt(request.invocationId, "IM execution stream failed")
             .catch(() => undefined);
           this.#diagnostic("IM_EXECUTION_RESULT_UNKNOWN", request.runId);
           // 原源流即使在终态后失败，也不能被展示层的终态掩盖。

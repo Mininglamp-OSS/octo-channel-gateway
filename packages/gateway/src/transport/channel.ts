@@ -785,9 +785,17 @@ export class GatewayTransport {
               continue;
             if (interaction && action.actionId.startsWith("interaction_")) {
               if (!binding.active || !binding.controls.respond) continue;
-              await binding.controls.respond(
-                interactionAnswer(interaction.request, action),
-              );
+              let response;
+              try {
+                response = interactionAnswer(interaction.request, action);
+              } catch {
+                // 本地永久校验失败只拒绝该事件；仍走公共 ACK，不能毒化整个 Bot 的轮询。
+                this.callbacks.onDiagnostic?.("IM_INTERACTION_INPUT_INVALID");
+                consumed = true;
+                handled.add(event.event_id);
+                break;
+              }
+              await binding.controls.respond(response);
               try {
                 await binding.resolveInteraction(
                   interaction.request.interactionId,

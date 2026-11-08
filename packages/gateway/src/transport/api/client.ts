@@ -25,6 +25,7 @@ export function fetchWithDispatch(
   options: RequestInit & { signal: AbortSignal },
   dispatch?: HttpRequestDispatch,
 ): Promise<Response> {
+  options = { ...options, redirect: options.redirect ?? "error" };
   const send = (signal: AbortSignal, botToken?: string): Promise<Response> => {
     signal.throwIfAborted();
     const headers = new Headers(options.headers);

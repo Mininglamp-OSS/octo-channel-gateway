@@ -63,6 +63,7 @@ const PROGRESS_WINDOW = 5;
 const PREVIEW_RUNES = 180;
 // 近期退役缓存只作辅助；未结束步骤的精确去重不能依赖其容量或滚动淘汰。
 const RETIRED_WINDOW = 256;
+export const FINAL_OUTPUT_LIMITS = { messages: 128, bytes: 1 << 20 } as const;
 
 export class ImRunProjector {
   readonly #items = new Map<string, ProgressItem>();
@@ -91,6 +92,8 @@ export class ImRunProjector {
     string,
     { text: string; stableId: boolean }
   >();
+  #finalBytes = 0;
+  #finalLimitExceeded = false;
   readonly #retired = new Set<string>();
   #reasoningCount = 0;
   #toolCallCount = 0;
@@ -118,6 +121,8 @@ export class ImRunProjector {
   accept(event: CanonicalEvent, now = Date.now()): void {
     // 终态后不再接纳迟到帧，防止完成卡片被旧进度改回执行中。
     if (this.#terminal || this.#disposed) return;
+    if (this.#finalLimitExceeded)
+      throw new Error("IM_FINAL_OUTPUT_LIMIT_EXCEEDED");
     this.#seq++;
     const p = event.payload;
     // 实际协议以 activity/model_step 启动计时，不能只等待历史 run.started。
@@ -254,6 +259,22 @@ export class ImRunProjector {
             : event.type === "message.delta"
               ? (this.#finalMessages.get(id)?.text ?? "") + p.text
               : p.text;
+        const bytes =
+          this.#finalBytes -
+          Buffer.byteLength(this.#finalMessages.get(id)?.text ?? "") +
+          Buffer.byteLength(text);
+        if (
+          bytes > FINAL_OUTPUT_LIMITS.bytes ||
+          (!this.#finalMessages.has(id) &&
+            this.#finalMessages.size >= FINAL_OUTPUT_LIMITS.messages)
+        ) {
+          // 不截断正文或文件引用为成功；交给宿主现有取消/结果未知路径，禁发部分产物。
+          this.#finalMessages.clear();
+          this.#finalBytes = 0;
+          this.#finalLimitExceeded = true;
+          throw new Error("IM_FINAL_OUTPUT_LIMIT_EXCEEDED");
+        }
+        this.#finalBytes = bytes;
         this.#finalMessages.set(id, { text, stableId: hasStableId });
         const step = stepId && this.#steps.get(stepId);
         if (step) step.content = previewText(text);
@@ -551,6 +572,7 @@ export class ImRunProjector {
     this.#unfinishedSteps.clear();
     this.#toolInputs.clear();
     this.#finalMessages.clear();
+    this.#finalBytes = 0;
     this.#retired.clear();
     this.#currentStep = undefined;
     this.#finalReply = undefined;

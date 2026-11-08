@@ -16,6 +16,8 @@ Cancellation acknowledgement, execution terminal, resource cleanup, and message 
 
 Each Bot has at most 64 work slots and each logical session has a separate queue allowance of 4. Delivery cleanup still occupies the work slot. Delivery receipt caches are bounded and do not guarantee exactly-once delivery across process restarts.
 
+Final response accumulation has a separate limit of 128 messages and 1 MiB of UTF-8 text. Exceeding either reports `IM_FINAL_OUTPUT_LIMIT_EXCEEDED` and enters the existing interrupt/result-unknown path. Partial text is not delivered as a successful final response and does not trigger automatic artifact upload. Invalid interaction form submissions are diagnosed and acknowledged individually so later valid card actions can proceed; transport and acknowledgement failures retain their retry behavior.
+
 ## Artifacts
 
 artifact_delivery.mode defaults to channel. Explicit local file references in a successful final response are checked against frozen path, MIME, count, size, and cancellation budgets before delivery. This does not upload every path appearing in model output. tools mode disables automatic upload and expects business tools to provide recipient-accessible links.

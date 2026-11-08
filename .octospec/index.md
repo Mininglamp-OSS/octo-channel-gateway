@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [PR 3 同类边界审查与修复](tasks/pr3-focused-review/brief.md)：身份、凭据、卡片事件、Windows 任务与 final 容量；[实际验证和审查](tasks/pr3-focused-review/validation.md)。
+
 - [恢复 Gateway 待审 PR](tasks/restore-reviewed-gateway/brief.md)：[实际验证](tasks/restore-reviewed-gateway/validation.md)、[强制审批规则](rules/review.md)。
 
 - [Gateway 双语文档与 Runtime 启动指引](tasks/gateway-bilingual-docs/brief.md)：[验证](tasks/gateway-bilingual-docs/validation.md)、[文档维护规则](rules/documentation.md)。

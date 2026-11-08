@@ -150,14 +150,11 @@ export class WindowsUserTaskBackend implements ServiceBackend {
 
   /** Return live scheduler state and exact drift from the desired XML/principal/action. */
   async inspect(spec: ServiceSpec): Promise<ServiceStatus> {
-    return this.#inspect(spec, true);
+    return this.#inspect(spec);
   }
 
-  /** 公开查询要求身份可确认；清理只依赖管理器状态，保留诊断且不放宽查询失败。 */
-  async #inspect(
-    spec: ServiceSpec,
-    requireIdentity: boolean,
-  ): Promise<ServiceStatus> {
+  /** 查询要求身份可确认；未知归属保留诊断并拒绝任何后续变更。 */
+  async #inspect(spec: ServiceSpec): Promise<ServiceStatus> {
     const normalized = this.#normalize(spec);
     const taskName = windowsTaskName(normalized);
     const definitionPath = this.#definitionPath(normalized);
@@ -220,10 +217,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
       ) === undefined;
     return {
       manager: this.kind,
-      state:
-        identityUnknown && requireIdentity
-          ? "unknown"
-          : windowsTaskState(task.state),
+      state: identityUnknown ? "unknown" : windowsTaskState(task.state),
       enabled: task.enabled === true,
       lastExitCode: task.last_exit_code,
       definitionPath,
@@ -251,6 +245,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
     // Re-registration replaces Task Scheduler's definition. Capture running
     // state first so install can restore it without becoming an implicit start.
     const previous = await this.inspect(spec);
+    this.#assertOwnership(previous);
     if (previous.state === "running" || previous.state === "starting")
       await this.stop(spec);
     await writeDefinition(
@@ -280,6 +275,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
     const taskName = windowsTaskName(normalized);
     if (await this.#exists(taskName)) {
       await this.stop(spec);
+      await this.#installed(spec);
       const result = await this.#schtasksCommand(
         ["/Delete", "/TN", taskName, "/F"],
         false,
@@ -324,11 +320,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
   async start(spec: ServiceSpec): Promise<void> {
     const normalized = await this.#installed(spec);
     const status = await this.inspect(spec);
-    if (status.detail) {
-      throw new ServiceError("MANAGER_UNAVAILABLE", status.detail, {
-        backend: this.kind,
-      });
-    }
+    this.#assertOwnership(status);
     if (!status.enabled) {
       throw new ServiceError(
         "SERVICE_DISABLED",
@@ -345,17 +337,10 @@ export class WindowsUserTaskBackend implements ServiceBackend {
   async stop(spec: ServiceSpec): Promise<void> {
     const normalized = await this.#installed(spec);
     const taskName = windowsTaskName(normalized);
-    // 账号翻译失败不代表任务仍在运行；停止不依赖账号匹配，权限仍由 Scheduler 校验。
-    const status = await this.#inspect(spec, false);
+    // 查询与停止均要求原用户身份可确认，不能按同名任务操作其他账号的服务。
+    const status = await this.inspect(spec);
+    this.#assertOwnership(status);
     if (status.state === "stopped" || status.state === "not_installed") return;
-    if (status.state === "unknown")
-      throw new ServiceError(
-        "MANAGER_UNAVAILABLE",
-        "Windows task state is unavailable",
-        {
-          backend: this.kind,
-        },
-      );
     const result = await this.#schtasksCommand(
       ["/End", "/TN", taskName],
       false,
@@ -365,17 +350,10 @@ export class WindowsUserTaskBackend implements ServiceBackend {
     // /End 仅表示请求受理；旧实例仍运行时不能 /Run（IgnoreNew 会吞掉重启）。
     const end = Date.now() + normalized.timeoutStopSeconds * 1000;
     while (true) {
-      const current = await this.#inspect(spec, false);
+      const current = await this.inspect(spec);
+      this.#assertOwnership(current);
       if (current.state === "stopped" || current.state === "not_installed")
         return;
-      if (current.state === "unknown")
-        throw new ServiceError(
-          "MANAGER_UNAVAILABLE",
-          "Windows task state is unavailable",
-          {
-            backend: this.kind,
-          },
-        );
       if (Date.now() >= end)
         throw new ServiceError(
           "COMMAND_FAILED",
@@ -392,11 +370,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
   async restart(spec: ServiceSpec): Promise<void> {
     const normalized = await this.#installed(spec);
     const status = await this.inspect(spec);
-    if (status.detail) {
-      throw new ServiceError("MANAGER_UNAVAILABLE", status.detail, {
-        backend: this.kind,
-      });
-    }
+    this.#assertOwnership(status);
     if (!status.enabled) {
       throw new ServiceError(
         "SERVICE_DISABLED",
@@ -428,12 +402,31 @@ export class WindowsUserTaskBackend implements ServiceBackend {
 
   async #installed(spec: ServiceSpec): Promise<NormalizedServiceSpec> {
     const normalized = this.#normalize(spec);
-    if (!(await this.#exists(windowsTaskName(normalized)))) {
+    const status = await this.inspect(spec);
+    if (status.state === "not_installed") {
       throw new ServiceError("NOT_INSTALLED", "Windows task is not installed", {
         backend: this.kind,
       });
     }
+    this.#assertOwnership(status);
     return normalized;
+  }
+
+  /** 所有变更共享身份守卫；未知不等于当前用户，普通定义漂移仍可由 install 修复。 */
+  #assertOwnership(status: ServiceStatus): void {
+    if (status.state === "not_installed") return;
+    if (
+      status.state === "unknown" ||
+      status.detail ||
+      status.drift.some((entry) =>
+        ["manager.principal_user", "manager.trigger_user"].includes(entry),
+      )
+    )
+      throw new ServiceError(
+        "MANAGER_UNAVAILABLE",
+        "Windows task ownership could not be confirmed for the current user",
+        { backend: this.kind },
+      );
   }
 
   #definitionPath(spec: NormalizedServiceSpec): string {

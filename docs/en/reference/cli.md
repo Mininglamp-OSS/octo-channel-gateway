@@ -15,11 +15,11 @@ The binary is `octo-channel-gateway`. Global options are `--home <path>`, `--end
 | status    | Report operating system service and Gateway status                                                           |
 | doctor    | Also report manager availability and Kernel status; successful exit does not mean every component is healthy |
 | logs      | --lines defaults to 200; --follow tails logs; readable even if configuration is corrupt                      |
-| configure | Add/update one Bot by bot_id; save only; retain omitted optional fields                                      |
+| configure | Add/update one Bot by normalized API URL and bot_id; save only; retain omitted fields for that identity      |
 | extraset  | Replace configuration from stdin, accept the old config wrapper, require restart to apply                    |
 | extraget  | Output complete configuration, including credentials                                                         |
 
-configure requires `--bot_id` and `--api_url`. Optional flags are `--adapter_type`, `--workdir`, `--model`, `--effort` (low/medium/high/xhigh), `--provider_agent_id` (OpenClaw only), and `--bf_token`. Changing an API address for the same bot_id does not append a second Bot; old duplicate entries are consolidated. Business identity changes still require authentication.
+configure requires `--bot_id` and `--api_url`. Optional flags are `--adapter_type`, `--workdir`, `--model`, `--effort` (low/medium/high/xhigh), `--provider_agent_id` (OpenClaw only), and `--bf_token`. The normalized API URL and bot_id identify one Bot. Other endpoints remain configured separately. Adding the same bot_id at a new endpoint requires an explicit new bf_token and does not inherit the existing endpoint's credential or adapter settings. Omitted optional fields are retained only for an existing matching identity; first-time offline configuration may omit credentials.
 
 ## Home and output
 
