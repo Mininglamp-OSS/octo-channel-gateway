@@ -1,0 +1,31 @@
+---
+type: Rule
+title: Channel Gateway 独立 SDK 边界
+description: 渠道业务独立管理，通过公开 Runtime client 调用已有执行服务。
+tags: [architecture, channel, lifecycle]
+id: gateway-architecture
+tier: repo
+priority: 100
+load_bearing: true
+inject_when:
+  paths: ["**"]
+  touches: [architecture, channel, lifecycle]
+source: self
+supersedes: []
+---
+
+# 架构
+
+独立渠道仓库，源自 octo-runtime Issue 328。执行只依赖公开 `@mininglamp-oss/octo-runtime-client`，协议从 `/protocol` 导入，不依赖完整 Runtime、私有 Core/Kernel/Host/Adapter SDK 或 `/internal`。
+
+入口 `ChannelRegistry.register(endpoint, definition)`。业务定义、函数、凭据、会话、准入和投递由 Gateway/应用管理，不实现 Extra、通用 JSON/schema、插件发现或 Kernel 渠道注册 RPC。
+
+每次注册拥有独立 client、Manager 和渠道资源，不拥有 Kernel。关闭先停接纳，在共享截止内取消/消费所属执行、完成业务收尾，最后释放 client。失败可见，重复关闭结果相同；初始化失败走相同回滚路径。
+
+保留迁移前准入、身份/代次、重试预算、投递、上下文和会话语义。取消 ACK 不等于终态，终态不等于投递成功，观察中断不自动重放。
+
+工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，不记录凭据。知识 Markdown 须有 type/title/description/tags。专项手动，不扩大 CI。
+
+## agentEnv 合同
+
+公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务材料只在 Gateway 转为模型 parts；执行信封只承载环境配置，凭据不进入正文。使用 2.x 公开 client 与 IPC v2；不保留旧 request/contexts/signal 兼容层。
