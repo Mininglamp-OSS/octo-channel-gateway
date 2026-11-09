@@ -45,3 +45,5 @@ export function createDefinition(options: {
 credentials(config, signal) 返回宿主管理的当前 token；SDK 不扫描账号目录，也不建立刷新服务。没有回调时读取 bot.bf_token。不要把 token 放入 loadContexts、模型输入或诊断对象。Gateway 在执行前将工具凭据并入 agentEnv/envs；它仍是敏感执行配置，不是凭据保险库。Windows 按不区分大小写的环境变量名覆盖可信值，POSIX 按大小写区分。
 
 本仓只提供工具身份与材料，不负责安装独立 octo-cli 或业务 MCP。工具安装、可执行路径与 Provider 能力由宿主提供。源合同：[回调与合并](../../../packages/gateway/src/support/context-loader.ts)、[凭据端口](../../../packages/gateway/src/ports.ts)。
+
+可选 MCP/环境变量 payload、完整可用示例、覆盖规则，以及`agent.mcp`/`agent.envs` 到执行项的映射，见[配置参考](../reference/configuration.md)。CLI 默认示例保持精简。上文 instructions 行为描述的是当前实现，其移除由 [Runtime #334](https://github.com/Mininglamp-OSS/octo-runtime/issues/334) 跟踪，目标是由 Gateway 将业务提示词拼入 inputs。

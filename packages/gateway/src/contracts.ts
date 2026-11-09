@@ -11,6 +11,8 @@ import type {
   InvokeEnvironment,
   ModelInputPart,
   ProviderSession,
+  ContextEnvsPayload,
+  McpServers,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { RunPresentation } from "./presentation/run-projector.js";
 import type { ImGapPlan, ImGapTurnToken } from "./application/context-gap.js";
@@ -27,6 +29,9 @@ export interface ImPositionObservation {
 }
 
 export interface ImAgentConfig {
+  /** 可选执行配置，按公开协议编译为 agentEnv，不进入模型输入。 */
+  mcp?: { mcpServers: McpServers };
+  envs?: ContextEnvsPayload;
   adapter_type?: string;
   workdir?: string;
   model?: string;

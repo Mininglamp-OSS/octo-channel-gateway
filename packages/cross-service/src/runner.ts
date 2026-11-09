@@ -20,12 +20,9 @@ export class NodeCommandRunner implements CommandRunner {
   async run(
     command: string,
     args: readonly string[],
-    options: CommandOptions = {},
+    options: CommandOptions = {}
   ): Promise<CommandResult> {
-    if (
-      process.platform !== "win32" ||
-      !/^schtasks(?:\.exe)?$/i.test(win32.basename(command))
-    ) {
+    if (process.platform !== "win32" || !/^schtasks(?:\.exe)?$/i.test(win32.basename(command))) {
       return runProcess(command, args, options);
     }
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -33,41 +30,29 @@ export class NodeCommandRunner implements CommandRunner {
     if (!this.#windowsTaskEncoding) {
       // 与 manager 相同的隐藏控制台启动条件，只查询代码页，不改变宿主控制台或 shell 设置。
       // 仅缓存成功结果；并发查询各自使用调用预算，短超时不能污染其他请求。
-      const system32 = win32.join(
-        process.env.SystemRoot ?? "C:\\Windows",
-        "System32",
-      );
+      const system32 = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
       const queried = await runProcess(
         win32.join(system32, "cmd.exe"),
         ["/d", "/c", win32.join(system32, "chcp.com")],
-        options,
+        options
       );
-      if (queried.exitCode === 124)
-        return commandTimeout(command, args, timeoutMs);
+      if (queried.exitCode === 124) return commandTimeout(command, args, timeoutMs);
       const codePage = /(\d+)\s*$/.exec(queried.stdout)?.[1];
-      const candidate =
-        codePage === "65001" ? "utf8" : codePage ? `cp${codePage}` : "";
-      if (
-        queried.exitCode !== 0 ||
-        !candidate ||
-        !iconv.encodingExists(candidate)
-      ) {
-        throw new Error("Windows task output code-page query failed", {
-          cause: queried,
-        });
+      const candidate = codePage === "65001" ? "utf8" : codePage ? `cp${codePage}` : "";
+      if (queried.exitCode !== 0 || !candidate || !iconv.encodingExists(candidate)) {
+        throw new Error("Windows task output code-page query failed", { cause: queried });
       }
       this.#windowsTaskEncoding = candidate;
     }
     const remainingMs = timeoutMs - (performance.now() - startedAt);
-    if (timeoutMs > 0 && remainingMs <= 0)
-      return commandTimeout(command, args, timeoutMs);
+    if (timeoutMs > 0 && remainingMs <= 0) return commandTimeout(command, args, timeoutMs);
     // 原命令仍直接启动，超时诊断使用原预算，真实 exit code 124 不等于 timer 已触发。
     return runProcess(
       command,
       args,
       { ...options, timeoutMs: timeoutMs > 0 ? remainingMs : timeoutMs },
       this.#windowsTaskEncoding,
-      timeoutMs,
+      timeoutMs
     );
   }
 }
@@ -78,7 +63,7 @@ function runProcess(
   args: readonly string[],
   options: CommandOptions,
   encoding?: string,
-  reportedTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  reportedTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, [...args], {
@@ -86,7 +71,7 @@ function runProcess(
       env: options.env ?? process.env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
+      windowsHide: true
     });
     let stdout = "";
     let stderr = "";
@@ -102,12 +87,8 @@ function runProcess(
         : undefined;
     timer?.unref();
 
-    const stdoutDecoder = encoding
-      ? iconv.getDecoder(encoding, { stripBOM: false })
-      : undefined;
-    const stderrDecoder = encoding
-      ? iconv.getDecoder(encoding, { stripBOM: false })
-      : undefined;
+    const stdoutDecoder = encoding ? iconv.getDecoder(encoding, { stripBOM: false }) : undefined;
+    const stderrDecoder = encoding ? iconv.getDecoder(encoding, { stripBOM: false }) : undefined;
     if (!encoding) {
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
@@ -115,13 +96,13 @@ function runProcess(
     child.stdout.on("data", (chunk: string | Buffer) => {
       stdout = appendBounded(
         stdout,
-        stdoutDecoder ? stdoutDecoder.write(chunk as Buffer) : chunk.toString(),
+        stdoutDecoder ? stdoutDecoder.write(chunk as Buffer) : chunk.toString()
       );
     });
     child.stderr.on("data", (chunk: string | Buffer) => {
       stderr = appendBounded(
         stderr,
-        stderrDecoder ? stderrDecoder.write(chunk as Buffer) : chunk.toString(),
+        stderrDecoder ? stderrDecoder.write(chunk as Buffer) : chunk.toString()
       );
     });
     child.stdout.once("end", () => {
@@ -146,11 +127,8 @@ function runProcess(
         exitCode: timedOut ? 124 : (code ?? 1),
         stdout,
         stderr: timedOut
-          ? appendBounded(
-              stderr,
-              `\ncommand timed out after ${reportedTimeoutMs}ms`,
-            )
-          : stderr,
+          ? appendBounded(stderr, `\ncommand timed out after ${reportedTimeoutMs}ms`)
+          : stderr
       });
     });
   });
@@ -160,14 +138,14 @@ function runProcess(
 function commandTimeout(
   command: string,
   args: readonly string[],
-  timeoutMs: number,
+  timeoutMs: number
 ): CommandResult {
   return {
     command,
     args: [...args],
     exitCode: 124,
     stdout: "",
-    stderr: `command timed out after ${timeoutMs}ms`,
+    stderr: `command timed out after ${timeoutMs}ms`
   };
 }
 

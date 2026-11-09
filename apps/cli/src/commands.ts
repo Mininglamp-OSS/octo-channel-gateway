@@ -8,6 +8,7 @@ import {
   imBotIdentity,
   validateImBots,
 } from "../../../packages/gateway/src/lifecycle/configuration.js";
+import type { ImAgentConfig } from "../../../packages/gateway/src/contracts.js";
 
 /** 离线业务校验复用运行时 Bot 合同；不认证、不构造 manager 或服务。 */
 function validate(config: JsonObject): void {
@@ -51,6 +52,8 @@ function validate(config: JsonObject): void {
       IM_BOT_ID_REQUIRED: "Provide a non-empty --bot_id (JSON: bots[].bot_id).",
       IM_AGENT_REQUIRED:
         "Each Bot requires an agent object; configure maps --adapter_type/--workdir to it.",
+      IM_AGENT_MCP_INVALID: "agent.mcp must contain a valid mcpServers object. See the optional execution configuration documentation.",
+      IM_AGENT_ENVS_INVALID: "agent.envs must contain valid env_variables key/value entries. See the optional execution configuration documentation.",
       IM_WORKDIR_ABSOLUTE_REQUIRED:
         "Provide an absolute --workdir for a local adapter.",
       IM_OPENCLAW_WORKDIR_UNSUPPORTED:
@@ -131,7 +134,7 @@ const extension: GatewayCommandExtension = {
         },
       ],
       examples: [
-        "octo-channel-gateway configure --bot_id assistant --api_url https://im.example.com/api --adapter_type codex --bf_token EXAMPLE_CREDENTIAL",
+        "octo-channel-gateway configure --bot_id my-codex-bot --bot_name 'My Codex Bot' --api_url https://im.deepminer.com.cn/api --adapter_type codex --workdir /absolute/project --model gpt-6.1-sol --effort high --bf_token REPLACE_WITH_BOT_TOKEN",
       ],
       async run(context, input) {
         const snapshot = await context.readConfig();
@@ -168,14 +171,14 @@ const extension: GatewayCommandExtension = {
             "EXTRA_CONFIG_INVALID",
             "--bf_token is required for a new API endpoint of an existing Bot ID.",
           );
-        const agent: JsonObject = { ...old?.agent };
+        const agent: ImAgentConfig = { ...old?.agent };
         if (typeof input.options.adapter_type === "string") agent.adapter_type = input.options.adapter_type;
         for (const field of [
           "workdir",
           "model",
           "effort",
           "provider_agent_id",
-        ]) {
+        ] as const) {
           const value = input.options[field];
           if (typeof value === "string") agent[field] = value;
         }

@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-Keep custom Runtime --home consistent for startup and diagnostics. Gateway start/restart/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
+Keep custom Runtime --home consistent for startup and diagnostics. Gateway start/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
 
 ## Configure and start
 
@@ -25,8 +25,8 @@ npm install -g @mininglamp-oss/octo-channel-gateway
 octo-channel-gateway --help
 octo-channel-gateway configure --help
 octo-channel-gateway configure --bot_id assistant --api_url https://im.example.com/api --adapter_type codex --workdir /absolute/workspace
-octo-channel-gateway install --runtime-home /absolute/runtime --autostart true
-octo-channel-gateway start
+octo-channel-gateway install --autostart true
+octo-channel-gateway start --runtime-home /absolute/runtime
 octo-channel-gateway doctor --json
 octo-channel-gateway status --json
 octo-channel-gateway logs --lines 200 --follow
@@ -36,7 +36,7 @@ configure only saves configuration; it does not authenticate or start a service.
 
 configure updates the normalized API URL and Bot ID pair. It preserves omitted fields only for that exact identity and leaves other endpoints unchanged. Configuring the same Bot ID at a new API endpoint requires a new `--bf_token`; credentials and Agent settings are never copied from another endpoint. Authenticated REST requests reject redirects. On Windows, service changes require a confirmed current-user task identity; an unknown or mismatched account blocks installation and lifecycle commands.
 
-install saves runtime_home and installs a service definition with automatic startup enabled by default. Explicit start requests startup and waits for Gateway readiness. If absent, start installs the service with automatic startup enabled. Use restart after configuration changes; the CLI does not promise hot reload.
+install creates a service definition using the default Runtime directory, with automatic startup enabled by default. start installs or updates the definition with its own --runtime-home argument, requests startup and waits for Gateway readiness. If absent, start installs the service with automatic startup enabled. restart preserves the installed arguments. Use restart after configuration changes; the CLI does not promise hot reload.
 
 ## Stop and remove
 
@@ -59,7 +59,6 @@ Home defaults to `~/.octo-channel-gateway`; use `--home` to select an instance. 
 ```sh
 node dist/apps/cli/src/index.js extraset <<'JSON'
 {
-  "runtime_home": "/Users/your-user/.octo-runtime",
   "enabled": true,
   "bots": [
     {
@@ -79,4 +78,4 @@ node dist/apps/cli/src/index.js extraset <<'JSON'
 JSON
 ```
 
-Replace all example paths, Bot identity, credentials and model ID before use. `bot_name` is a display label for distinguishing Bots; an empty or omitted value falls back to bot_id. `agent` contains execution settings; `adapter_type` selects the Provider integration. `model` is a placeholder, and `effort: high` is an example, not a global default. Omit runtime_home to use ~/.octo-runtime. extraset replaces the full configuration; restart applies it. Config and logs stay in ~/.octo-channel-gateway.
+Replace all example paths, Bot identity, credentials and model ID before use. `bot_name` is a display label for distinguishing Bots; an empty or omitted value falls back to bot_id. `agent` contains execution settings; `adapter_type` selects the Provider integration. `model` is a placeholder, and `effort: high` is an example, not a global default. Runtime Home is not a configuration field; specify it with start/run --runtime-home, or omit that option to use ~/.octo-runtime. extraset replaces the full configuration; restart applies it. Config and logs stay in ~/.octo-channel-gateway.

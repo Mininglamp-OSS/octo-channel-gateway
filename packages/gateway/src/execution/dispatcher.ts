@@ -86,6 +86,13 @@ export function createImInvocation(
   const defaults: ContextEnvelope = {
     schema: context.schema,
     items: [
+      // 同轮重试只使用已有冻结项，不从更新的 Bot 配置引入新执行设置。
+      ...(!message.historyRetry && config.agent.mcp !== undefined
+        ? [{ namespace: "octo.execution", name: "mcp", payload: { ...config.agent.mcp } }]
+        : []),
+      ...(!message.historyRetry && config.agent.envs !== undefined
+        ? [{ namespace: "octo.execution", name: "envs", payload: { ...config.agent.envs } }]
+        : []),
       {
         namespace: "octo.execution",
         name: "adapter",

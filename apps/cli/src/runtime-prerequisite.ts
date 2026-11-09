@@ -7,7 +7,7 @@ export const runtimeSetupHelp = [
   "1. 安装匹配版本：npm install -g @mininglamp-oss/octo-runtime@^1.1.12",
   "2. 启动 Runtime：octo-runtime start",
   "3. 检查 Runtime：octo-runtime doctor --json",
-  "4. Gateway 默认连接 ~/.octo-runtime 中的 Kernel；自定义位置用 --runtime-home 或配置 runtime_home 指定 Runtime 目录。",
+  "4. Gateway 默认连接 ~/.octo-runtime 中的 Kernel；自定义位置用 start/run --runtime-home 指定 Runtime 目录。",
   "Gateway --home 默认 ~/.octo-channel-gateway，仅保存自己的配置和日志。自定义 Runtime Home 时，Runtime 启动和诊断须使用同一 --home。",
 ].join("\n");
 

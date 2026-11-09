@@ -42,6 +42,7 @@ try {
     manifest.exports["."].import,
     manifest.types,
     ...Object.values(manifest.bin),
+    "dist/apps/cli/src/build-info.json",
     "README.md",
     "LICENSE",
   ])

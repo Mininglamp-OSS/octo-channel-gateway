@@ -1,8 +1,6 @@
-import { Command, CommanderError, Option } from "commander";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
 import { lstat, mkdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -20,13 +18,13 @@ import {
   createServiceBackend,
   type ServiceBackend,
   type ServiceSpec,
-} from "./service/index.js";
+} from "../../../packages/cross-service/src/index.js";
 import {
   GatewayCommandError,
-  type GatewayCommand,
   type GatewayCommandContext,
 } from "./command-types.js";
 import commands from "./commands.js";
+import { CliUsageError, parseCliCommand } from "./command-tree.js";
 import { requireRuntime, runtimeSetupHelp } from "./runtime-prerequisite.js";
 import { runtimeEndpoint, validateRuntimeHomeConfig } from "./runtime-endpoint.js";
 import {
@@ -51,16 +49,12 @@ export interface CliDependencies {
   /** 仅通知可执行入口；可导入的 CLI 不退出调用进程。 */
   onForeground?: () => void;
 }
-const version = (
-  JSON.parse(
-    readFileSync(new URL("../../../../package.json", import.meta.url), "utf8"),
-  ) as { version: string }
-).version;
 
-/** 服务只托管 Gateway；从自身配置读取 Runtime Home，不接管共享 Runtime。 */
+/** 服务只托管 Gateway；Runtime Home 固定在启动参数中，不读取业务配置。 */
 export function serviceSpec(
   home: string,
   enabled = false,
+  runtimeHome = join(homedir(), ".octo-runtime"),
 ): ServiceSpec {
   const key = process.platform === "win32" ? home.toLowerCase() : home;
   const id = `cn.mininglamp.octo-channel-gateway.h${createHash("sha256").update(key).digest("hex").slice(0, 16)}`;
@@ -73,6 +67,8 @@ export function serviceSpec(
       "run",
       "--home",
       home,
+      "--runtime-home",
+      runtimeHome,
     ],
     workingDirectory: home,
     enabled,
@@ -244,103 +240,33 @@ export async function runCli(
     ((text) => {
       process.stderr.write(text + "\n");
     });
-  let json = raw.includes("--json");
-  let help = "",
-    action = "";
-  let business: GatewayCommand | undefined;
-  const command = new Command("octo-channel-gateway")
-    .description("Octo Channel Gateway SDK and service CLI")
-    .exitOverride()
-    .configureOutput({
-      writeOut(text) {
-        help += text;
-      },
-      writeErr() {},
-    })
-    .option("--home <path>", "Gateway Home directory")
-    .option("--runtime-home <path>", "Runtime Home directory (default: ~/.octo-runtime)")
-    .option("--json", "Print JSON")
-    .version(version);
-  for (const name of [
-    "doctor",
-    "install",
-    "uninstall",
-    "start",
-    "stop",
-    "restart",
-    "status",
-    "run",
-    "logs",
-    "extraset",
-    "extraget",
-  ]) {
-    const child = command.command(name).description(`${name} Channel Gateway`);
-    if (["extraset", "extraget"].includes(name)) child.argument("[component]");
-    if (name === "install")
-      child.option("--autostart <boolean>", "Automatic startup", "true");
-    if (name === "logs")
-      child
-        .option("--lines <count>", "Number of log lines", "200")
-        .option("--follow", "Follow logs");
-    child.action(() => {
-      if (child.args.length && child.args[0] !== "channel-gateway")
-        throw new Error("INVALID_ARGUMENTS");
-      action = name;
-    });
-  }
-  for (const definition of commands.commands) {
-    const child = command
-      .command(definition.name)
-      .description(definition.description);
-    for (const option of definition.options ?? [])
-      child.addOption(
-        new Option(
-          `--${option.name}${option.type === "string" ? " <value>" : ""}`,
-          option.description,
-        ).makeOptionMandatory(Boolean(option.required)),
-      );
-    child.action(() => {
-      action = definition.name;
-      business = definition;
-    });
-  }
+  let json = raw.some((arg) => arg === "--json" || arg.startsWith("--json="));
+  let usageHelp = "";
   try {
-    // 保留原组件层级的用法，同时提供独立二进制的平铺命令。
-    const args = raw.map((item) =>
-      /^--(?:json)=/.test(item) ? "--json" : item,
-    );
-    for (let index = 0; index < args.length; index++) {
-      if (["--home", "--runtime-home"].includes(args[index])) {
-        index++;
-        continue;
-      }
-      if (args[index].startsWith("-")) continue;
-      if (args[index] === "help") continue;
-      if (args[index] === "channel-gateway") args.splice(index, 1);
-      break;
-    }
-    command.parse(args, { from: "user" });
-    if (help || !action) {
-      output(help.trimEnd() || command.helpInformation().trimEnd());
+    const parsed = parseCliCommand(raw, commands.commands);
+    usageHelp = parsed.commandHelp;
+    const { action, business, flags } = parsed;
+    if (parsed.help) {
+      output(parsed.help);
       return 0;
     }
-    const flags = command.opts<{
-      home?: string;
-      runtimeHome?: string;
-      json?: boolean;
-    }>();
     json = Boolean(flags.json);
     const home = resolve(
       flags.home ??
         join(dependencies.env?.HOME ?? homedir(), ".octo-channel-gateway"),
     );
     const input = dependencies.input ?? process.stdin;
+    if (action === "extraset" && (input as NodeJS.ReadStream).isTTY)
+      throw new CliUsageError("GATEWAY_STDIN_REQUIRED",
+        "Provide a complete JSON configuration through stdin. Copy and adapt the example below, then run it in your shell.", usageHelp);
+    if (action === "install" && !["true", "false"].includes(String(parsed.options.autostart)))
+      throw new CliUsageError("INVALID_ARGUMENTS", "--autostart must be true or false.", usageHelp);
+    if (action === "logs" && (!Number.isInteger(Number(parsed.options.lines)) || Number(parsed.options.lines) < 1 || Number(parsed.options.lines) > 10000))
+      throw new CliUsageError("INVALID_ARGUMENTS", "--lines must be an integer between 1 and 10000.", usageHelp);
     const emit = (value: unknown, text?: string) =>
       output(!json && text ? text : JSON.stringify(value, null, 2));
     if (action === "logs") {
-      const selected = command.commands
-        .find((child) => child.name() === "logs")!
-        .opts<{ lines: string; follow?: boolean }>();
+      const selected = parsed.options;
       await showChannelLogs({
         home,
         channel: "channel-gateway",
@@ -353,13 +279,18 @@ export async function runCli(
       });
       return 0;
     }
-    const config = await readConfig(home);
-    validateRuntimeHomeConfig(config);
-    if (flags.runtimeHome !== undefined && !flags.runtimeHome.trim())
-      throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "--runtime-home must not be empty.");
-    const runtimeHome = resolve(flags.runtimeHome ??
-      (typeof config.runtime_home === "string" ? config.runtime_home : undefined) ??
-      join(dependencies.env?.HOME ?? homedir(), ".octo-runtime"));
+    const config = action === "run" || action === "extraget" || business
+      ? await readConfig(home)
+      : {};
+    if (flags.runtimeHome !== undefined &&
+        (!flags.runtimeHome.trim() || /[\0\r\n]/.test(flags.runtimeHome)))
+      throw new GatewayCommandError(
+        "GATEWAY_CONFIG_INVALID",
+        "--runtime-home must be a non-empty, single-line directory path.",
+      );
+    const runtimeHome = resolve(
+      flags.runtimeHome ?? join(dependencies.env?.HOME ?? homedir(), ".octo-runtime"),
+    );
     const endpoint = runtimeEndpoint(runtimeHome);
     if (business) {
       const controller = new AbortController();
@@ -388,12 +319,9 @@ export async function runCli(
         },
       };
       try {
-        const selected = command.commands.find(
-          (child) => child.name() === action,
-        )!;
         const result = await business.run!(context, {
-          options: selected.opts<Record<string, string | boolean>>(),
-          arguments: selected.args,
+          options: parsed.options,
+          arguments: parsed.arguments,
         });
         if (result?.value !== undefined || result?.message)
           emit(result.value, result.message);
@@ -409,39 +337,30 @@ export async function runCli(
       return 0;
     }
     if (action === "extraset") {
-      const value = JSON.parse(
-        await stdin(input, dependencies.signal),
-      ) as JsonObject;
+      const text = await stdin(input, dependencies.signal);
+      if (!text.trim()) throw new CliUsageError("GATEWAY_STDIN_REQUIRED",
+        "Provide a complete JSON configuration through stdin. Copy and adapt the example below, then run it in your shell.", usageHelp);
+      let value: JsonObject;
+      try { value = JSON.parse(text) as JsonObject; }
+      catch { throw new CliUsageError("GATEWAY_CONFIG_INVALID", "Input must be valid JSON. Supply one complete configuration object.", usageHelp); }
       if (!value || typeof value !== "object" || Array.isArray(value))
-        throw new Error("GATEWAY_CONFIG_OBJECT_REQUIRED");
-      // 接受旧命令的 config 外壳，仅保存 Gateway 自身设置，不解析插件 module。
-      const next =
-        value.config &&
-        typeof value.config === "object" &&
-        !Array.isArray(value.config)
-          ? {
-              ...value.config,
-              ...(value.enabled === undefined
-                ? {}
-                : { enabled: value.enabled }),
-            }
-          : value;
-      delete next.module;
+        throw new CliUsageError("GATEWAY_CONFIG_OBJECT_REQUIRED",
+          "Supply one JSON configuration object, not an array or primitive value.", usageHelp);
+      // 独立 CLI 只接收直接配置，拒绝外壳，避免将错误输入保存为空 Bot 配置。
+      if (Object.hasOwn(value, "config") || Object.hasOwn(value, "module"))
+        throw new CliUsageError("GATEWAY_CONFIG_INVALID",
+          "Supply Gateway configuration directly, with bots at the top level. config and module are not supported fields.", usageHelp);
+      const next = value;
       validateImBots(next.bots ?? []);
       validateRuntimeHomeConfig(next);
-      await withConfigLock(home, () =>
-        saveConfig(home, {
-          ...next,
-          ...(flags.runtimeHome ? { runtime_home: runtimeHome } : {}),
-        }),
-      );
+      await withConfigLock(home, () => saveConfig(home, next));
       emit(
         { saved: true, file: configFile(home), reload_required: true },
         `Configuration saved: ${configFile(home)}\nRestart Channel Gateway to apply.`,
       );
       return 0;
     }
-    if (["run", "start", "restart"].includes(action))
+    if (["run", "start"].includes(action))
       await requireRuntime(endpoint);
     if (action === "run") {
       if (!endpoint)
@@ -453,12 +372,20 @@ export async function runCli(
       return await run(home, endpoint, config, dependencies, output);
     }
     const backend = dependencies.backend ?? createServiceBackend();
-    let spec = serviceSpec(home);
+    let spec = serviceSpec(home, false, runtimeHome);
     const inspect = async () => {
       let status = await backend.inspect(spec);
       if (status.enabled)
         status = await backend.inspect({ ...spec, enabled: true });
-      return status;
+      if (action === "start" || action === "install") return status;
+      // 管理命令没有期望的启动参数；只报告身份/存在性漂移，不能拿默认参数比较已安装定义。
+      return {
+        ...status,
+        definition_comparison: "not_requested",
+        drift: status.drift.filter((entry) => ![
+          "definition_content", "manager.command", "manager.arguments", "manager.working_directory",
+        ].includes(entry)),
+      };
     };
     const snapshot = async () => ({
       service: await inspect(),
@@ -468,10 +395,11 @@ export async function runCli(
       const status = await snapshot();
       let kernel: unknown = {
         available: false,
-        error: "KERNEL_ENDPOINT_REQUIRED",
+        error: "GATEWAY_UNAVAILABLE",
       };
-      if (endpoint) {
-        const client = attachKernel({ endpoint });
+      const runningEndpoint = "endpoint" in status.runtime ? status.runtime.endpoint : undefined;
+      if (action === "doctor" && typeof runningEndpoint === "string" && runningEndpoint) {
+        const client = attachKernel({ endpoint: runningEndpoint });
         try {
           kernel = await client.status();
         } catch {
@@ -492,32 +420,23 @@ export async function runCli(
       return 0;
     }
     return await withConfigLock(home, async () => {
-      if (["install", "start", "restart"].includes(action) && !endpoint)
-        throw new GatewayCommandError(
-          "KERNEL_ENDPOINT_REQUIRED",
-          runtimeSetupHelp,
-        );
       if (action === "install") {
-        const auto = command.commands
-          .find((child) => child.name() === "install")!
-          .opts<{ autostart: string }>().autostart;
-        if (!["true", "false"].includes(auto))
+        const auto = parsed.options.autostart;
+        if (auto !== "true" && auto !== "false")
           throw new Error("INVALID_ARGUMENTS");
         spec = { ...spec, enabled: auto === "true" };
         await backend.install(spec);
-        await saveConfig(home, {
-          ...(await readConfig(home)),
-          runtime_home: runtimeHome,
-        });
       } else if (action === "start") {
-        await saveConfig(home, { ...(await readConfig(home)), runtime_home: runtimeHome });
-        if ((await backend.inspect(spec)).state === "not_installed") {
-          spec = { ...spec, enabled: true };
-          await backend.install(spec);
-        }
+        // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
+        const installed = await backend.inspect(spec);
+        spec = {
+          ...spec,
+          enabled: installed.state === "not_installed" ? true : installed.enabled,
+        };
+        await backend.install(spec);
         await backend.start(spec);
       } else if (action === "restart") {
-        await saveConfig(home, { ...(await readConfig(home)), runtime_home: runtimeHome });
+        // 后端重启已安装定义，不能用当前命令默认值覆盖持久化 argv。
         await backend.restart(spec);
       } else if (action === "stop") await backend.stop(spec);
       else if (action === "uninstall") await backend.uninstall(spec);
@@ -541,13 +460,6 @@ export async function runCli(
       return 0;
     });
   } catch (error) {
-    if (
-      error instanceof CommanderError &&
-      ["commander.helpDisplayed", "commander.version"].includes(error.code)
-    ) {
-      output(help.trimEnd());
-      return 0;
-    }
     const candidate =
       error instanceof GatewayCommandError
         ? error.code
@@ -559,17 +471,24 @@ export async function runCli(
           : error instanceof Error
             ? error.message
             : "";
-    const code =
-      error instanceof CommanderError
-        ? "INVALID_ARGUMENTS"
-        : /^[A-Z][A-Z0-9_]{1,95}$/.test(candidate)
-          ? candidate
-          : "GATEWAY_COMMAND_FAILED";
-    const message = error instanceof GatewayCommandError ? error.message : code;
+    const code = /^[A-Z][A-Z0-9_]{1,95}$/.test(candidate)
+      ? candidate
+      : "GATEWAY_COMMAND_FAILED";
+    const message = error instanceof GatewayCommandError
+      ? error.message
+      : code === "IM_AGENT_MCP_INVALID"
+        ? "agent.mcp must contain valid MCP server definitions. See the optional execution configuration documentation."
+      : code === "IM_AGENT_ENVS_INVALID"
+        ? "agent.envs must contain valid env_variables key/value entries. See the optional execution configuration documentation."
+      : code === "INVALID_ARGUMENTS"
+        ? "Invalid command arguments. Use --help to see the available commands and flags."
+        : code;
     (json ? output : errorOutput)(
       json
         ? JSON.stringify({ error: { code, message } })
-        : `${code}: ${message}`,
+        : error instanceof CliUsageError
+          ? `${message}\n\n${error.help}`
+          : `${code}: ${message}${/INVALID|REQUIRED/.test(code) && usageHelp ? `\n\n${usageHelp}` : ""}`,
     );
     return /INCOMPLETE|DISPOSE_FAILED/.test(code)
       ? 5

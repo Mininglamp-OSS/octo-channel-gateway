@@ -10,7 +10,7 @@ import {
   readDefinition,
   removeDefinition,
   runCommand,
-  writeDefinition,
+  writeDefinition
 } from "./common.js";
 import { ServiceError } from "./errors.js";
 import { NodeCommandRunner } from "./runner.js";
@@ -22,7 +22,7 @@ import type {
   ServiceProbe,
   ServiceSpec,
   ServiceState,
-  ServiceStatus,
+  ServiceStatus
 } from "./types.js";
 
 const UNIT_NAME = /^[A-Za-z0-9][A-Za-z0-9_.@-]{0,127}\.service$/;
@@ -56,11 +56,7 @@ export class SystemdUserBackend implements ServiceBackend {
     if (this.#platform !== "linux")
       return { supported: false, manager: this.kind, detail: "requires Linux" };
     if (!this.#homeDirectory)
-      return {
-        supported: false,
-        manager: this.kind,
-        detail: "current user home is unavailable",
-      };
+      return { supported: false, manager: this.kind, detail: "current user home is unavailable" };
     try {
       const result = await runCommand(
         this.#runner,
@@ -69,23 +65,21 @@ export class SystemdUserBackend implements ServiceBackend {
         ["--user", "show-environment"],
         {
           checked: false,
-          env: this.#environment,
-        },
+          env: this.#environment
+        }
       );
       return result.exitCode === 0
         ? { supported: true, manager: this.kind }
         : {
             supported: false,
             manager: this.kind,
-            detail:
-              (result.stderr || result.stdout).trim() ||
-              "systemd user manager is unavailable",
+            detail: (result.stderr || result.stdout).trim() || "systemd user manager is unavailable"
           };
     } catch (error) {
       return {
         supported: false,
         manager: this.kind,
-        detail: error instanceof Error ? error.message : String(error),
+        detail: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -102,7 +96,7 @@ export class SystemdUserBackend implements ServiceBackend {
         state: "not_installed",
         enabled: false,
         definitionPath,
-        drift: ["definition_missing"],
+        drift: ["definition_missing"]
       };
     }
     const shown = await this.#show(unit);
@@ -113,8 +107,7 @@ export class SystemdUserBackend implements ServiceBackend {
         enabled: false,
         definitionPath,
         drift: definitionDrift(actual, renderSystemdUnitNormalized(normalized)),
-        detail:
-          (shown.stderr || shown.stdout).trim() || "systemctl show failed",
+        detail: (shown.stderr || shown.stdout).trim() || "systemctl show failed"
       };
     }
     const properties = parseProperties(shown.stdout);
@@ -123,16 +116,13 @@ export class SystemdUserBackend implements ServiceBackend {
     return {
       manager: this.kind,
       state: systemdState(properties.ActiveState, properties.SubState),
-      enabled: [
-        "enabled",
-        "enabled-runtime",
-        "linked",
-        "linked-runtime",
-      ].includes(properties.UnitFileState ?? ""),
+      enabled: ["enabled", "enabled-runtime", "linked", "linked-runtime"].includes(
+        properties.UnitFileState ?? ""
+      ),
       pid,
       lastExitCode,
       definitionPath,
-      drift: definitionDrift(actual, renderSystemdUnitNormalized(normalized)),
+      drift: definitionDrift(actual, renderSystemdUnitNormalized(normalized))
     };
   }
 
@@ -149,7 +139,7 @@ export class SystemdUserBackend implements ServiceBackend {
     await ensureOutputDirectories(normalized);
     const changed = await writeDefinition(
       this.#definitionPath(unit),
-      renderSystemdUnitNormalized(normalized),
+      renderSystemdUnitNormalized(normalized)
     );
     // systemd must reload its unit cache before a changed file can be started.
     if (changed) await this.#command(["daemon-reload"]);
@@ -192,11 +182,10 @@ export class SystemdUserBackend implements ServiceBackend {
       throw new ServiceError(
         "SERVICE_DISABLED",
         "systemd service is disabled; call enable before start",
-        { backend: this.kind },
+        { backend: this.kind }
       );
     }
-    if (status.state !== "running")
-      await this.#command(["start", systemdUnit(normalized)]);
+    if (status.state !== "running") await this.#command(["start", systemdUnit(normalized)]);
   }
 
   /** 请求停止并有界确认 inactive/failed 且无主进程，保留定义与自启设置。 */
@@ -215,7 +204,7 @@ export class SystemdUserBackend implements ServiceBackend {
       throw new ServiceError(
         "SERVICE_DISABLED",
         "systemd service is disabled; call enable before restart",
-        { backend: this.kind },
+        { backend: this.kind }
       );
     }
     await this.#command(["restart", systemdUnit(normalized)]);
@@ -223,39 +212,25 @@ export class SystemdUserBackend implements ServiceBackend {
 
   #normalize(spec: ServiceSpec): NormalizedServiceSpec {
     if (this.#platform !== "linux")
-      throw new ServiceError(
-        "UNSUPPORTED_PLATFORM",
-        "systemd backend requires Linux",
-      );
+      throw new ServiceError("UNSUPPORTED_PLATFORM", "systemd backend requires Linux");
     if (!this.#homeDirectory)
-      throw new ServiceError(
-        "MANAGER_UNAVAILABLE",
-        "current user home is unavailable",
-      );
+      throw new ServiceError("MANAGER_UNAVAILABLE", "current user home is unavailable");
     return normalizeServiceSpec(spec, "linux");
   }
 
   async #installed(spec: ServiceSpec): Promise<NormalizedServiceSpec> {
     const normalized = this.#normalize(spec);
-    if (
-      (await readDefinition(this.#definitionPath(systemdUnit(normalized)))) ===
-      undefined
-    ) {
-      throw new ServiceError(
-        "NOT_INSTALLED",
-        "systemd service is not installed",
-        {
-          backend: this.kind,
-        },
-      );
+    if ((await readDefinition(this.#definitionPath(systemdUnit(normalized)))) === undefined) {
+      throw new ServiceError("NOT_INSTALLED", "systemd service is not installed", {
+        backend: this.kind
+      });
     }
     return normalized;
   }
 
   #definitionPath(unit: string): string {
     const xdg = this.#environment.XDG_CONFIG_HOME;
-    const configHome =
-      xdg && posix.isAbsolute(xdg) ? xdg : join(this.#homeDirectory, ".config");
+    const configHome = xdg && posix.isAbsolute(xdg) ? xdg : join(this.#homeDirectory, ".config");
     return join(configHome, "systemd", "user", unit);
   }
 
@@ -270,30 +245,21 @@ export class SystemdUserBackend implements ServiceBackend {
         "--property=ActiveState",
         "--property=SubState",
         "--property=MainPID",
-        "--property=ExecMainStatus",
+        "--property=ExecMainStatus"
       ],
-      false,
+      false
     );
   }
 
   #command(args: readonly string[], checked = true) {
-    return runCommand(
-      this.#runner,
-      this.kind,
-      this.#systemctl,
-      ["--user", ...args],
-      {
-        checked,
-        env: this.#environment,
-      },
-    );
+    return runCommand(this.#runner, this.kind, this.#systemctl, ["--user", ...args], {
+      checked,
+      env: this.#environment
+    });
   }
 
   /** not-found 不等同于 inactive；删除定义前必须同时确认进程已停止。 */
-  async #commandOrMissing(
-    args: readonly string[],
-    unit: string,
-  ): Promise<void> {
+  async #commandOrMissing(args: readonly string[], unit: string): Promise<void> {
     const result = await this.#command(args, false);
     if (result.exitCode === 0) return;
     const shown = await this.#show(unit);
@@ -312,8 +278,7 @@ export class SystemdUserBackend implements ServiceBackend {
     while (true) {
       const shown = await this.#show(unit);
       const properties = parseProperties(shown.stdout);
-      if (properties.LoadState !== "not-found")
-        assertCommandSucceeded(shown, this.kind);
+      if (properties.LoadState !== "not-found") assertCommandSucceeded(shown, this.kind);
       if (
         ["inactive", "failed"].includes(properties.ActiveState ?? "") &&
         properties.MainPID === "0"
@@ -321,21 +286,13 @@ export class SystemdUserBackend implements ServiceBackend {
         return;
       assertCommandSucceeded(shown, this.kind);
       if (!properties.ActiveState || properties.MainPID === undefined)
-        throw new ServiceError(
-          "MANAGER_UNAVAILABLE",
-          "systemd did not report process state",
-          {
-            backend: this.kind,
-          },
-        );
+        throw new ServiceError("MANAGER_UNAVAILABLE", "systemd did not report process state", {
+          backend: this.kind
+        });
       if (Date.now() >= end)
-        throw new ServiceError(
-          "COMMAND_FAILED",
-          "systemd stop did not complete",
-          {
-            backend: this.kind,
-          },
-        );
+        throw new ServiceError("COMMAND_FAILED", "systemd stop did not complete", {
+          backend: this.kind
+        });
       await sleep(100);
     }
   }
@@ -352,12 +309,8 @@ function renderSystemdUnitNormalized(spec: NormalizedServiceSpec): string {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `Environment=${systemdQuote(`${key}=${value}`)}`)
     .join("\n");
-  const output = spec.stdoutPath
-    ? `StandardOutput=append:${systemdPath(spec.stdoutPath)}\n`
-    : "";
-  const error = spec.stderrPath
-    ? `StandardError=append:${systemdPath(spec.stderrPath)}\n`
-    : "";
+  const output = spec.stdoutPath ? `StandardOutput=append:${systemdPath(spec.stdoutPath)}\n` : "";
+  const error = spec.stderrPath ? `StandardError=append:${systemdPath(spec.stderrPath)}\n` : "";
   return `[Unit]
 Description=${escapeSystemdText(spec.description)}
 After=network-online.target
@@ -381,8 +334,7 @@ WantedBy=default.target
 function systemdUnit(spec: NormalizedServiceSpec): string {
   const configured = spec.names.systemdUnit;
   const unit = configured ?? `${spec.id}.service`;
-  if (!UNIT_NAME.test(unit))
-    throw new ServiceError("INVALID_SPEC", "invalid systemd unit name");
+  if (!UNIT_NAME.test(unit)) throw new ServiceError("INVALID_SPEC", "invalid systemd unit name");
   return unit;
 }
 
@@ -395,7 +347,7 @@ function systemdPath(value: string): string {
   if (/[ \t]$/.test(value))
     throw new ServiceError(
       "UNSUPPORTED_SPEC",
-      "systemd path directives cannot preserve trailing spaces or tabs",
+      "systemd path directives cannot preserve trailing spaces or tabs"
     );
   return `${value.replaceAll("%", "%%")}${trailingBackslashes % 2 === 0 ? "" : " "}`;
 }
@@ -404,22 +356,16 @@ function escapeSystemdText(value: string): string {
   return value.replaceAll("%", "%%");
 }
 
-function systemdState(
-  active: string | undefined,
-  sub: string | undefined,
-): ServiceState {
+function systemdState(active: string | undefined, sub: string | undefined): ServiceState {
   if (active === "active") return "running";
   if (active === "activating") return "starting";
   if (active === "deactivating") return "stopping";
   if (active === "failed") return "failed";
-  if (active === "inactive" || sub === "dead" || sub === "exited")
-    return "stopped";
+  if (active === "inactive" || sub === "dead" || sub === "exited") return "stopped";
   return "unknown";
 }
 
-async function ensureOutputDirectories(
-  spec: NormalizedServiceSpec,
-): Promise<void> {
+async function ensureOutputDirectories(spec: NormalizedServiceSpec): Promise<void> {
   for (const path of [spec.stdoutPath, spec.stderrPath]) {
     if (path) await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   }

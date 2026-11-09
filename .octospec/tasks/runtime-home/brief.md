@@ -5,7 +5,9 @@ description: 为独立 Runtime 增加默认连接定位，同时保留 Gateway �
 tags: [cli, architecture, documentation]
 ---
 
-# 用户确认的约定
+# 历史约定
+
+此任务的配置优先级与服务读取配置方案已被后续[命令行连接方案](../runtime-cli-attachment/brief.md)替代。以下为当时记录。
 
 2026-11-09 用户明确要求：Gateway Home 默认为 ~/.octo-channel-gateway，日志也在此目录；runtime_home 默认为 ~/.octo-runtime。此要求作为本任务确认。
 

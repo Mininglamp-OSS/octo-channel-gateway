@@ -34,15 +34,8 @@ export class ServiceError extends Error {
   readonly detail?: string;
 
   /** Create an error without persisting command arguments or service credentials. */
-  constructor(
-    code: ServiceErrorCode,
-    message: string,
-    options: ServiceErrorOptions = {},
-  ) {
-    super(
-      message,
-      options.cause === undefined ? undefined : { cause: options.cause },
-    );
+  constructor(code: ServiceErrorCode, message: string, options: ServiceErrorOptions = {}) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "ServiceError";
     this.code = code;
     this.backend = options.backend;

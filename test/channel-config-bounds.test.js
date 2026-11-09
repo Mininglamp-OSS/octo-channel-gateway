@@ -12,6 +12,75 @@ const bot = (id = "qa") => ({
   agent: { adapter_type: "codex" },
 });
 
+test("optional Agent MCP and envs use protocol validation without exposing supplied data", () => {
+  const valid = {
+    mcp: {
+      mcpServers: {
+        local: {
+          type: "stdio",
+          command: "/tools/mcp",
+          args: [],
+          env: { KEY: "private" },
+        },
+        remote: {
+          type: "streamable_http",
+          url: "https://example.test/mcp",
+          headers: { Authorization: "private" },
+        },
+      },
+    },
+    envs: { env_variables: [{ key: "PROJECT_ENV", value: "development" }] },
+  };
+  assert.doesNotThrow(() =>
+    validateImBots([{ ...bot(), agent: { ...bot().agent, ...valid } }]),
+  );
+  for (const [field, values, code] of [
+    [
+      "mcp",
+      [
+        null,
+        [],
+        {},
+        { mcpServers: { private: { type: "invalid" } } },
+        { mcpServers: { local: { type: "stdio", command: "" } } },
+      ],
+      "IM_AGENT_MCP_INVALID",
+    ],
+    [
+      "envs",
+      [
+        null,
+        [],
+        {},
+        { env_variables: [{ key: "BAD-KEY-private", value: "secret" }] },
+        { env_variables: [{ key: "X", value: 1 }] },
+        {
+          env_variables: [
+            { key: "X", value: "one" },
+            { key: "X", value: "two" },
+          ],
+        },
+      ],
+      "IM_AGENT_ENVS_INVALID",
+    ],
+  ])
+    for (const value of values) {
+      assert.throws(
+        () =>
+          validateImBots([{ ...bot(), agent: { ...valid, [field]: value } }]),
+        (error) => error.message === code,
+      );
+    }
+  assert.doesNotThrow(() =>
+    validateImBots([
+      {
+        ...bot(),
+        agent: { mcp: { mcpServers: {} }, envs: { env_variables: [] } },
+      },
+    ]),
+  );
+});
+
 test("group switch and optional scope validate Gateway definitions", () => {
   const check = (fields, expected) => {
     const config = { ...bot(), ...fields };

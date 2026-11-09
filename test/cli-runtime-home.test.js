@@ -4,12 +4,14 @@ import { mkdtemp, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { runCli } from "../dist/apps/cli/src/main.js";
+import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
 import { readConfig } from "../dist/apps/cli/src/config.js";
+import { parseCliCommand } from "../dist/apps/cli/src/command-tree.js";
+import { renderLaunchdPlist, renderSystemdUnit, renderWindowsTaskXml } from "../dist/packages/cross-service/src/index.js";
 import { runtimeEndpoint } from "../dist/apps/cli/src/runtime-endpoint.js";
 import { componentEndpoint } from "@mininglamp-oss/octo-runtime/host";
 
-test("default Gateway configuration stays separate from Runtime and service reads saved Home", async (t) => {
+test("service launch arguments keep Runtime Home out of business configuration", async (t) => {
   const userHome = await mkdtemp(join(tmpdir(), "ocg-home-"));
   t.after(() => rm(userHome, { recursive: true, force: true }));
   let spec;
@@ -20,13 +22,14 @@ test("default Gateway configuration stays separate from Runtime and service read
   const dependencies = { env: { HOME: userHome }, backend, output() {} };
   assert.equal(await runCli(["install"], dependencies), 0);
   const gatewayHome = join(userHome, ".octo-channel-gateway");
-  assert.equal((await readConfig(gatewayHome)).runtime_home, join(userHome, ".octo-runtime"));
+  assert.deepEqual(await readConfig(gatewayHome), {});
+  assert.equal(spec.args.at(-1), join(userHome, ".octo-runtime"));
   assert.ok(spec.args.includes(gatewayHome));
-  assert.ok(!spec.args.includes("--runtime-home"));
+  assert.ok(spec.args.includes("--runtime-home"));
   await assert.rejects(access(join(userHome, ".octo-runtime")), { code: "ENOENT" });
   const other = join(userHome, "other-runtime");
-  assert.equal(await runCli(["install", "--runtime-home", other], dependencies), 0);
-  assert.equal((await readConfig(gatewayHome)).runtime_home, other);
+  assert.equal(await runCli(["install", "--runtime-home", other], { ...dependencies, errorOutput() {} }), 2);
+  assert.deepEqual(await readConfig(gatewayHome), {});
 });
 
 test("Runtime address agrees with the published Runtime contract on supported platforms", () => {
@@ -44,8 +47,29 @@ test("extraset accepts agent settings and empty display name without materializi
   const saved = await readConfig(home);
   assert.equal(saved.bots[0].bot_name, "QA");
   assert.deepEqual(saved.bots[0].agent, { ...config.bots[0].agent, model: "next-model" });
-  for (const runtime_home of ["./runtime", "~/.octo-runtime", "", 5]) {
+  for (const runtime_home of ["/absolute/runtime", "./runtime", "~/.octo-runtime", "", 5, null]) {
     assert.equal(await runCli(["extraset", "--home", home], { input: Readable.from([JSON.stringify({ runtime_home })]), output() {}, errorOutput() {} }), 2);
     assert.deepEqual(await readConfig(home), saved);
   }
+});
+
+
+test("Runtime Home is scoped to start/run and survives native argument serialization", () => {
+  for (const name of ["start", "run"]) {
+    assert.equal(parseCliCommand([name, "--runtime-home", "/tmp/custom runtime"], []).flags.runtimeHome, "/tmp/custom runtime");
+    const help = parseCliCommand([name, "--help"], []).help;
+    assert.match(help, /Flags:[\s\S]*--runtime-home/);
+    assert.ok(!help.split("Global Flags:")[1].includes("--runtime-home"));
+  }
+  for (const name of ["install", "restart", "stop", "status", "doctor", "extraset", "extraget", "logs", "uninstall"]) {
+    assert.throws(() => parseCliCommand([name, "--runtime-home", "/tmp/other"], []), { code: "INVALID_ARGUMENTS" });
+    assert.ok(!parseCliCommand([name, "--help"], []).help.includes("--runtime-home"));
+  }
+  assert.ok(!parseCliCommand(["--help"], []).help.includes("--runtime-home"));
+  const spec = { ...serviceSpec("/tmp/gateway", true, "/tmp/runtime & project"), command: "/usr/bin/node", environment: {} };
+  const plist = renderLaunchdPlist(spec);
+  assert.match(plist, /<string>--runtime-home<\/string>\s*<string>\/tmp\/runtime &amp; project<\/string>/);
+  assert.ok(renderSystemdUnit(spec).includes('"--runtime-home" "/tmp/runtime & project"'));
+  const win = { ...spec, command: "C:\\Node\\node.exe", workingDirectory: "C:\\Gateway", args: ["cli.js", "run", "--runtime-home", "C:\\Runtime & Project"] };
+  assert.ok(renderWindowsTaskXml(win, "DOMAIN\\tester").includes('--runtime-home &quot;C:\\Runtime &amp; Project&quot;'));
 });
