@@ -37,6 +37,8 @@ tags: [validation, cli, review]
 
 2026-11-09 首轮托管 CI 在冻结安装时触发 pnpm 11.25.0 默认 minimumReleaseAge（1440 分钟），Runtime/client 1.1.12 尚未发布满 24 小时。新增 pnpm-workspace.yaml，只对这两个已验证的精确版本设置 minimumReleaseAgeExclude；保留其他包和未来版本的等待期。原样运行 pnpm install --frozen-lockfile 通过，不再依赖命令级关闭策略；锁文件无变化，workflow/job/matrix/gate 无变化。
 
+随后按用户要求将例外改为两个完整包名 @mininglamp-oss/octo-runtime、@mininglamp-oss/octo-runtime-client，覆盖其全部版本；其他依赖继续使用默认等待期，未扩大到整个 npm scope。
+
 # Standards
 
 独立审查发现启动命令过期、runtime_home 相对路径歧义、SDK 返回字段误写、发行状态说明过期，共 4 项。已修复并检查双语文档及同类入口；最终复核未解决项 0。

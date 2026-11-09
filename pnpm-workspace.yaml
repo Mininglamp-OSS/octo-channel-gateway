@@ -1,5 +1,5 @@
-# These exact first-party releases were verified against the published archives.
-# Keep pnpm's default release-age policy for all other packages and versions.
+# First-party Runtime packages may be consumed immediately after publication.
+# Keep pnpm's default release-age policy for all other dependencies.
 minimumReleaseAgeExclude:
-  - '@mininglamp-oss/octo-runtime@1.1.12'
-  - '@mininglamp-oss/octo-runtime-client@1.1.12'
+  - '@mininglamp-oss/octo-runtime'
+  - '@mininglamp-oss/octo-runtime-client'
