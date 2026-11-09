@@ -35,6 +35,8 @@ tags: [validation, cli, review]
 
 .github 相对 PR #18 分支无差异。相对 origin/main 的增加仅为用户指定的 PR #18：CI、Dependency Review、npm Publish 和 Dependabot。没有额外 workflow/job/matrix/trigger/gate 变更；真实 IM 测试保持手动，未加入默认 CI。远端现有检查仍是原 PR 提交上的状态，不代表当前工作区已执行托管检查。
 
+2026-11-09 首轮托管 CI 在冻结安装时触发 pnpm 11.25.0 默认 minimumReleaseAge（1440 分钟），Runtime/client 1.1.12 尚未发布满 24 小时。新增 pnpm-workspace.yaml，只对这两个已验证的精确版本设置 minimumReleaseAgeExclude；保留其他包和未来版本的等待期。原样运行 pnpm install --frozen-lockfile 通过，不再依赖命令级关闭策略；锁文件无变化，workflow/job/matrix/gate 无变化。
+
 # Standards
 
 独立审查发现启动命令过期、runtime_home 相对路径歧义、SDK 返回字段误写、发行状态说明过期，共 4 项。已修复并检查双语文档及同类入口；最终复核未解决项 0。
