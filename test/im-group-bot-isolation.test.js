@@ -78,7 +78,7 @@ for (const fromUid of ["non-owner-user", "non-owner-bot"]) {
             bf_token: `bf_${botId}`,
             cards: false,
             typing: false,
-            adapter: { adapter_type: "codex", workdir: process.cwd() },
+            agent: { adapter_type: "codex", workdir: process.cwd() },
           },
           {
             onDiagnostic: (code) => diagnostics.push(code),

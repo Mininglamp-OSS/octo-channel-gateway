@@ -6,7 +6,7 @@ const config = {
   bot_id: "bot",
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "s",
-  adapter: { adapter_type: "codex" },
+  agent: { adapter_type: "codex" },
   group_ids: ["g"],
 };
 const incoming = (payload) => ({

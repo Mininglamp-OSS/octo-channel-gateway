@@ -103,7 +103,7 @@ test("gateway observation keeps scope gates, separates execution admission and b
       api_url: "https://im-test.deepminer.com.cn/api",
       group_ids: ["group"],
       typing: false,
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     async () => "bf_fixture",
     {
@@ -260,7 +260,7 @@ test("interaction finalization retains failed resolutions and attempts every rem
       bot_id: "bot",
       api_url: "https://im-test.deepminer.com.cn/api",
       typing: false,
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     async () => "bf_fixture",
     {
@@ -373,7 +373,7 @@ for (const mode of ["disabled", "404", "healthy"]) {
           bot_id: "bot",
           api_url: "https://fixture.invalid/api",
           typing: false,
-          adapter: { adapter_type: "codex" },
+          agent: { adapter_type: "codex" },
         },
         async () => "bf_fixture",
         {

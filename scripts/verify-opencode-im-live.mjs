@@ -120,7 +120,7 @@ try {
       groups_enabled: Boolean(group),
       ...(group ? { group_ids: [group] } : {}),
       allowed_sender_ids: [sender.id],
-      adapter: {
+      agent: {
         adapter_type: "opencode",
         model: process.env.OCTO_OPENCODE_MODEL ?? "deepseek/deepseek-flash",
         workdir: directory,

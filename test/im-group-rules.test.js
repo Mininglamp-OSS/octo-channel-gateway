@@ -19,7 +19,7 @@ const config = {
   bot_id: "rules-bot",
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "rules-space",
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 const rules = (request) =>
   modelItems(request).filter((item) =>

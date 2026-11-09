@@ -106,7 +106,7 @@ test("F09: card answer resumes original invocation once and stale reset cards ca
     {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     {
       kernel: kernelMock({
@@ -205,7 +205,7 @@ test("F09: secret questions never fall back to ordinary chat input", async (t) =
     {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     {
       kernel: kernelMock({

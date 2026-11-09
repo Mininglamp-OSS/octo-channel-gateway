@@ -53,7 +53,7 @@ test("Gateway owner stop keeps accepted tail events and final delivery ahead of 
     {
       bot_id: "drain",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex", workdir: process.cwd() },
+      agent: { adapter_type: "codex", workdir: process.cwd() },
     },
     { kernel, signal: controller.signal, sessions: store },
   );
@@ -116,7 +116,7 @@ for (const phase of ["presentation", "final"]) {
       {
         bot_id: "finalizing",
         api_url: "https://im-test.deepminer.com.cn/api",
-        adapter: { adapter_type: "codex", workdir: process.cwd() },
+        agent: { adapter_type: "codex", workdir: process.cwd() },
       },
       {
         kernel: kernelMock({
@@ -217,7 +217,7 @@ for (const scenario of [
       {
         bot_id: "drain-failure",
         api_url: "https://im-test.deepminer.com.cn/api",
-        adapter: { adapter_type: "codex", workdir: process.cwd() },
+        agent: { adapter_type: "codex", workdir: process.cwd() },
       },
       {
         sessions: store,
@@ -339,7 +339,7 @@ for (const scenario of [
       {
         bot_id: "persist-drain",
         api_url: "https://im-test.deepminer.com.cn/api",
-        adapter: { adapter_type: "codex", workdir: process.cwd() },
+        agent: { adapter_type: "codex", workdir: process.cwd() },
       },
       {
         sessions: store,

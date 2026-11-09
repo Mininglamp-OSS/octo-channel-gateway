@@ -6,15 +6,18 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
 
 ```json
 {
-  "endpoint": "/absolute/runtime/executor-kernel.sock",
+  "runtime_home": "/absolute/runtime",
   "enabled": true,
   "bots": [
     {
       "bot_id": "assistant",
+      "bot_name": "",
       "api_url": "https://im.example.com/api",
       "enabled": false,
-      "adapter": {
+      "agent": {
         "adapter_type": "codex",
+        "model": "your-model-id",
+        "effort": "high",
         "workdir": "/absolute/workspace"
       },
       "approval_mode": "ask",
@@ -29,7 +32,7 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
 
 | Field                | Contract                                                                                                               |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| endpoint             | Existing local Kernel socket/named pipe; overridden by --endpoint                                                      |
+| runtime_home | Runtime directory, default ~/.octo-runtime; overridden by --runtime-home. Configured paths must be absolute. |
 | bots                 | Up to 64 Bots; API address plus bot_id must be unique                                                                  |
 | enabled              | false prevents all Bot registrations                                                                                   |
 | context_loading      | timeout_ms defaults to 5000 (1..30000), max_in_flight to 8 (1..32); the CLI does not load callback functions from JSON |
@@ -41,12 +44,12 @@ Configuration file/input size is limited to 1 MiB, and each Bot configuration to
 
 | Field                                 | Contract                                                                                                                  |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| bot_id / api_url / adapter            | Required; HTTPS API URL, loopback-only HTTP, no credentials/query/fragment                                                |
+| bot_id / api_url / agent            | Required; HTTPS API URL, loopback-only HTTP, no credentials/query/fragment                                                |
 | bot_name / enabled / bf_token         | Optional display name, enabled state, and configured credential; name is not identity; SDK can use a credentials callback |
-| adapter.adapter_type                  | Adapter selection; explicit configuration and a matching Kernel Provider installation are recommended                     |
-| adapter.workdir                       | Optional absolute local path; not accepted by OpenClaw                                                                    |
-| adapter.model / effort                | Provider model/reasoning selection; actual support is Adapter-specific                                                    |
-| adapter.provider_agent_id             | OpenClaw only, selects an existing Agent; this channel defaults to main                                                   |
+| agent.adapter_type                  | Adapter selection; explicit configuration and a matching Kernel Provider installation are recommended                     |
+| agent.workdir                       | Optional absolute local path; not accepted by OpenClaw                                                                    |
+| agent.model / effort                | Provider model/reasoning selection; actual support is Adapter-specific                                                    |
+| agent.provider_agent_id             | OpenClaw only, selects an existing Agent; this channel defaults to main                                                   |
 | approval_mode                         | Defaults to full_access; explicitly choose ask for approvals; the default is not an isolation sandbox                     |
 | run_timeout_ms                        | Optional integer 100..86400000, execution time budget                                                                     |
 | context                               | Optional Context v3 static material/execution configuration; see the business material guide for loading and splitting    |
@@ -62,3 +65,5 @@ artifact_delivery supports mode (channel/tools), allowed_roots, allowed_mime_typ
 codex_retry allows max_consecutive_retries/max_total_retries in 0..100, recovery_timeout_ms in 100..3600000, initial_delay_ms in 100..60000, and max_delay_ms in 100..300000. Initial delay cannot exceed maximum delay. Default initial/maximum delays are 2000/30000 ms. Interpret recovery behavior with logs; structural validation does not prove replay is safe.
 
 Authoritative definitions: [configuration types](../../../packages/gateway/src/contracts.ts), [validation](../../../packages/gateway/src/lifecycle/configuration.ts).
+
+`bot_name` is a display label; empty or omitted uses bot_id. Replace `your-model-id` with a model supported by the selected Provider. `effort: high` demonstrates explicit selection and does not set a global default. Public execution configuration is `agent`; its `adapter_type` selects the integration implementation. The former outer `adapter` field is unsupported.

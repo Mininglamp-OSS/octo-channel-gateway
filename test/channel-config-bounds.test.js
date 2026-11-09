@@ -9,7 +9,7 @@ const bot = (id = "qa") => ({
   bot_id: id,
   enabled: false,
   api_url: "https://im-test.deepminer.com.cn/api",
-  adapter: { adapter_type: "codex" },
+  agent: { adapter_type: "codex" },
 });
 
 test("group switch and optional scope validate Gateway definitions", () => {

@@ -135,7 +135,7 @@ export function imSessionKey(
     new URL(config.api_url).href,
     config.spaceId,
     config.bot_id,
-    config.adapter.adapter_type ?? "codex",
+    config.agent.adapter_type ?? "codex",
     String(message.channelType),
     message.channelId,
   ]

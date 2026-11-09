@@ -6,7 +6,7 @@ const config = {
   bot_id: "reply-fixture",
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "space",
-  adapter: { adapter_type: "codex" },
+  agent: { adapter_type: "codex" },
 };
 const incoming = (reply) => ({
   messageId: "reply-message",

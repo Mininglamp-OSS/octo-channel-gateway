@@ -172,7 +172,7 @@ test("transport resolves topic members once and sends mention with final text th
       api_url: "https://im-test.deepminer.com.cn/api",
       group_ids: ["group"],
       allowed_sender_ids: ["owner", "sender-bot"],
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     async () => "bf_fixture",
     { onMessage: (m) => admitted.push(m), onDisconnect() {} },
@@ -258,7 +258,7 @@ test("application uses final mention conversion only for successful final replie
     {
       bot_id: "bot",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex", workdir: process.cwd() },
+      agent: { adapter_type: "codex", workdir: process.cwd() },
     },
     {
       kernel: kernelMock({

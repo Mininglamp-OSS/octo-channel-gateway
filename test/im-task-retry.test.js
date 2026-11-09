@@ -26,7 +26,7 @@ const { InvocationWatchdog } = await runtimeModule(
 const config = {
   bot_id: "retry-fixture",
   api_url: "https://im-test.deepminer.com.cn/api",
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 const event = (type, payload = {}) => ({ protocolVersion: 2, type, payload });
 const failed = (status = 503) =>

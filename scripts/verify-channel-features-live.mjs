@@ -236,7 +236,7 @@ try {
     allowed_sender_ids: [sender.id],
     cards: false,
     typing: false,
-    adapter: { adapter_type: "codex", workdir: directory },
+    agent: { adapter_type: "codex", workdir: directory },
     context: {
       schema: "octo.context-envelope/v3",
       items: [

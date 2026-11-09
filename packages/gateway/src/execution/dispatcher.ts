@@ -64,7 +64,7 @@ export function createImInvocation(
     context.items.find(
       (item) => item.namespace === "octo.execution" && item.name === "adapter",
     )?.payload.type ??
-    config.adapter.adapter_type ??
+    config.agent.adapter_type ??
     "codex";
   if (typeof selectedAdapter !== "string")
     throw new Error("IM_EXECUTION_CONFIG_INVALID");
@@ -76,7 +76,7 @@ export function createImInvocation(
     config.bot_id,
   );
   const workdir =
-    config.adapter.workdir ??
+    config.agent.workdir ??
     (agentSource === "provisioned" ? defaultWorkdir : undefined);
   const submittedWorkspace = context.items.find(
     (item) => item.namespace === "octo.execution" && item.name === "workspace",
@@ -90,9 +90,9 @@ export function createImInvocation(
         namespace: "octo.execution",
         name: "adapter",
         payload: {
-          type: config.adapter.adapter_type ?? "codex",
-          ...(config.adapter.adapter_type === "openclaw"
-            ? { provider_agent_id: config.adapter.provider_agent_id ?? "main" }
+          type: config.agent.adapter_type ?? "codex",
+          ...(config.agent.adapter_type === "openclaw"
+            ? { provider_agent_id: config.agent.provider_agent_id ?? "main" }
             : {}),
         },
       },
@@ -122,17 +122,17 @@ export function createImInvocation(
             },
           ]
         : []),
-      ...(config.adapter.model || config.adapter.effort
+      ...(config.agent.model || config.agent.effort
         ? [
             {
               namespace: "octo.execution",
               name: "model",
               payload: {
-                ...(config.adapter.model
-                  ? { selection: { id: config.adapter.model } }
+                ...(config.agent.model
+                  ? { selection: { id: config.agent.model } }
                   : {}),
-                ...(config.adapter.effort
-                  ? { reasoning: { effort: config.adapter.effort } }
+                ...(config.agent.effort
+                  ? { reasoning: { effort: config.agent.effort } }
                   : {}),
               },
             },
@@ -335,7 +335,7 @@ export function createImInvocation(
     },
   };
   if (
-    config.adapter.workdir === undefined &&
+    config.agent.workdir === undefined &&
     agentSource === "provisioned" &&
     workdir === defaultWorkdir
   )

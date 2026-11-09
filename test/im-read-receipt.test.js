@@ -21,7 +21,7 @@ test("F05: read starts with accepted work, queued and duplicate messages wait; f
     {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
       allowed_sender_ids: ["owner"],
     },
     {

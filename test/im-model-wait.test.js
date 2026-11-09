@@ -408,7 +408,7 @@ for (const adapter of ["codex", "claude-code", "opencode"]) {
     const config = {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: adapter, workdir: process.cwd() },
+      agent: { adapter_type: adapter, workdir: process.cwd() },
     };
     const { request } = createImInvocation(
       config,

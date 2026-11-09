@@ -7,8 +7,10 @@ import test from "node:test";
 import { readConfig } from "../dist/apps/cli/src/config.js";
 import { readStatus, serveStatus } from "../dist/apps/cli/src/control.js";
 import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
-import { kernelFixture } from "./kernel-fixture.js";
+import { kernelFixture as createKernelFixture } from "./kernel-fixture.js";
 import { waitFor } from "./runtime-fixture.js";
+
+const kernelFixture = (t) => createKernelFixture(t, { useDefaultEndpoint: true });
 
 async function fixture(t) {
   const home = await mkdtemp(join(tmpdir(), "ocg-"));
@@ -42,7 +44,7 @@ test("CLI help exposes the independent service and legacy component form", async
 });
 test("install remembers endpoint, defaults to autostart, and uninstall preserves config", async (t) => {
   const home = await fixture(t),
-    endpoint = join(home, "kernel.sock"),
+    endpoint = join(home, "runtime"),
     calls = [];
   let installed = false,
     enabled = false;
@@ -71,14 +73,14 @@ test("install remembers endpoint, defaults to autostart, and uninstall preserves
   };
   const invoke = (...args) =>
     runCli([...args, "--home", home], { backend, output() {} });
-  assert.equal(await invoke("install", "--endpoint", endpoint), 0);
+  assert.equal(await invoke("install", "--runtime-home", endpoint), 0);
   assert.equal(calls[0][1].enabled, true);
-  assert.ok(calls[0][1].args.includes(endpoint));
-  assert.equal((await readConfig(home)).endpoint, endpoint);
+  assert.ok(!calls[0][1].args.includes(endpoint));
+  assert.equal((await readConfig(home)).runtime_home, endpoint);
   assert.equal(await invoke("stop"), 0);
-  assert.ok(calls[1][1].args.includes(endpoint));
+  assert.ok(!calls[1][1].args.includes(endpoint));
   assert.equal(await invoke("uninstall"), 0);
-  assert.equal((await readConfig(home)).endpoint, endpoint);
+  assert.equal((await readConfig(home)).runtime_home, endpoint);
   assert.equal(serviceSpec(home).args.includes("executor-kernel"), false);
 });
 test("configuration accepts the old wrapper and logs remain readable after corruption", async (t) => {
@@ -124,7 +126,7 @@ test("foreground service serves status, handles cancellation, releases lock and 
   });
   const controller = new AbortController();
   const running = runCli(
-    ["run", "--home", home, "--endpoint", kernel.endpoint],
+    ["run", "--home", home, "--runtime-home", kernel.directory],
     { signal: controller.signal, output() {} },
   );
   try {
@@ -136,7 +138,7 @@ test("foreground service serves status, handles cancellation, releases lock and 
       }
     });
     const duplicate = await runCli(
-      ["run", "--home", home, "--endpoint", kernel.endpoint],
+      ["run", "--home", home, "--runtime-home", kernel.directory],
       { output() {}, errorOutput() {} },
     );
     assert.notEqual(duplicate, 0);
@@ -193,7 +195,7 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
       errorOutput() {},
       readyTimeoutMs: 10,
     });
-  assert.equal(await invoke("start", "--endpoint", endpoint), 0);
+  assert.equal(await invoke("start", "--runtime-home", kernel.directory), 0);
   assert.deepEqual(
     calls.map(([action]) => action),
     ["install", "start"],
@@ -202,7 +204,7 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
   assert.ok(
     calls.every(
       ([, spec]) =>
-        spec.args.includes(endpoint) && !spec.args.includes("executor-kernel"),
+        !spec.args.includes(endpoint) && !spec.args.includes("executor-kernel"),
     ),
   );
   await close();
@@ -227,18 +229,19 @@ test("startup explains the Runtime prerequisite before changing Gateway services
         [action, "--home", home, ...(json ? ["--json"] : [])],
         {
           backend,
+          env: { HOME: home },
           output: (text) => output.push(text),
           errorOutput: (text) => output.push(text),
         },
       );
-      assert.equal(code, 2);
+      assert.equal(code, 4);
       const message = json
         ? JSON.parse(output[0]).error.message
         : output.join("\n");
-      assert.match(message, /npm install -g @mininglamp-oss\/octo-runtime@\^2/);
+      assert.match(message, /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.12/);
       assert.match(message, /octo-runtime start/);
       assert.match(message, /octo-runtime doctor --json/);
-      assert.match(message, /--endpoint/);
+      assert.match(message, /--runtime-home/);
     }
   }
   const output = [];
@@ -248,7 +251,7 @@ test("startup explains the Runtime prerequisite before changing Gateway services
         "start",
         "--home",
         home,
-        "--endpoint",
+        "--runtime-home",
         join(home, "absent.sock"),
         "--json",
       ],

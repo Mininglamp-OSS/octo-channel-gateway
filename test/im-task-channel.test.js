@@ -42,7 +42,7 @@ async function fixture(t, invoke, retry = {}) {
     {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex", workdir: process.cwd() },
+      agent: { adapter_type: "codex", workdir: process.cwd() },
       codex_retry: { initial_delay_ms: 100, max_delay_ms: 100, ...retry },
     },
     {

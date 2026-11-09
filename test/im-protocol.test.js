@@ -95,7 +95,7 @@ const config = (overrides = {}) => ({
   enabled: true,
   api_url: "http://127.0.0.1:1",
   bot_id: "bot",
-  adapter: { adapter_type: "codex", workdir: "/tmp" },
+  agent: { adapter_type: "codex", workdir: "/tmp" },
   ...overrides,
 });
 const profile = () => ({

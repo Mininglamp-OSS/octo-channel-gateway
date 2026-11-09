@@ -36,7 +36,7 @@ const signal = new AbortController().signal;
 const config = (workspace) => ({
   bot_id: "bot",
   api_url: "https://im-test.deepminer.com.cn/api",
-  adapter: { adapter_type: "codex", workdir: workspace },
+  agent: { adapter_type: "codex", workdir: workspace },
 });
 const context = (workspace) => ({
   schema,

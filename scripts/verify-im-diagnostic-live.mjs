@@ -100,7 +100,7 @@ const runtime = new ImRuntime(
     allowed_sender_ids: [sender.id],
     cards: true,
     typing: false,
-    adapter: { adapter_type: "codex", workdir: directory },
+    agent: { adapter_type: "codex", workdir: directory },
   },
   {
     host: {

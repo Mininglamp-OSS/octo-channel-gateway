@@ -38,43 +38,43 @@ export function validateImConfig(config: ImBotConfig): void {
     throw new Error("IM_BOT_ID_REQUIRED");
   if (
     config.bot_name !== undefined &&
-    (typeof config.bot_name !== "string" || !config.bot_name.trim())
+    typeof config.bot_name !== "string"
   )
     throw new Error("IM_BOT_NAME_INVALID");
-  const adapter = config.adapter;
-  if (!adapter || typeof adapter !== "object" || Array.isArray(adapter))
-    throw new Error("IM_ADAPTER_REQUIRED");
+  const agent = config.agent;
+  if (!agent || typeof agent !== "object" || Array.isArray(agent))
+    throw new Error("IM_AGENT_REQUIRED");
   for (const value of [
-    adapter.adapter_type,
-    adapter.model,
-    adapter.effort,
-    adapter.provider_agent_id,
+    agent.adapter_type,
+    agent.model,
+    agent.effort,
+    agent.provider_agent_id,
   ])
     if (value !== undefined && (typeof value !== "string" || !value.trim()))
       throw new Error("IM_EXECUTION_CONFIG_INVALID");
   if (
-    adapter.workdir === undefined &&
+    agent.workdir === undefined &&
     (config.bot_id === "." ||
       config.bot_id === ".." ||
       /[/\\]/.test(config.bot_id) ||
       config.bot_id.includes("\0"))
   )
     throw new Error("IM_BOT_ID_PATH_INVALID");
-  if (adapter.adapter_type === "openclaw") {
-    if (adapter.workdir !== undefined)
+  if (agent.adapter_type === "openclaw") {
+    if (agent.workdir !== undefined)
       throw new Error("IM_OPENCLAW_WORKDIR_UNSUPPORTED");
     if (
-      adapter.provider_agent_id !== undefined &&
-      !/^[a-z0-9_][a-z0-9_-]{0,63}$/.test(adapter.provider_agent_id)
+      agent.provider_agent_id !== undefined &&
+      !/^[a-z0-9_][a-z0-9_-]{0,63}$/.test(agent.provider_agent_id)
     )
       throw new Error("IM_PROVIDER_AGENT_ID_INVALID");
   } else {
     if (
-      adapter.workdir !== undefined &&
-      (typeof adapter.workdir !== "string" || !isAbsolute(adapter.workdir))
+      agent.workdir !== undefined &&
+      (typeof agent.workdir !== "string" || !isAbsolute(agent.workdir))
     )
       throw new Error("IM_WORKDIR_ABSOLUTE_REQUIRED");
-    if (adapter.provider_agent_id !== undefined)
+    if (agent.provider_agent_id !== undefined)
       throw new Error("IM_PROVIDER_AGENT_ID_UNSUPPORTED");
   }
   if (config.context !== undefined) assertContextEnvelope(config.context);

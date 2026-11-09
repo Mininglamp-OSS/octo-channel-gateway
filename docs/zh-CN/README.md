@@ -30,3 +30,5 @@ Octo Channel Gateway 把平台消息接到已有 Runtime Kernel，管理 Bot、�
 | Bot、授权、Adapter、运行与产物设置 | [配置](reference/configuration.md) |
 
 文档结构遵循 Runtime 的双语同路径和共享示例方式；内容以本仓当前实现为准。版本、实测范围和更新方法见[维护与验证](maintenance.md)。
+
+[CI 与 npm 发布](guides/ci-release.md)

@@ -9,10 +9,10 @@ import { invocationInput } from "@mininglamp-oss/octo-runtime-client/protocol";
 import { componentEndpoint } from "@mininglamp-oss/octo-runtime/host";
 import { invokeRequest } from "./runtime-fixture.js";
 export async function kernelFixture(t, overrides = {}) {
-  const { expectedCleanupComplete = true, ...configuration } = overrides;
+  const { expectedCleanupComplete = true, useDefaultEndpoint = false, ...configuration } = overrides;
   const directory = await mkdtemp(join(tmpdir(), "ok-"));
   const endpoint =
-    process.platform === "win32"
+    (process.platform === "win32" || useDefaultEndpoint)
       ? componentEndpoint(directory)
       : join(directory, "k.sock");
   let server, client, cleanup;

@@ -118,7 +118,7 @@ try {
     ...(process.env.OCTO_CHANNEL_QA_GROUP
       ? { group_ids: [process.env.OCTO_CHANNEL_QA_GROUP] }
       : {}),
-    adapter: { adapter_type: "codex", workdir: directory },
+    agent: { adapter_type: "codex", workdir: directory },
   };
   invalid = new ImRuntime(
     { ...config, bf_token: "bf_invalid_connection_verification" },

@@ -19,7 +19,7 @@ const png = Buffer.from(
 const config = {
   bot_id: "images",
   api_url: "https://im-test.deepminer.com.cn/api",
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
   spaceId: "space",
   group_ids: ["g"],
 };
@@ -120,7 +120,7 @@ test("image-only IM reaches Codex as image inputs; unsupported engine does not d
     const runtime = new ImRuntime(
       {
         ...config,
-        adapter: {
+        agent: {
           adapter_type: adapter,
           ...(adapter === "openclaw" ? {} : { workdir: process.cwd() }),
         },
