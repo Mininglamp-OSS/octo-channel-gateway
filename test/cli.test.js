@@ -34,6 +34,8 @@ test("CLI help and version follow Runtime sections without accessing configurati
   };
   const root = await invoke([]);
   assert.equal(await invoke(["--help"]), root);
+  assert.equal(await invoke(["-h"]), root);
+  assert.equal(await invoke(["--home", "SENSITIVE_OPTION_VALUE", "--help"]), root);
   assert.equal(await invoke(["help"]), root);
   let last = -1;
   for (const heading of [
@@ -56,6 +58,7 @@ test("CLI help and version follow Runtime sections without accessing configurati
   assert.match(configure, /Global Flags:[\s\S]*--home/);
   assert.equal(await invoke(["help", "configure"]), configure);
   const version = await invoke(["--version"]);
+  assert.equal(await invoke(["-V"]), version);
   assert.equal(await invoke(["version"]), version);
   const metadata = JSON.parse(
     await readFile(
@@ -79,6 +82,17 @@ test("CLI argument failures are actionable, structured and redact user input", a
     ["configure", "--bot_id", secret, "--api_url"],
     ["start", secret],
     ["version", secret],
+    ["--version", secret],
+    ["-V", secret],
+    ["--help", secret],
+    ["-h", secret],
+    ["--help", "--", secret],
+    ["--version", "--" + secret],
+    ["--help", "--home"],
+    ["configure", "--help", secret],
+    ["extraset", "-h", secret],
+    ["start", "--help", "--runtime-home", secret, secret],
+    ["help", secret, "--help"],
     ["extraget", secret],
     ["extraget", "channel-gateway", secret],
     ["extraget", "channel-gateway"],

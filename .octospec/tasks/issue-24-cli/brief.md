@@ -10,6 +10,8 @@ source: self
 
 # 目标
 
+2026-11-09 PR #25 审查追加：用户要求修复 yujiawei 指出的内置 --help/--version 提前退出绕过参数校验，提交、推送并重新请求审查。方案评分 96/100：复用 Commander 命令声明做无业务副作用的完整输入校验，帮助仍允许省略必填业务项；覆盖短选项、子命令、JSON/文本诊断和敏感值。仅修复既有参数合同，不收紧所有合法选项组合、不改变 CI 范围。
+
 用户于 2026-11-09 明确要求新 worktree、octospec 规划达到 95 分后实施。基线 9ce35cc；参考 Runtime 的 command-tree.ts、help.ts 和 write-build-info.mjs，保持独立发行边界。
 
 ## 承重与注入规则

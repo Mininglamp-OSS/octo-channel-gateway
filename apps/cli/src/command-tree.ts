@@ -125,6 +125,41 @@ function invalid(message: string): never {
   );
 }
 
+function helpTarget(root: Command, names: string[]): Command {
+  let target = root;
+  for (const name of names) {
+    const child = target.commands.find((command) => command.name() === name);
+    if (!child) invalid("Unknown command.");
+    target = child;
+  }
+  return target;
+}
+
+/** 内置信息选项会提前退出；用同一命令声明检查完整输入，不执行业务。
+ * 帮助允许省略必填值，但仍拒绝未知选项、多余位置参数及缺少选项值。
+ */
+function validateInformationalArguments(root: Command, args: string[]): void {
+  const copy = (source: Command): Command => {
+    const command = new Command(source.name())
+      .helpOption(false)
+      .addHelpCommand(false)
+      .exitOverride()
+      .configureOutput({ writeOut() {}, writeErr() {} })
+      .option("-h, --help")
+      .action(() => {
+        if (source.parent === root && source.name() === "help")
+          helpTarget(root, command.args);
+      });
+    for (const option of source.options)
+      command.addOption(new Option(option.flags, option.description));
+    for (const argument of source.registeredArguments)
+      command.argument(`[${argument.name()}${argument.variadic ? "..." : ""}]`);
+    for (const child of source.commands) command.addCommand(copy(child));
+    return command;
+  };
+  copy(root).parse(args, { from: "user" });
+}
+
 /** 纯解析：帮助、版本与参数失败不读取 Home，不连接 Kernel 或服务管理器。 */
 export function parseCliCommand(
   raw: string[],
@@ -236,19 +271,23 @@ export function parseCliCommand(
     "Command path",
   );
   helpCommand.action(() => {
-    let target = root;
-    for (const name of helpCommand.args) {
-      const child = target.commands.find((command) => command.name() === name);
-      if (!child) invalid("Unknown command.");
-      target = child;
-    }
-    target.outputHelp();
+    helpTarget(root, helpCommand.args).outputHelp();
   });
   root.addCommand(helpCommand);
   const args = raw.map((item) => (/^--json=/.test(item) ? "--json" : item));
   try {
     root.parse(args, { from: "user" });
   } catch (error) {
+    if (
+      error instanceof CommanderError &&
+      ["commander.helpDisplayed", "commander.help", "commander.version"].includes(error.code)
+    ) {
+      try {
+        validateInformationalArguments(root, args);
+      } catch (validationError) {
+        error = validationError;
+      }
+    }
     if (error instanceof GatewayCommandError)
       throw new CliUsageError(
         error.code,
