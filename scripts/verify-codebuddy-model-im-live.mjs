@@ -201,7 +201,7 @@ try {
         groups_enabled: true,
         group_ids: [groupId],
         allowed_sender_ids: [sender.id],
-        adapter: {
+        agent: {
           adapter_type: "codebuddy",
           ...(model ? { model } : {}),
           workdir: directory,

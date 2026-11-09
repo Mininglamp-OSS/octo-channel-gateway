@@ -6,15 +6,18 @@ CLI 的 config.json 只属于 Gateway，不是 Runtime 插件清单。SDK 直接
 
 ```json
 {
-  "endpoint": "/absolute/runtime/executor-kernel.sock",
+  "runtime_home": "/absolute/runtime",
   "enabled": true,
   "bots": [
     {
       "bot_id": "assistant",
+      "bot_name": "",
       "api_url": "https://im.example.com/api",
       "enabled": false,
-      "adapter": {
+      "agent": {
         "adapter_type": "codex",
+        "model": "your-model-id",
+        "effort": "high",
         "workdir": "/absolute/workspace"
       },
       "approval_mode": "ask",
@@ -29,7 +32,7 @@ CLI 的 config.json 只属于 Gateway，不是 Runtime 插件清单。SDK 直接
 
 | 字段                 | 合同                                                                                        |
 | -------------------- | ------------------------------------------------------------------------------------------- |
-| endpoint             | 已启动 Kernel 的本机 socket/named pipe；可被 --endpoint 覆盖                                |
+| runtime_home | Runtime 目录，默认 ~/.octo-runtime；可被 --runtime-home 覆盖。配置中填写绝对路径。 |
 | bots                 | Bot 数组，最多 64 个；API 地址和 bot_id 组合不可重复                                        |
 | enabled              | false 时不启动任何 Bot 注册                                                                 |
 | context_loading      | timeout_ms 默认 5000（1..30000），max_in_flight 默认 8（1..32）；CLI 本身不从 JSON 加载函数 |
@@ -41,12 +44,12 @@ config 文件/输入上限 1 MiB；每个 Bot 配置上限 256 KiB。extraset �
 
 | 字段                                  | 合同                                                                    |
 | ------------------------------------- | ----------------------------------------------------------------------- |
-| bot_id / api_url / adapter            | 必填；api_url 使用 HTTPS，HTTP 仅 loopback，不含凭据/query/fragment     |
+| bot_id / api_url / agent            | 必填；api_url 使用 HTTPS，HTTP 仅 loopback，不含凭据/query/fragment     |
 | bot_name / enabled / bf_token         | 可选名称、启用状态和配置凭据；名称不作为身份，SDK 可用 credentials 回调 |
-| adapter.adapter_type                  | Adapter 选择；推荐显式填写并在 Kernel 安装相应 Provider                 |
-| adapter.workdir                       | 可选本地绝对路径；OpenClaw 不接受此字段                                 |
-| adapter.model / effort                | Provider 模型/思考强度选择；实际支持由 Adapter 决定                     |
-| adapter.provider_agent_id             | 仅 OpenClaw，选择已有 Agent；本渠道省略时使用 main                      |
+| agent.adapter_type                  | Adapter 选择；推荐显式填写并在 Kernel 安装相应 Provider                 |
+| agent.workdir                       | 可选本地绝对路径；OpenClaw 不接受此字段                                 |
+| agent.model / effort                | Provider 模型/思考强度选择；实际支持由 Adapter 决定                     |
+| agent.provider_agent_id             | 仅 OpenClaw，选择已有 Agent；本渠道省略时使用 main                      |
 | approval_mode                         | 默认 full_access；需要人工批准时显式 ask，不能把默认值误认为隔离沙箱    |
 | run_timeout_ms                        | 可选整数 100..86400000，执行时间预算                                    |
 | context                               | 可选 Context v3 静态材料/执行配置；加载与拆分规则见业务材料指南         |
@@ -62,3 +65,5 @@ artifact_delivery 可设置 mode（channel/tools）、allowed_roots、allowed_mi
 codex_retry 的 max_consecutive_retries/max_total_retries 范围 0..100，recovery_timeout_ms 100..3600000，initial_delay_ms 100..60000，max_delay_ms 100..300000；初始延迟不能超过最大延迟。默认初始/最大延迟为 2000/30000 ms。启用策略与运行情况应结合日志，不把结构校验视为可安全重跑的证明。
 
 权威定义：[配置类型](../../../packages/gateway/src/contracts.ts)、[校验](../../../packages/gateway/src/lifecycle/configuration.ts)。
+
+`bot_name` 是展示名称，空值或省略时使用 bot_id。`your-model-id` 需要替换为所选 Provider 支持的模型，`effort: high` 仅演示显式选择，不设置全局默认值。公开执行配置为 `agent`，其中 `adapter_type` 选择接入实现；不支持旧的外层 `adapter` 字段。

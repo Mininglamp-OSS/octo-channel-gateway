@@ -13,12 +13,12 @@
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
 ```
 
-当前 1.1.12 是本地候选、尚未发布。以上是匹配版本发布后的安装路径；现在联调用真实 tgz，不能用旧 registry 版本冒充新协议。
+Runtime/client 1.1.12 已在 npm 发布。冻结安装使用正式注册表元数据和归档 integrity，先前本地候选包的 hash 不能替代正式发行 hash。Gateway 源码版本保持 0.0.0，由发行打包过程注入 tag 版本。
 
 ## 版本更新
 

@@ -160,7 +160,7 @@ export class ImRuntime {
   ) {
     validateImConfig(config);
     this.config = structuredClone(config);
-    this.config.bot_name ??= this.config.bot_id;
+    this.config.bot_name = this.config.bot_name?.trim() || this.config.bot_id;
     this.#sessionStore = dependencies.sessions ?? new MemoryImSessionStore();
   }
   get status(): Record<string, unknown> {
@@ -470,7 +470,7 @@ export class ImRuntime {
     return [
       identity,
       imBotIdentity(this.config),
-      this.config.adapter.adapter_type ?? "",
+      this.config.agent.adapter_type ?? "",
       message.conversationKind,
       message.conversationId,
     ]

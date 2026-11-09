@@ -28,6 +28,7 @@ import {
 } from "./command-types.js";
 import commands from "./commands.js";
 import { requireRuntime, runtimeSetupHelp } from "./runtime-prerequisite.js";
+import { runtimeEndpoint, validateRuntimeHomeConfig } from "./runtime-endpoint.js";
 import {
   commandConfig,
   configFile,
@@ -56,10 +57,9 @@ const version = (
   ) as { version: string }
 ).version;
 
-/** 服务只托管 Gateway；endpoint 保存进系统定义，不能启动/安装共享 Runtime。 */
+/** 服务只托管 Gateway；从自身配置读取 Runtime Home，不接管共享 Runtime。 */
 export function serviceSpec(
   home: string,
-  endpoint?: string,
   enabled = false,
 ): ServiceSpec {
   const key = process.platform === "win32" ? home.toLowerCase() : home;
@@ -73,7 +73,6 @@ export function serviceSpec(
       "run",
       "--home",
       home,
-      ...(endpoint ? ["--endpoint", endpoint] : []),
     ],
     workingDirectory: home,
     enabled,
@@ -259,7 +258,7 @@ export async function runCli(
       writeErr() {},
     })
     .option("--home <path>", "Gateway Home directory")
-    .option("--endpoint <path>", "Existing Runtime Kernel socket or named pipe")
+    .option("--runtime-home <path>", "Runtime Home directory (default: ~/.octo-runtime)")
     .option("--json", "Print JSON")
     .version(version);
   for (const name of [
@@ -311,7 +310,7 @@ export async function runCli(
       /^--(?:json)=/.test(item) ? "--json" : item,
     );
     for (let index = 0; index < args.length; index++) {
-      if (["--home", "--endpoint"].includes(args[index])) {
+      if (["--home", "--runtime-home"].includes(args[index])) {
         index++;
         continue;
       }
@@ -327,7 +326,7 @@ export async function runCli(
     }
     const flags = command.opts<{
       home?: string;
-      endpoint?: string;
+      runtimeHome?: string;
       json?: boolean;
     }>();
     json = Boolean(flags.json);
@@ -355,9 +354,13 @@ export async function runCli(
       return 0;
     }
     const config = await readConfig(home);
-    const endpoint =
-      flags.endpoint ??
-      (typeof config.endpoint === "string" ? config.endpoint : undefined);
+    validateRuntimeHomeConfig(config);
+    if (flags.runtimeHome !== undefined && !flags.runtimeHome.trim())
+      throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "--runtime-home must not be empty.");
+    const runtimeHome = resolve(flags.runtimeHome ??
+      (typeof config.runtime_home === "string" ? config.runtime_home : undefined) ??
+      join(dependencies.env?.HOME ?? homedir(), ".octo-runtime"));
+    const endpoint = runtimeEndpoint(runtimeHome);
     if (business) {
       const controller = new AbortController();
       const stop = () => controller.abort();
@@ -425,8 +428,12 @@ export async function runCli(
           : value;
       delete next.module;
       validateImBots(next.bots ?? []);
+      validateRuntimeHomeConfig(next);
       await withConfigLock(home, () =>
-        saveConfig(home, { ...next, ...(endpoint ? { endpoint } : {}) }),
+        saveConfig(home, {
+          ...next,
+          ...(flags.runtimeHome ? { runtime_home: runtimeHome } : {}),
+        }),
       );
       emit(
         { saved: true, file: configFile(home), reload_required: true },
@@ -446,7 +453,7 @@ export async function runCli(
       return await run(home, endpoint, config, dependencies, output);
     }
     const backend = dependencies.backend ?? createServiceBackend();
-    let spec = serviceSpec(home, endpoint);
+    let spec = serviceSpec(home);
     const inspect = async () => {
       let status = await backend.inspect(spec);
       if (status.enabled)
@@ -500,20 +507,19 @@ export async function runCli(
         await backend.install(spec);
         await saveConfig(home, {
           ...(await readConfig(home)),
-          endpoint: endpoint!,
+          runtime_home: runtimeHome,
         });
       } else if (action === "start") {
+        await saveConfig(home, { ...(await readConfig(home)), runtime_home: runtimeHome });
         if ((await backend.inspect(spec)).state === "not_installed") {
           spec = { ...spec, enabled: true };
           await backend.install(spec);
-          await saveConfig(home, {
-            ...(await readConfig(home)),
-            endpoint: endpoint!,
-          });
         }
         await backend.start(spec);
-      } else if (action === "restart") await backend.restart(spec);
-      else if (action === "stop") await backend.stop(spec);
+      } else if (action === "restart") {
+        await saveConfig(home, { ...(await readConfig(home)), runtime_home: runtimeHome });
+        await backend.restart(spec);
+      } else if (action === "stop") await backend.stop(spec);
       else if (action === "uninstall") await backend.uninstall(spec);
       else throw new Error("INVALID_ARGUMENTS");
       if (action === "start" || action === "restart") {

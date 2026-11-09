@@ -50,7 +50,7 @@ for (const channelType of [1, 2, 5]) {
       api_url: "https://im-test.deepminer.com.cn/api",
       bot_id: "bot",
       spaceId: "synthetic",
-      adapter: { adapter_type: "codex", workdir: process.cwd() },
+      agent: { adapter_type: "codex", workdir: process.cwd() },
     };
     const items = await build_im_contexts(
       config,

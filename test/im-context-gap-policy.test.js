@@ -33,7 +33,7 @@ const config = {
   bot_id: "bot",
   spaceId: "space",
   group_ids: ["group"],
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 const message = {
   channelId: source.channelId,

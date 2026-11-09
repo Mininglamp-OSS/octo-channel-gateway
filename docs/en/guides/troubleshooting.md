@@ -6,15 +6,15 @@ Distinguish Runtime readiness, Gateway service readiness, Bot connectivity, and 
 
 ## Runtime is not ready
 
-Before changing a service or starting foreground registration, start/restart/run queries execution_ready through the public client. A missing endpoint produces KERNEL_ENDPOINT_REQUIRED. Connection failure, protocol mismatch, or an unready Kernel produces KERNEL_UNAVAILABLE. Both human output and JSON error.message include installation, startup, diagnostics, and endpoint guidance.
+Before changing a service or starting foreground registration, start/restart/run queries execution_ready through the public client. The CLI derives its Kernel address from runtime_home. Connection failure, protocol mismatch, or an unready Kernel produces KERNEL_UNAVAILABLE. Both human output and JSON error.message include installation, startup, diagnostics, and Runtime Home guidance.
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 ```
 
-Use matching local archives while 2.0 is unpublished; an older release without IPC v2 is incompatible. When using a custom Runtime --home, use it consistently for startup and doctor. Gateway --home is a separate directory. Point Gateway's endpoint at the actual Kernel socket/named pipe and retry. Installing the client npm dependency does not install or start a Kernel.
+Use published Runtime/client 1.1.12 or a supported matching release; an older release without IPC v2 is incompatible. When using a custom Runtime --home, use it consistently for startup and doctor. Gateway --home is a separate directory. Set Gateway --runtime-home to the directory used by Runtime and retry. Installing the client npm dependency does not install or start a Kernel.
 
 ## Common failures
 

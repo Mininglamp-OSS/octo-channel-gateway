@@ -317,7 +317,7 @@ test("IM receives over binary WS, reuses session, and replies over REST only aft
       bot_id: "bot",
       bf_token: "bf_fixture",
       approval_mode: "ask",
-      adapter: { adapter_type: "codex", workdir: dir },
+      agent: { adapter_type: "codex", workdir: dir },
       context: { schema: "octo.context-envelope/v3", items: [] },
     },
     { kernel: host },
@@ -495,7 +495,7 @@ test("duplicate bot identities fail before opening connections", async (t) => {
     api_url: "https://im.example/api",
     bot_id: "bot",
     bf_token: "bf_fixture",
-    adapter: { adapter_type: "codex", workdir: dir },
+    agent: { adapter_type: "codex", workdir: dir },
     context: { schema: "octo.context-envelope/v3", items: [] },
   };
   assert.throws(() => validateImBots([bot, { ...bot }]), /IM_BOT_DUPLICATED/);

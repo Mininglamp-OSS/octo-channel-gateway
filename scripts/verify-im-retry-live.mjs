@@ -50,7 +50,7 @@ const marker = `IM_RETRY_${randomUUID().slice(0, 8)}`;
 const config = {
   bot_id: "live-retry-proof",
   api_url: `${endpoint}/api`,
-  adapter: { adapter_type: "codex", workdir: directory },
+  agent: { adapter_type: "codex", workdir: directory },
   codex_retry: { max_consecutive_retries: 10, recovery_timeout_ms: 120000 },
 };
 let task;

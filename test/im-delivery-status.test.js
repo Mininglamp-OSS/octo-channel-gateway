@@ -52,7 +52,7 @@ test("Gateway status expose receipt totals instead of delivery details", () => {
   const config = {
     bot_id: "fixture",
     api_url: "https://im-test.deepminer.com.cn/api",
-    adapter: { adapter_type: "codex" },
+    agent: { adapter_type: "codex" },
   };
   const transport = new GatewayTransport(config, async () => undefined, {});
   assert.equal(transport.status.cardDeliveries, 0);
@@ -62,7 +62,7 @@ test("Gateway status expose receipt totals instead of delivery details", () => {
         ? config
         : {
             bot_id: "fixture",
-            adapter: { adapter_type: "codex", workdir: process.cwd() },
+            agent: { adapter_type: "codex", workdir: process.cwd() },
           },
       {},
     );

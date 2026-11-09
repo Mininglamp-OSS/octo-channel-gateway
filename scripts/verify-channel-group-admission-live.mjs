@@ -78,7 +78,7 @@ for (const group of groups) {
     api_url: account.api,
     bot_id: account.id,
     spaceId: principal.space_id,
-    adapter: { adapter_type: "codex" },
+    agent: { adapter_type: "codex" },
     allowed_sender_ids: [sample.from_uid],
   };
   const accept = (overrides, input = message) =>

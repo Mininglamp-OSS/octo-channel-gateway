@@ -93,7 +93,7 @@ try {
     `
     import { ChannelRegistry, type ChannelDefinition, type ChannelRegistration } from "@mininglamp-oss/octo-channel-gateway";
     const definition: ChannelDefinition = {
-      bot: { bot_id: "types", enabled: false, api_url: "https://example.test/api", adapter: { adapter_type: "test" } },
+      bot: { bot_id: "types", enabled: false, api_url: "https://example.test/api", agent: { adapter_type: "test" } },
       loadContexts(_bot, { signal }) { signal.throwIfAborted(); return []; }
     };
     const registration: Promise<ChannelRegistration> = ChannelRegistry.register("endpoint", definition);
@@ -143,7 +143,7 @@ try {
         { namespace: "octo.security", name: "approval_policy", payload: { mode: "full_access" } }
       ] }));
       assert.equal(events.at(-1).type, "run.completed");
-      registration = await ChannelRegistry.register(endpoint, { bot: { bot_id: "package-fixture", enabled: false, api_url: "https://example.test/api", adapter: { adapter_type: "package-fixture", workdir: home } } });
+      registration = await ChannelRegistry.register(endpoint, { bot: { bot_id: "package-fixture", enabled: false, api_url: "https://example.test/api", agent: { adapter_type: "package-fixture", workdir: home } } });
       const closing = registration.close(); assert.equal(closing, registration.close()); await closing;
       assert.equal((await client.status()).execution_ready, true);
     } finally { await registration?.close(); client?.close(); assert.equal((await kernel.close()).complete, true); }

@@ -81,7 +81,7 @@ const runtime = new ImRuntime(
     group_ids: [group.group_no],
     allowed_sender_ids: [sender.id],
     typing: false,
-    adapter: {
+    agent: {
       adapter_type: "codex",
       model: report.model,
       effort: "low",

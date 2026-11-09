@@ -193,7 +193,7 @@ try {
       groups_enabled: Boolean(group),
       ...(group ? { group_ids: [group.group_no] } : {}),
       allowed_sender_ids: [sender.id],
-      adapter: { adapter_type: "codex", workdir: directory },
+      agent: { adapter_type: "codex", workdir: directory },
       approval_mode: "full_access",
       run_timeout_ms: 180000,
     },

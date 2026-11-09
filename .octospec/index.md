@@ -1,6 +1,9 @@
 # 工程知识目录
 
+- [Gateway Home 与 Agent 配置](tasks/runtime-home/brief.md)
+
 - [npm 发行版本纠正](tasks/client-release-version/brief.md)：按用户要求继续 1.1.12，IPC v2 不代表 npm 2.x。
+- [测试、依赖与发布 CI](tasks/ci-release/brief.md)
 
 - [PR 3 同类边界审查与修复](tasks/pr3-focused-review/brief.md)：身份、凭据、卡片事件、Windows 任务与 final 容量；[实际验证和审查](tasks/pr3-focused-review/validation.md)。
 

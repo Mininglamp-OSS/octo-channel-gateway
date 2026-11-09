@@ -10,11 +10,11 @@
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
 octo-channel-gateway configure --help
-octo-channel-gateway install --endpoint /absolute/runtime/executor-kernel.sock
+octo-channel-gateway install --runtime-home /absolute/runtime
 octo-channel-gateway start
 octo-channel-gateway doctor
 octo-channel-gateway status --json
@@ -24,16 +24,16 @@ octo-channel-gateway stop
 octo-channel-gateway uninstall
 ```
 
-start/restart/run 会先查询 Runtime 是否就绪，失败时给出安装、启动、doctor 和 endpoint 指引。先用 Runtime SDK 或 CLI 启动 Kernel，再提供其 endpoint；Windows 使用 Kernel named pipe。install 保存 endpoint 并默认开启自启，start 未安装时自动安装，restart 只重启已安装服务。stop 保留自启设置，uninstall 保留配置和日志。
+start/restart/run 会先查询 Runtime 是否就绪，失败时给出安装、启动、doctor 和 Runtime Home 指引。先用 Runtime SDK 或 CLI 启动 Kernel，再用 --runtime-home 指定其目录；省略时使用 ~/.octo-runtime，socket 或 Windows named pipe 自动推导。install 保存 runtime_home 并默认开启自启，start 未安装时自动安装，restart 只重启已安装服务。stop 保留自启设置，uninstall 保留配置和日志。
 
-默认 Home 为 `~/.octo-channel-gateway`，可用 `--home` 指定。`config.json` 是 CLI 自己的配置，包含 bots、可选 context_loading、authorized_space_ids 和 endpoint。SDK 不需要文件或统一 schema。服务管理沿用 launchd、systemd 用户服务与 Windows 用户计划任务。
+默认 Home 为 `~/.octo-channel-gateway`，可用 `--home` 指定。`config.json` 是 CLI 自己的配置，包含 bots、可选 context_loading、authorized_space_ids 和 runtime_home。日志位于此 Home 下的 logs/；它与 Runtime Home 隔离。SDK 不需要文件或统一 schema。服务管理沿用 launchd、systemd 用户服务与 Windows 用户计划任务。
 
 原有 configure、extraset、extraget 配置能力保留；命令开头可保留 channel-gateway 组件层级。extraset 是完整替换自身配置的兼容命令，接受旧 `{config, enabled?}` 外壳，忽略旧 module 元数据。extraget 输出包含凭据的完整配置。
 
 ```sh
 octo-channel-gateway extraset < gateway.json
 octo-channel-gateway extraget
-octo-channel-gateway run --endpoint /absolute/runtime/executor-kernel.sock
+octo-channel-gateway run --runtime-home /absolute/runtime
 ```
 
 迁移时从旧 Runtime 显式导出 Gateway 配置，再通过新命令导入。旧 Runtime 的 Home、身份和配置不会被自动删除或改写。WebUI 与 WeCom 不属于本仓。
@@ -48,9 +48,10 @@ import { ChannelRegistry } from "@mininglamp-oss/octo-channel-gateway";
 const registration = await ChannelRegistry.register(endpoint, {
   bot: {
     bot_id: botId,
+    bot_name: "",
     api_url: apiUrl,
     bf_token: botToken,
-    adapter: { adapter_type: "codex", workdir }
+    agent: { adapter_type: "codex", model, effort: "high", workdir }
   },
   loadContexts(_bot, { signal }) {
     signal.throwIfAborted();
@@ -64,6 +65,8 @@ try {
   await registration.close();
 }
 ```
+
+样例中的 model 需要选择 Provider 支持的模型 ID；effort high 是显式样例值。bot_name 用于区分 Bot，空值时显示 bot_id。
 
 每次注册拥有独立 client 和 Bot 资源，不拥有 Kernel。loadContexts 每轮读取当前数据；createSessionStore 可同步返回宿主自有的会话句柄。重复 close 返回同一结果，在共享四秒期限内排空执行及投递，清理失败明确拒绝。关闭某个注册不影响共享 Kernel 或兄弟注册。
 
@@ -80,14 +83,14 @@ apps/cli 承载命令和服务管理，packages/gateway 承载 SDK 与渠道业�
 
 本仓继承 Mininglamp-OSS/octo-spec@1.2.0，revision 见 .octospec/manifest.yaml。规划与验收见 [.octospec/index.md](.octospec/index.md)。
 
-## 执行环境与中断（2.0 破坏性迁移）
+## 执行环境与中断（IPC v2）
 
 Gateway 使用 `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv)`。inputs 只包含模型材料；历史、规则和 `extra.im` 由本仓生成文本/图片后发送，namespace 是渠道材料约定。cwd、Adapter、model/effort、环境变量、MCP、审批和受信指令放在 agentEnv。运行时不拼装渠道历史，不要求业务材料遵循 namespace 格式。
 
 调用立即返回含 invocationId/runId/sessionId 的迭代句柄。停止指定执行使用 `client.interrupt(handle.invocationId, reason)`；sessionId 是业务会话标识，providerSession 是 Adapter 返回的 Provider 续聊信息，均不能替代 invocationId 取消某一轮。取消受理后仍消费原迭代器直至终态；Adapter 内部负责原生取消映射。API 不再接收旧 request 外壳、contexts 或 signal 参数。
 
-生产依赖为 client `^1.1.12`；`npm install -g` 会自动安装依赖，重新安装或显式更新时才按版本范围解析，不会后台自动升级，也不会跨到 2.x。Runtime/Client 1.1.12 为本次本地候选，尚未发布；注册表安装需先发布匹配版本。联调使用实际 tgz，不依赖 Runtime checkout 内部模块。
+生产依赖为 client `^1.1.12`；`npm install -g` 会自动安装依赖，重新安装或显式更新时才按版本范围解析，不会后台自动升级，也不会跨到 2.x。Runtime/client 1.1.12 已在 npm 发布；冻结安装使用正式注册表元数据。联调可使用对应正式 tgz，不依赖 Runtime checkout 内部模块。
 
-包外验证：`node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz`。三个候选包显式安装到独立临时目录，验证公开类型、CLI 和真实 Kernel 互操作；不安装系统服务。测试用完整 Runtime 是 devDependency，不是 Gateway 的生产依赖。
+包外验证：`node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz`。三个归档显式安装到独立临时目录，验证公开类型、CLI 和真实 Kernel 互操作；不安装系统服务。测试用完整 Runtime 是 devDependency，不是 Gateway 的生产依赖。
 
-未发布候选的锁可通过 `node scripts/lock-runtime-candidates.mjs RUNTIME.tgz CLIENT.tgz` 由 pnpm 生成，hash 来自真实归档，下载地址指向正式注册表。发布时须使用匹配归档；打包变化后重新生成锁并复验。此步骤不发布任何包。
+正式发行依赖的锁通过 pnpm 从 npm 注册表解析，不能沿用本地候选 hash。`scripts/lock-runtime-candidates.mjs` 仅供显式候选包验证；候选结果不能替代正式包的冻结安装证据。

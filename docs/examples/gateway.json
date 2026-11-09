@@ -1,13 +1,16 @@
 {
-  "endpoint": "/absolute/runtime/executor-kernel.sock",
+  "runtime_home": "/absolute/runtime",
   "enabled": true,
   "bots": [
     {
       "bot_id": "assistant",
+      "bot_name": "",
       "api_url": "https://im.example.com/api",
       "enabled": false,
-      "adapter": {
+      "agent": {
         "adapter_type": "codex",
+        "model": "your-model-id",
+        "effort": "high",
         "workdir": "/absolute/workspace"
       },
       "approval_mode": "ask",

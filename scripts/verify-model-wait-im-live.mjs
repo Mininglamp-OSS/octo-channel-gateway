@@ -225,7 +225,7 @@ try {
       bot_id: receiver.id,
       bf_token: receiver.token,
       api_url: receiver.api,
-      adapter: {
+      agent: {
         adapter_type: realModel ? "codex" : "model-wait-fixture",
         workdir: directory,
       },

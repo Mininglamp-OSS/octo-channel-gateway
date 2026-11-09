@@ -13,7 +13,7 @@ test("documented registration scopes cleanup and preserves the real Kernel on su
       bot_id: "docs",
       api_url: "https://example.test/api",
       enabled: false,
-      adapter: { adapter_type: "test", workdir: kernel.directory },
+      agent: { adapter_type: "test", workdir: kernel.directory },
     },
   };
   let registration;

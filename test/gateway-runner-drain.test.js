@@ -53,7 +53,7 @@ for (const finishFails of [false, true])
         {
           bot_id: "completed-source",
           api_url: "https://im-test.deepminer.com.cn/api",
-          adapter: { adapter_type: "test", workdir: process.cwd() },
+          agent: { adapter_type: "test", workdir: process.cwd() },
         },
         { kernel: relay.client },
       );

@@ -10,13 +10,13 @@ Both CLI and SDK modes require the execution service supplied by the full Runtim
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 ```
 
-Use matching archives while 2.0 is unpublished; keep custom --home consistent for startup and diagnostics. Gateway start/restart/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
+Keep custom Runtime --home consistent for startup and diagnostics. Gateway start/restart/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
 
-See [Dependencies and releases](../guides/dependencies.md) before installation. Client 1.1.12 is currently an unpublished candidate; the target installation command below is not a claim that it is available in the registry.
+See [Dependencies and releases](../guides/dependencies.md) before installation. Runtime/client 1.1.12 is available from npm. When evaluating an unpublished Gateway checkout, build and install its local archive.
 
 ```sh
 npm install @mininglamp-oss/octo-channel-gateway

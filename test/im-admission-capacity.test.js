@@ -23,7 +23,7 @@ test("F26: Bot working 64 and session waiting 4 are independent; rejection never
     {
       bot_id: "fixture",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     {
       kernel: kernelMock({
@@ -118,7 +118,7 @@ for (const terminal of ["run.completed", "run.failed", "run.cancelled"]) {
       {
         bot_id: "fixture",
         api_url: "https://im-test.deepminer.com.cn/api",
-        adapter: { adapter_type: "codex", workdir: process.cwd() },
+        agent: { adapter_type: "codex", workdir: process.cwd() },
       },
       {
         kernel: kernelMock({

@@ -19,7 +19,7 @@ const bot = (patch = {}) => ({
   bot_id: "state-machine-bot",
   api_url: "https://im-test.deepminer.com.cn/api",
   bf_token: `bf_${randomUUID()}`,
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
   ...patch,
 });
 const settle = async () => {

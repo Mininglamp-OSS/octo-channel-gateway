@@ -222,7 +222,7 @@ try {
             bot_id: "bot",
             spaceId: "synthetic",
             group_ids: ["group"],
-            adapter: { adapter_type: "codex", model, effort: "low", workdir },
+            agent: { adapter_type: "codex", model, effort: "low", workdir },
             approval_mode: "ask",
             run_timeout_ms: 90000,
           };

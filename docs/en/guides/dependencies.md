@@ -13,12 +13,12 @@
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
 ```
 
-Version 1.1.12 is currently a local, unpublished candidate. These commands describe installation after matching versions are published. Use real local archives for current integration; an older registry release does not implement the new protocol.
+Runtime/client 1.1.12 is published on npm. Use official registry metadata and archive integrity for frozen installation; hashes from earlier local candidates are not interchangeable with release hashes. Gateway source remains version 0.0.0 until release packaging stamps a tag version.
 
 ## Updating
 

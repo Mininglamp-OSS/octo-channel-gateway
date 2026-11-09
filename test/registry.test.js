@@ -7,7 +7,7 @@ import { kernelFixture } from "./kernel-fixture.js";
 const bot = () => ({
   bot_id: "registry",
   api_url: "https://example.test/api",
-  adapter: { adapter_type: "test", workdir: process.cwd() },
+  agent: { adapter_type: "test", workdir: process.cwd() },
 });
 
 test("registration connects through public client, snapshots config and leaves Kernel live", async (t) => {
@@ -17,7 +17,7 @@ test("registration connects through public client, snapshots config and leaves K
   t.mock.method(GatewayTransport.prototype, "close", async () => {
     closed++;
   });
-  const definition = { bot: bot() };
+  const definition = { bot: { ...bot(), bot_name: "" } };
   const registration = await ChannelRegistry.register(
     fixture.endpoint,
     definition,

@@ -26,7 +26,7 @@ export interface ImPositionObservation {
   outputFingerprint?: string;
 }
 
-export interface ImAdapterConfig {
+export interface ImAgentConfig {
   adapter_type?: string;
   workdir?: string;
   model?: string;
@@ -38,7 +38,7 @@ export interface ImCommonConfig {
   bot_id: string;
   bot_name?: string;
   enabled?: boolean;
-  adapter: ImAdapterConfig;
+  agent: ImAgentConfig;
   context?: ContextEnvelope;
   approval_mode?: ApprovalMode;
   run_timeout_ms?: number;

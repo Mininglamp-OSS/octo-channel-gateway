@@ -18,7 +18,7 @@ export function createDefinition(options: {
     bot: {
       bot_id: options.botId,
       api_url: options.apiUrl,
-      adapter: { adapter_type: "codex", workdir: options.workdir },
+      agent: { adapter_type: "codex", workdir: options.workdir },
       approval_mode: "ask",
     },
     credentials: (_bot, signal) => options.readToken(signal),

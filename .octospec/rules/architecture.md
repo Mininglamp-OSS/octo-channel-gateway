@@ -24,7 +24,7 @@ supersedes: []
 
 保留迁移前准入、身份/代次、重试预算、投递、上下文和会话语义。取消 ACK 不等于终态，终态不等于投递成功，观察中断不自动重放。
 
-工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，不记录凭据。知识 Markdown 须有 type/title/description/tags。专项手动，不扩大 CI。
+工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，不记录凭据。知识 Markdown 须有 type/title/description/tags。CI 按 ci-release 任务覆盖测试、文档、依赖和打包；真实外部服务专项仍显式运行。
 
 ## agentEnv 合同
 

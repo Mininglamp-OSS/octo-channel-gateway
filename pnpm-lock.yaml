@@ -43,13 +43,13 @@ importers:
 packages:
 
   '@mininglamp-oss/octo-runtime-client@1.1.12':
-    resolution: {integrity: sha512-Aeh7Ql3Xus7NjpTZPmn8EJxZ0GMpHabjGcJIK1LybvKzxug1Tl/acYKdnhwYC5IHEISKHTKWoR4X3Zr3xDlAJQ==, tarball: https://registry.npmjs.org/@mininglamp-oss/octo-runtime-client/-/octo-runtime-client-1.1.12.tgz}
+    resolution: {integrity: sha512-FujgJGEdEf7WCTeLPeTmUmhULeQFHlIEpbwC5AJvBJaDxaNbjykzS7I1YttsnNxjmw8CqbwOJMNP2a5GL+d3kg==}
     engines: {node: ^24.0.0 || ^26.0.0}
     bundledDependencies:
       - '@mininglamp-oss/octo-runtime-protocol'
 
   '@mininglamp-oss/octo-runtime@1.1.12':
-    resolution: {integrity: sha512-QvdnbvoA0w0fPsiGWleY6N3xfASnpFgO8QiWaEmbkIETDehoEymPeKf4I1ELdVOUPnGF95DJEBIosQfhYGaTjw==, tarball: https://registry.npmjs.org/@mininglamp-oss/octo-runtime/-/octo-runtime-1.1.12.tgz}
+    resolution: {integrity: sha512-Yi+q0eQtVXdPH5WXk5vmDtGhyTPeOF79mYHhv4OWU0xp0g1ZBo1n9i3pHZxKvI48wwmQsEwRlyA7jUj+xO1/3Q==}
     engines: {node: ^24.0.0 || ^26.0.0}
     hasBin: true
     bundledDependencies:

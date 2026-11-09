@@ -17,7 +17,7 @@ const config = {
   bot_id: "gap-bot",
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "gap-space",
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 
 async function fixture(

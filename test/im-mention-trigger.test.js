@@ -12,7 +12,7 @@ const config = {
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "space",
   group_ids: ["group"],
-  adapter: { adapter_type: "codex" },
+  agent: { adapter_type: "codex" },
 };
 const message = (mention, changes = {}) => ({
   messageId: "message",

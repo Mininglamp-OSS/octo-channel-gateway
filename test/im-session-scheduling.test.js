@@ -39,7 +39,7 @@ for (const [name, suffix, transportName, platform] of channels) {
       {
         ...platform,
         bot_id: "fixture",
-        adapter: { adapter_type: "codex", workdir: process.cwd() },
+        agent: { adapter_type: "codex", workdir: process.cwd() },
       },
       {
         kernel: kernelMock({

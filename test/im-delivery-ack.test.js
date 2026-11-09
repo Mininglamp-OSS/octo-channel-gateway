@@ -44,7 +44,7 @@ for (const terminal of ["run.completed", "run.cancelled"]) {
       {
         bot_id: "fixture",
         api_url: "https://im-test.deepminer.com.cn/api",
-        adapter: { adapter_type: "codex" },
+        agent: { adapter_type: "codex" },
       },
       {
         kernel: kernelMock({

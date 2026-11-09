@@ -49,12 +49,12 @@ function validate(config: JsonObject): void {
   } catch (error) {
     const hints: Record<string, string> = {
       IM_BOT_ID_REQUIRED: "Provide a non-empty --bot_id (JSON: bots[].bot_id).",
-      IM_ADAPTER_REQUIRED:
-        "Each Bot requires an adapter object; configure maps --adapter_type/--workdir to it.",
+      IM_AGENT_REQUIRED:
+        "Each Bot requires an agent object; configure maps --adapter_type/--workdir to it.",
       IM_WORKDIR_ABSOLUTE_REQUIRED:
         "Provide an absolute --workdir for a local adapter.",
       IM_OPENCLAW_WORKDIR_UNSUPPORTED:
-        "OpenClaw uses its own workspace; remove config.bots[].adapter.workdir using extraset.",
+        "OpenClaw uses its own workspace; remove config.bots[].agent.workdir using extraset.",
       IM_PROVIDER_AGENT_ID_UNSUPPORTED:
         "--provider_agent_id is supported only by OpenClaw.",
       IM_API_URL_INVALID:
@@ -104,13 +104,14 @@ const extension: GatewayCommandExtension = {
         {
           name: "adapter_type",
           type: "string",
-          description: "Execution adapter type (adapter.adapter_type)",
+          description: "Agent type (agent.adapter_type)",
         },
         {
           name: "workdir",
           type: "string",
           description: "Absolute local execution directory",
         },
+        { name: "bot_name", type: "string", description: "Display name; empty uses Bot ID" },
         { name: "model", type: "string", description: "Provider model ID" },
         {
           name: "effort",
@@ -167,21 +168,21 @@ const extension: GatewayCommandExtension = {
             "EXTRA_CONFIG_INVALID",
             "--bf_token is required for a new API endpoint of an existing Bot ID.",
           );
-        const adapter: JsonObject = { ...old?.adapter };
+        const agent: JsonObject = { ...old?.agent };
+        if (typeof input.options.adapter_type === "string") agent.adapter_type = input.options.adapter_type;
         for (const field of [
-          "adapter_type",
           "workdir",
           "model",
           "effort",
           "provider_agent_id",
         ]) {
           const value = input.options[field];
-          if (typeof value === "string") adapter[field] = value;
+          if (typeof value === "string") agent[field] = value;
         }
         if (
-          adapter.effort !== undefined &&
-          (typeof adapter.effort !== "string" ||
-            !["low", "medium", "high", "xhigh"].includes(adapter.effort))
+          agent.effort !== undefined &&
+          (typeof agent.effort !== "string" ||
+            !["low", "medium", "high", "xhigh"].includes(agent.effort))
         )
           throw new GatewayCommandError(
             "EXTRA_CONFIG_INVALID",
@@ -190,8 +191,9 @@ const extension: GatewayCommandExtension = {
         const bot = {
           ...old,
           ...identityFields,
-          adapter,
+          agent,
         } as unknown as JsonObject;
+        if (typeof input.options.bot_name === "string") bot.bot_name = input.options.bot_name;
         const credential = input.options.bf_token;
         if (typeof credential === "string") {
           if (!credential.trim())

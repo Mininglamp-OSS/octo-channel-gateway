@@ -21,7 +21,7 @@ const config = {
   bot_id: "test-history",
   api_url: "https://im-test.deepminer.com.cn/api",
   spaceId: "space",
-  adapter: { adapter_type: "codex", workdir: process.cwd() },
+  agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 const incoming = {
   channelId: "g____t",

@@ -13,7 +13,7 @@ import { waitFor } from "./runtime-fixture.js";
 const bot = (id = "host-store", fields = {}) => ({
   bot_id: id,
   api_url: "https://im-test.deepminer.com.cn/api",
-  adapter: { adapter_type: "test", workdir: process.cwd() },
+  agent: { adapter_type: "test", workdir: process.cwd() },
   ...fields,
 });
 const context = { schema: "octo.context-envelope/v3", items: [] };

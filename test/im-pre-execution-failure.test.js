@@ -63,7 +63,7 @@ async function fixture(t, suffix, options = {}) {
       ...(suffix === "gateway"
         ? { api_url: "https://im-test.deepminer.com.cn/api" }
         : { app_secret: randomBytes(16).toString("hex") }),
-      adapter: {
+      agent: {
         adapter_type: options.adapterType ?? "codex",
         workdir: process.cwd(),
       },

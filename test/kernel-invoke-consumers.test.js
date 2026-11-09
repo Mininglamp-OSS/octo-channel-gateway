@@ -28,7 +28,7 @@ test("Gateway consumes actual Kernel invoke results for delivery; ACK loss execu
     {
       bot_id: "kernel-consumer",
       api_url: "https://im-test.deepminer.com.cn/api",
-      adapter: { adapter_type: "test", workdir: process.cwd() },
+      agent: { adapter_type: "test", workdir: process.cwd() },
     },
     { kernel: relay.client },
   );

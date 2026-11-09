@@ -35,7 +35,7 @@ test("configure preserves endpoint-scoped identities and never inherits another 
     bot_id: "same",
     api_url,
     bf_token: `bf_${randomUUID()}`,
-    adapter: { adapter_type: "codex" },
+    agent: { adapter_type: "codex" },
   });
   let config = {
     bots: [bot("https://one.example/api"), bot("https://two.example/api")],
@@ -69,7 +69,7 @@ test("configure preserves endpoint-scoped identities and never inherits another 
   });
   assert.equal(config.bots.length, 2);
   assert.equal(config.bots[0].bf_token, original.bots[0].bf_token);
-  assert.equal(config.bots[0].adapter.model, "new-model");
+  assert.equal(config.bots[0].agent.model, "new-model");
   assert.deepEqual(config.bots[1], original.bots[1]);
   const before = structuredClone(config);
   await assert.rejects(
@@ -86,7 +86,7 @@ test("configure preserves endpoint-scoped identities and never inherits another 
   assert.equal(config.bots.length, 3);
   assert.deepEqual(config.bots.slice(0, 2), before.bots);
   assert.equal(config.bots[2].bf_token, fresh);
-  assert.equal(config.bots[2].adapter.model, undefined);
+  assert.equal(config.bots[2].agent.model, undefined);
 });
 
 for (const mismatch of ["principal", "trigger", "unknown"]) {
@@ -308,7 +308,7 @@ test("runtime interrupts an overflowing final stream and sends only an unknown-r
     {
       bot_id: "bot",
       api_url: "https://im.example",
-      adapter: { adapter_type: "codex" },
+      agent: { adapter_type: "codex" },
     },
     {
       kernel: kernelMock({
@@ -462,7 +462,7 @@ for (const lostAckId of [1, 2]) {
           bot_id: "bot",
           api_url: "https://im.example",
           typing: false,
-          adapter: { adapter_type: "codex" },
+          agent: { adapter_type: "codex" },
         },
         async () => `bf_${randomUUID()}`,
         {
