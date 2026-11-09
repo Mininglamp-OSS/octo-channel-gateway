@@ -10,7 +10,7 @@ Both CLI and SDK modes require the execution service supplied by the full Runtim
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^2
-octo-runtime executor-kernel start
+octo-runtime start
 octo-runtime doctor --json
 ```
 
