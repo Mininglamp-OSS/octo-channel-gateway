@@ -7,18 +7,11 @@
  */
 
 /** Native user-service implementation selected for the current platform. */
-export type ServiceBackendKind =
-  "launchd-user" | "systemd-user" | "windows-user-task";
+export type ServiceBackendKind = "launchd-user" | "systemd-user" | "windows-user-task";
 
 /** Manager-level process state. This does not imply daemon IPC or cloud readiness. */
 export type ServiceState =
-  | "not_installed"
-  | "stopped"
-  | "starting"
-  | "running"
-  | "stopping"
-  | "failed"
-  | "unknown";
+  "not_installed" | "stopped" | "starting" | "running" | "stopping" | "failed" | "unknown";
 
 /** Portable restart modes accepted by the service contract. */
 export type ServiceRestartPolicy = "always" | "on-failure" | "never";
@@ -179,11 +172,7 @@ export interface CommandResult {
 /** Injectable shell-free process runner used by all service backends. */
 export interface CommandRunner {
   /** Execute one command with an exact argv array and return its captured result. */
-  run(
-    command: string,
-    args: readonly string[],
-    options?: CommandOptions,
-  ): Promise<CommandResult>;
+  run(command: string, args: readonly string[], options?: CommandOptions): Promise<CommandResult>;
 }
 
 /**

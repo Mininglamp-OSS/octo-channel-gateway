@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-自定义 Runtime --home 时，启动与诊断保持一致。Gateway 的 start/restart/run 在启动前检查 Runtime，失败时给出上述指引。SDK 也会查询 Kernel 状态；SDK 宿主可自行使用完整 Runtime 公开 API 创建并维护服务。
+自定义 Runtime --home 时，启动与诊断保持一致。Gateway 的 start/run 在启动前检查 Runtime，失败时给出上述指引。SDK 也会查询 Kernel 状态；SDK 宿主可自行使用完整 Runtime 公开 API 创建并维护服务。
 
 ## 配置并启动
 
@@ -25,8 +25,8 @@ npm install -g @mininglamp-oss/octo-channel-gateway
 octo-channel-gateway --help
 octo-channel-gateway configure --help
 octo-channel-gateway configure --bot_id assistant --api_url https://im.example.com/api --adapter_type codex --workdir /absolute/workspace
-octo-channel-gateway install --runtime-home /absolute/runtime --autostart true
-octo-channel-gateway start
+octo-channel-gateway install --autostart true
+octo-channel-gateway start --runtime-home /absolute/runtime
 octo-channel-gateway doctor --json
 octo-channel-gateway status --json
 octo-channel-gateway logs --lines 200 --follow
@@ -36,7 +36,7 @@ configure 只保存配置，不认证、不启动服务。示例未写入凭据�
 
 configure 按规范化 API 地址与 Bot ID 的组合更新，只为同一身份保留省略字段，其他端点不变。同一 Bot ID 配置到新 API 端点时，必须重新提供 `--bf_token`，不会从其他端点复制凭据或 Agent 设置。带鉴权的 REST 请求拒绝重定向。Windows 服务变更须确认任务属于当前用户，账号未知或不匹配会阻止安装和生命周期命令。
 
-install 保存 runtime_home 并安装服务定义，默认开启自动启动；显式 start 才请求启动并等待 Gateway 就绪。未安装时 start 会自动安装并开启自启。修改配置后 restart 应用新值，CLI 没有配置热更新承诺。
+install 使用默认 Runtime 目录安装服务定义，默认开启自动启动；start 根据本次 --runtime-home 参数安装或更新定义，请求启动并等待 Gateway 就绪。未安装时 start 会自动安装并开启自启。restart 保留已安装的参数。修改配置后 restart 应用新值，CLI 没有配置热更新承诺。
 
 ## 停止和移除
 
@@ -59,7 +59,6 @@ octo-channel-gateway run --runtime-home /absolute/runtime
 ```sh
 node dist/apps/cli/src/index.js extraset <<'JSON'
 {
-  "runtime_home": "/Users/your-user/.octo-runtime",
   "enabled": true,
   "bots": [
     {
@@ -79,4 +78,4 @@ node dist/apps/cli/src/index.js extraset <<'JSON'
 JSON
 ```
 
-使用前替换示例路径、Bot ID、凭据和模型 ID。`bot_name` 用于区分 Bot，空值或省略时显示 bot_id。`agent` 是执行配置，`adapter_type` 选择 Provider 接入实现。`model` 是待填写占位值，`effort: high` 是样例值，不是全局默认值。runtime_home 可省略，默认 ~/.octo-runtime。extraset 整体替换配置，restart 后生效；配置和日志仍在 ~/.octo-channel-gateway。
+使用前替换示例路径、Bot ID、凭据和模型 ID。`bot_name` 用于区分 Bot，空值或省略时显示 bot_id。`agent` 是执行配置，`adapter_type` 选择 Provider 接入实现。`model` 是待填写占位值，`effort: high` 是样例值，不是全局默认值。业务配置不包含 Runtime Home；由 start/run --runtime-home 指定，不传参数默认 ~/.octo-runtime。extraset 整体替换配置，restart 后生效；配置和日志仍在 ~/.octo-channel-gateway。

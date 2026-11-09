@@ -1,0 +1,7 @@
+{
+  "name": "@mininglamp-oss/octo-channel-gateway-cross-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vendored cross-platform user-service implementation for Channel Gateway"
+}

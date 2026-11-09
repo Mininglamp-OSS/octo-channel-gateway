@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import extension from "../../dist/apps/cli/src/commands.js";
-import { WindowsUserTaskBackend } from "../../dist/apps/cli/src/service/windows-task.js";
+import { WindowsUserTaskBackend } from "../../dist/packages/cross-service/src/windows-task.js";
 import {
   ImRunProjector,
   FINAL_OUTPUT_LIMITS,

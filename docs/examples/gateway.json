@@ -1,5 +1,4 @@
 {
-  "runtime_home": "/absolute/runtime",
   "enabled": true,
   "bots": [
     {

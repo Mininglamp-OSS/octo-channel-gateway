@@ -6,7 +6,7 @@
 
 ## Runtime 未就绪
 
-start/restart/run 在修改服务或启动前台注册前通过公开 client 查询 execution_ready。CLI 从 runtime_home 推导 Kernel 地址；连接失败、协议不匹配或未就绪返回 KERNEL_UNAVAILABLE。普通输出和 JSON error.message 都附安装、启动、诊断及 Runtime Home 指引。
+start/run 在修改服务或启动前台注册前通过公开 client 查询 execution_ready。CLI 从 start/run --runtime-home 参数推导 Kernel 地址（默认 ~/.octo-runtime）；restart 沿用已安装定义，由实际 run 进程检查就绪；连接失败、协议不匹配或未就绪返回 KERNEL_UNAVAILABLE。普通输出和 JSON error.message 都附安装、启动、诊断及 Runtime Home 指引。
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@^1.1.12
@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-使用已发布的 Runtime/client 1.1.12 或受支持的匹配版本；不要安装不支持 IPC v2 的旧版本。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
+使用已发布的 Runtime/client 1.1.12 或受支持的匹配版本；不要安装不支持 IPC v2 的旧版本。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
 
 ## 常见故障
 

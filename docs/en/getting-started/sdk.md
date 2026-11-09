@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-Keep custom Runtime --home consistent for startup and diagnostics. Gateway start/restart/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
+Keep custom Runtime --home consistent for startup and diagnostics. Gateway start/run checks Runtime first and provides this guidance on failure. SDK registration also queries Kernel status; SDK hosts may create and maintain the service through the full Runtime public API.
 
 See [Dependencies and releases](../guides/dependencies.md) before installation. Runtime/client 1.1.12 is available from npm. When evaluating an unpublished Gateway checkout, build and install its local archive.
 

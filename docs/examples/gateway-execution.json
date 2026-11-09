@@ -1,0 +1,33 @@
+{
+  "bots": [
+    {
+      "bot_id": "my-codex-bot",
+      "bot_name": "My Codex Bot",
+      "api_url": "https://im.deepminer.com.cn/api",
+      "enabled": false,
+      "agent": {
+        "adapter_type": "codex",
+        "workdir": "/absolute/project",
+        "model": "gpt-6.1-sol",
+        "effort": "high",
+        "mcp": {
+          "mcpServers": {
+            "project-tools": {
+              "type": "stdio",
+              "command": "/absolute/tools/project-mcp",
+              "args": []
+            }
+          }
+        },
+        "envs": {
+          "env_variables": [
+            {
+              "key": "PROJECT_ENV",
+              "value": "development"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

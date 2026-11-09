@@ -5,6 +5,8 @@ import {
   assertApprovalMode,
   assertContextEnvelope,
   assertJsonByteLimit,
+  assertContextMcp,
+  assertContextEnvs,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImBotConfig } from "../contracts.js";
 import { trimTrailingSlashes } from "../transport/api/url.js";
@@ -44,6 +46,15 @@ export function validateImConfig(config: ImBotConfig): void {
   const agent = config.agent;
   if (!agent || typeof agent !== "object" || Array.isArray(agent))
     throw new Error("IM_AGENT_REQUIRED");
+  // 协议错误可能包含用户填写的键或地址；只返回稳定诊断码。
+  if (agent.mcp !== undefined) {
+    try { assertContextMcp(agent.mcp); }
+    catch { throw new Error("IM_AGENT_MCP_INVALID"); }
+  }
+  if (agent.envs !== undefined) {
+    try { assertContextEnvs(agent.envs); }
+    catch { throw new Error("IM_AGENT_ENVS_INVALID"); }
+  }
   for (const value of [
     agent.adapter_type,
     agent.model,

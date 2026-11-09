@@ -12,18 +12,14 @@ import { SystemdUserBackend } from "./systemd.js";
 import type { ServiceBackend, ServiceBackendOptions } from "./types.js";
 import { WindowsUserTaskBackend } from "./windows-task.js";
 
-export {
-  ServiceError,
-  type ServiceErrorCode,
-  type ServiceErrorOptions,
-} from "./errors.js";
+export { ServiceError, type ServiceErrorCode, type ServiceErrorOptions } from "./errors.js";
 export { LaunchdUserBackend, renderLaunchdPlist } from "./launchd.js";
 export { NodeCommandRunner } from "./runner.js";
 export { SystemdUserBackend, renderSystemdUnit } from "./systemd.js";
 export {
   WindowsUserTaskBackend,
   quoteWindowsArgument,
-  renderWindowsTaskXml,
+  renderWindowsTaskXml
 } from "./windows-task.js";
 export { normalizeServiceSpec } from "./common.js";
 export type {
@@ -40,7 +36,7 @@ export type {
   ServiceRestartSpec,
   ServiceSpec,
   ServiceState,
-  ServiceStatus,
+  ServiceStatus
 } from "./types.js";
 
 /**
@@ -51,9 +47,7 @@ export type {
  * privileges. Unsupported platforms fail synchronously with
  * `ServiceError("UNSUPPORTED_PLATFORM")`.
  */
-export function createServiceBackend(
-  options: ServiceBackendOptions = {},
-): ServiceBackend {
+export function createServiceBackend(options: ServiceBackendOptions = {}): ServiceBackend {
   const platform = options.platform ?? process.platform;
   const runner = options.runner ?? new NodeCommandRunner();
   const homeDirectory = options.homeDirectory ?? homedir();
@@ -66,9 +60,6 @@ export function createServiceBackend(
     case "win32":
       return new WindowsUserTaskBackend(shared);
     default:
-      throw new ServiceError(
-        "UNSUPPORTED_PLATFORM",
-        `unsupported service platform: ${platform}`,
-      );
+      throw new ServiceError("UNSUPPORTED_PLATFORM", `unsupported service platform: ${platform}`);
   }
 }

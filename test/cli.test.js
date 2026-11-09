@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
@@ -9,15 +9,304 @@ import { readStatus, serveStatus } from "../dist/apps/cli/src/control.js";
 import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
 import { kernelFixture as createKernelFixture } from "./kernel-fixture.js";
 import { waitFor } from "./runtime-fixture.js";
+import { parseCliCommand } from "../dist/apps/cli/src/command-tree.js";
 
-const kernelFixture = (t) => createKernelFixture(t, { useDefaultEndpoint: true });
+const kernelFixture = (t) =>
+  createKernelFixture(t, { useDefaultEndpoint: true });
+
+test("CLI help and version follow Runtime sections without accessing configuration", async (t) => {
+  const home = await fixture(t);
+  await writeFile(join(home, "config.json"), "corrupt");
+  const invoke = async (args) => {
+    let text = "";
+    const code = await runCli([...args, "--home", home], {
+      output: (line) => {
+        text += line;
+      },
+      errorOutput: (line) => assert.fail(line),
+      backend: new Proxy(
+        {},
+        { get: () => assert.fail("help accessed backend") },
+      ),
+    });
+    assert.equal(code, 0);
+    return text;
+  };
+  const root = await invoke([]);
+  assert.equal(await invoke(["--help"]), root);
+  assert.equal(await invoke(["help"]), root);
+  let last = -1;
+  for (const heading of [
+    "Usage:",
+    "Examples:",
+    "Available Commands:",
+    "Flags:",
+  ]) {
+    const next = root.indexOf(heading);
+    assert.ok(next > last, heading);
+    last = next;
+  }
+  assert.match(
+    root,
+    /https:\/\/github.com\/Mininglamp-OSS\/octo-channel-gateway/,
+  );
+  const configure = await invoke(["configure", "--help"]);
+  assert.match(configure, /Examples:\n  octo-channel-gateway configure/);
+  assert.ok(!configure.includes("--runtime-home"));
+  assert.match(configure, /Global Flags:[\s\S]*--home/);
+  assert.equal(await invoke(["help", "configure"]), configure);
+  const version = await invoke(["--version"]);
+  assert.equal(await invoke(["version"]), version);
+  const metadata = JSON.parse(
+    await readFile(
+      new URL("../dist/apps/cli/src/build-info.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.ok(version.includes(`commit:${metadata.commit.slice(0, 12)}`));
+  assert.ok(version.includes(`build:${metadata.buildTime}`));
+  assert.equal(new Date(metadata.buildTime).toISOString(), metadata.buildTime);
+});
+
+test("CLI argument failures are actionable, structured and redact user input", async () => {
+  const secret = "SENSITIVE_TEST_CREDENTIAL";
+  for (const args of [
+    [secret],
+    ["--" + secret],
+    ["--home"],
+    ["--runtime-home"],
+    ["configure", "--bot_id", secret],
+    ["configure", "--bot_id", secret, "--api_url"],
+    ["start", secret],
+    ["version", secret],
+    ["extraget", secret],
+    ["extraget", "channel-gateway", secret],
+    ["extraget", "channel-gateway"],
+    ["extraset", "channel-gateway"],
+    ["channel-gateway", "extraget"],
+    ["configure", "--bf_token", secret, "--" + secret],
+  ]) {
+    for (const json of [false, true]) {
+      let out = "",
+        err = "";
+      assert.equal(
+        await runCli(json ? ["--json", ...args] : args, {
+          output: (text) => {
+            out += text;
+          },
+          errorOutput: (text) => {
+            err += text;
+          },
+        }),
+        2,
+        JSON.stringify(args),
+      );
+      assert.ok(!(out + err).includes(secret));
+      if (json) {
+        assert.equal(err, "");
+        const { error } = JSON.parse(out);
+        assert.equal(error.code, "INVALID_ARGUMENTS");
+        assert.match(error.message, /Use --help/);
+      } else {
+        assert.equal(out, "");
+        assert.match(err, /Use --help/);
+        assert.match(err, /Usage:/);
+        assert.ok(!err.includes("INVALID_ARGUMENTS: INVALID_ARGUMENTS"));
+      }
+    }
+  }
+});
+
+test("subcommand input errors show contextual help and extraset documents a usable Codex configuration", async (t) => {
+  const home = await fixture(t);
+  const invoke = async (args, input, json = false) => {
+    let out = "",
+      err = "";
+    const code = await runCli(
+      [...args, "--home", home, ...(json ? ["--json"] : [])],
+      {
+        input,
+        output: (line) => {
+          out += line;
+        },
+        errorOutput: (line) => {
+          err += line;
+        },
+      },
+    );
+    return { code, out, err };
+  };
+  for (const [args, input, name] of [
+    [["configure"], undefined, "configure"],
+    [["logs", "--lines", "bad"], undefined, "logs"],
+    [["install", "--autostart", "bad"], undefined, "install"],
+    [["start", "--invalid"], undefined, "start"],
+    [
+      ["extraset"],
+      Object.assign(Readable.from([]), { isTTY: true }),
+      "extraset",
+    ],
+    [["extraset"], Readable.from([]), "extraset"],
+    [["extraset"], Readable.from(["PRIVATE_INVALID_JSON"]), "extraset"],
+  ]) {
+    const { code, out, err } = await invoke(args, input);
+    assert.equal(code, 2);
+    assert.equal(out, "");
+    assert.ok(err.includes(`Usage:\n  octo-channel-gateway ${name}`), err);
+    assert.match(err, /Examples:/);
+    assert.ok(!err.includes("PRIVATE_INVALID_JSON"));
+  }
+  const json = await invoke(
+    ["extraset"],
+    Object.assign(Readable.from([]), { isTTY: true }),
+    true,
+  );
+  assert.equal(json.code, 2);
+  assert.equal(json.err, "");
+  assert.equal(JSON.parse(json.out).error.code, "GATEWAY_STDIN_REQUIRED");
+  assert.ok(!json.out.includes("Usage:"));
+  await assert.rejects(access(join(home, "config.json")), { code: "ENOENT" });
+  const help = (await invoke(["extraset", "--help"])).out;
+  assert.ok(!help.includes("gateway.json"));
+  const example = JSON.parse(help.match(/<<'JSON'\n([\s\S]*?)\nJSON\n/)[1]);
+  assert.equal(example.bots[0].agent.adapter_type, "codex");
+  assert.equal(example.bots[0].agent.model, "gpt-6.1-sol");
+  assert.equal(example.bots[0].api_url, "https://im.deepminer.com.cn/api");
+  assert.equal(example.bots[0].bot_name, "My Codex Bot");
+  assert.equal(Object.hasOwn(example.bots[0], "approval_mode"), false);
+  assert.equal(example.bots[0].agent.effort, "high");
+  assert.equal(
+    (await invoke(["extraset"], Readable.from([JSON.stringify(example)]))).code,
+    0,
+  );
+  assert.deepEqual(await readConfig(home), example);
+});
+
+test("command declarations wire nested arguments, examples and options consistently", () => {
+  const leaf = {
+    name: "inspect",
+    description: "Inspect a fixture",
+    arguments: [{ name: "id", required: true }],
+    options: [
+      {
+        name: "mode",
+        type: "string",
+        required: true,
+        description: "Inspection mode",
+      },
+    ],
+    examples: ["octo-channel-gateway fixture inspect one --mode brief"],
+    run() {},
+  };
+  const definitions = [
+    { name: "fixture", description: "Fixture commands", commands: [leaf] },
+  ];
+  const parsed = parseCliCommand(
+    [
+      "--home",
+      "channel-gateway",
+      "fixture",
+      "inspect",
+      "one",
+      "--mode",
+      "brief",
+      "--json",
+    ],
+    definitions,
+  );
+  assert.equal(parsed.business, leaf);
+  assert.deepEqual(parsed.arguments, ["one"]);
+  assert.deepEqual(parsed.options, { mode: "brief" });
+  assert.equal(parsed.flags.home, "channel-gateway");
+  assert.equal(parsed.flags.json, true);
+  const help = parseCliCommand(
+    ["fixture", "inspect", "--help"],
+    definitions,
+  ).help;
+  assert.match(help, /Usage:\n  octo-channel-gateway fixture inspect/);
+  assert.match(help, /Arguments:/);
+  assert.match(
+    help,
+    /Examples:\n  octo-channel-gateway fixture inspect one --mode brief/,
+  );
+  assert.match(
+    parseCliCommand(["fixture"], definitions).help,
+    /Available Commands:/,
+  );
+  assert.throws(
+    () =>
+      parseCliCommand(["fixture", "inspect", "--mode", "brief"], definitions),
+    /required argument is missing/,
+  );
+});
 
 async function fixture(t) {
   const home = await mkdtemp(join(tmpdir(), "ocg-"));
   t.after(() => rm(home, { recursive: true, force: true }));
   return home;
 }
-test("CLI help exposes the independent service and legacy component form", async () => {
+
+test("CLI saves optional Agent execution settings, preserves them on configure and rejects invalid updates", async (t) => {
+  const home = await fixture(t);
+  const config = JSON.parse(
+    await readFile(
+      new URL("../docs/examples/gateway-execution.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const invoke = async (args, value) => {
+    let output = "";
+    const code = await runCli([...args, "--home", home, "--json"], {
+      input: Readable.from(value === undefined ? [] : [JSON.stringify(value)]),
+      output: (text) => {
+        output += text;
+      },
+      errorOutput: assert.fail,
+    });
+    return { code, output };
+  };
+  assert.equal((await invoke(["extraset"], config)).code, 0);
+  assert.deepEqual(await readConfig(home), config);
+  const bot = config.bots[0];
+  assert.equal(
+    (
+      await invoke([
+        "configure",
+        "--bot_id",
+        bot.bot_id,
+        "--api_url",
+        bot.api_url,
+        "--bot_name",
+        "Updated",
+      ])
+    ).code,
+    0,
+  );
+  const saved = await readConfig(home);
+  assert.equal(saved.bots[0].bot_name, "Updated");
+  assert.deepEqual(saved.bots[0].agent, bot.agent);
+  for (const [field, payload, code] of [
+    [
+      "mcp",
+      { mcpServers: { PRIVATE_SERVER: { type: "invalid" } } },
+      "IM_AGENT_MCP_INVALID",
+    ],
+    [
+      "envs",
+      { env_variables: [{ key: "PRIVATE-BAD-KEY", value: "PRIVATE_VALUE" }] },
+      "IM_AGENT_ENVS_INVALID",
+    ],
+  ]) {
+    const invalid = structuredClone(saved);
+    invalid.bots[0].agent[field] = payload;
+    const result = await invoke(["extraset"], invalid);
+    assert.equal(result.code, 2);
+    assert.equal(JSON.parse(result.output).error.code, code);
+    assert.ok(!result.output.includes("PRIVATE"));
+    assert.deepEqual(await readConfig(home), saved);
+  }
+});
+test("CLI help exposes only independent service commands", async () => {
   let help = "";
   assert.equal(
     await runCli(["--help"], {
@@ -40,9 +329,14 @@ test("CLI help exposes the independent service and legacy component form", async
     "extraget",
   ])
     assert.ok(help.includes(name), name);
-  assert.equal(await runCli(["channel-gateway", "--help"], { output() {} }), 0);
+  for (const name of ["extraset", "extraget"]) {
+    const help = parseCliCommand([name, "--help"], []).help;
+    assert.ok(help.includes(`octo-channel-gateway ${name} [options]`));
+    assert.ok(!help.includes("[component]"));
+    assert.ok(!help.includes("Arguments:"));
+  }
 });
-test("install remembers endpoint, defaults to autostart, and uninstall preserves config", async (t) => {
+test("install persists default launch arguments without writing business configuration", async (t) => {
   const home = await fixture(t),
     endpoint = join(home, "runtime"),
     calls = [];
@@ -73,23 +367,21 @@ test("install remembers endpoint, defaults to autostart, and uninstall preserves
   };
   const invoke = (...args) =>
     runCli([...args, "--home", home], { backend, output() {} });
-  assert.equal(await invoke("install", "--runtime-home", endpoint), 0);
+  assert.equal(await invoke("install"), 0);
   assert.equal(calls[0][1].enabled, true);
   assert.ok(!calls[0][1].args.includes(endpoint));
-  assert.equal((await readConfig(home)).runtime_home, endpoint);
+  assert.deepEqual(await readConfig(home), {});
   assert.equal(await invoke("stop"), 0);
   assert.ok(!calls[1][1].args.includes(endpoint));
   assert.equal(await invoke("uninstall"), 0);
-  assert.equal((await readConfig(home)).runtime_home, endpoint);
+  assert.deepEqual(await readConfig(home), {});
   assert.equal(serviceSpec(home).args.includes("executor-kernel"), false);
 });
-test("configuration accepts the old wrapper and logs remain readable after corruption", async (t) => {
+test("configuration accepts direct input, rejects wrappers and remains readable after corruption", async (t) => {
   const home = await fixture(t);
   assert.equal(
     await runCli(["extraset", "--home", home], {
-      input: Readable.from([
-        JSON.stringify({ config: { bots: [] }, enabled: false }),
-      ]),
+      input: Readable.from([JSON.stringify({ bots: [], enabled: false })]),
       output() {},
     }),
     0,
@@ -97,7 +389,7 @@ test("configuration accepts the old wrapper and logs remain readable after corru
   assert.deepEqual(await readConfig(home), { bots: [], enabled: false });
   let config;
   assert.equal(
-    await runCli(["extraget", "channel-gateway", "--home", home], {
+    await runCli(["extraget", "--home", home], {
       output(line) {
         config = JSON.parse(line);
       },
@@ -105,6 +397,20 @@ test("configuration accepts the old wrapper and logs remain readable after corru
     0,
   );
   assert.deepEqual(config, { bots: [], enabled: false });
+  for (const value of [
+    { config: { bots: [] } },
+    { bots: [], module: "channel-gateway" },
+  ]) {
+    assert.equal(
+      await runCli(["extraset", "--home", home], {
+        input: Readable.from([JSON.stringify(value)]),
+        output() {},
+        errorOutput() {},
+      }),
+      2,
+    );
+    assert.deepEqual(await readConfig(home), config);
+  }
   assert.equal(
     await runCli(["extraget", "other-channel", "--home", home], {
       output() {},
@@ -121,7 +427,7 @@ test("configuration accepts the old wrapper and logs remain readable after corru
 test("foreground service serves status, handles cancellation, releases lock and preserves Kernel", async (t) => {
   const home = await fixture(t),
     kernel = await kernelFixture(t);
-  await writeFile(join(home, "config.json"), JSON.stringify({ bots: [] }), {
+  await writeFile(join(home, "config.json"), JSON.stringify({ bots: [], runtime_home: join(home, "ignored-runtime") }), {
     mode: 0o600,
   });
   const controller = new AbortController();
@@ -137,6 +443,7 @@ test("foreground service serves status, handles cancellation, releases lock and 
         return false;
       }
     });
+    assert.equal((await readStatus(home)).endpoint, kernel.endpoint);
     const duplicate = await runCli(
       ["run", "--home", home, "--runtime-home", kernel.directory],
       { output() {}, errorOutput() {} },
@@ -174,6 +481,7 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     },
     async start(spec) {
       calls.push(["start", spec]);
+      await close?.();
       close = await serveStatus(home, () => ({
         pid: process.pid,
         phase: "ready",
@@ -200,7 +508,15 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     calls.map(([action]) => action),
     ["install", "start"],
   );
+  assert.equal(calls[0][1].args.at(-2), "--runtime-home");
+  assert.equal(calls[0][1].args.at(-1), kernel.directory);
+  assert.deepEqual(await readConfig(home), {});
+  const nextKernel = await kernelFixture(t);
+  assert.equal(await invoke("start", "--runtime-home", nextKernel.directory), 0);
+  assert.equal(calls[2][1].args.at(-1), nextKernel.directory);
+  assert.deepEqual(calls.slice(2).map(([action]) => action), ["install", "start"]);
   assert.equal(await invoke("restart"), 0);
+  assert.deepEqual(calls.slice(4).map(([action]) => action), ["restart"]);
   assert.ok(
     calls.every(
       ([, spec]) =>
@@ -222,7 +538,7 @@ test("startup explains the Runtime prerequisite before changing Gateway services
       },
     },
   );
-  for (const action of ["start", "restart", "run"]) {
+  for (const action of ["start", "run"]) {
     for (const json of [false, true]) {
       const output = [];
       const code = await runCli(
@@ -238,7 +554,10 @@ test("startup explains the Runtime prerequisite before changing Gateway services
       const message = json
         ? JSON.parse(output[0]).error.message
         : output.join("\n");
-      assert.match(message, /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.12/);
+      assert.match(
+        message,
+        /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.12/,
+      );
       assert.match(message, /octo-runtime start/);
       assert.match(message, /octo-runtime doctor --json/);
       assert.match(message, /--runtime-home/);
@@ -264,9 +583,31 @@ test("startup explains the Runtime prerequisite before changing Gateway services
     4,
   );
   assert.equal(JSON.parse(output[0]).error.code, "KERNEL_UNAVAILABLE");
-  assert.match(
-    JSON.parse(output[0]).error.message,
-    /octo-runtime start/,
-  );
+  assert.match(JSON.parse(output[0]).error.message, /octo-runtime start/);
   await assert.rejects(access(join(home, "config.json")), { code: "ENOENT" });
+});
+
+test("doctor follows the running Gateway endpoint and management does not read business config", async (t) => {
+  const home = await fixture(t), kernel = await kernelFixture(t);
+  // 管理不受损坏业务配置影响，也不能回退到当前用户默认 Kernel。
+  await writeFile(join(home, "config.json"), "broken", { mode: 0o600 });
+  let close = await serveStatus(home, () => ({ pid: process.pid, endpoint: kernel.endpoint }));
+  t.after(async () => { await close?.(); });
+  const backend = {
+    async inspect() { return { state: "running", enabled: true, drift: ["definition_content"] }; },
+    async probe() { return { supported: true }; },
+  };
+  let report;
+  const invoke = () => runCli(["doctor", "--home", home, "--json"], {
+    backend, env: { HOME: home }, output: (text) => { report = JSON.parse(text); },
+  });
+  assert.equal(await invoke(), 0);
+  assert.equal(report.kernel.execution_ready, true);
+  assert.equal(report.runtime.endpoint, kernel.endpoint);
+  assert.deepEqual(report.service.drift, []);
+  assert.equal(report.service.definition_comparison, "not_requested");
+  await close(); close = undefined;
+  assert.equal(await invoke(), 0);
+  assert.deepEqual(report.kernel, { available: false, error: "GATEWAY_UNAVAILABLE" });
+  assert.equal(await readFile(join(home, "config.json"), "utf8"), "broken");
 });

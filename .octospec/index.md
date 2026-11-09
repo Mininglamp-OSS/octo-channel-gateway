@@ -1,5 +1,13 @@
 # 工程知识目录
 
+- [英文 PR 交付与依赖审计](tasks/issue-24-cli/pr-delivery.md)
+
+- [Runtime 命令行连接与 cross-service](tasks/runtime-cli-attachment/brief.md)：[实际验证与全局安装](tasks/runtime-cli-attachment/validation.md)
+
+- [Bot MCP 与环境变量自动映射](tasks/agent-execution-settings/brief.md)：[实际验证与全局安装](tasks/agent-execution-settings/validation.md)
+
+- [Issue 24 CLI 组织与构建信息](tasks/issue-24-cli/brief.md)：[实际验证与全局安装](tasks/issue-24-cli/validation.md)
+
 - [Gateway Home 与 Agent 配置](tasks/runtime-home/brief.md)
 
 - [npm 发行版本纠正](tasks/client-release-version/brief.md)：按用户要求继续 1.1.12，IPC v2 不代表 npm 2.x。

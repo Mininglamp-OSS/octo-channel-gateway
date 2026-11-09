@@ -1,4 +1,7 @@
-import { invokeWire, gatewayDraft, gatewayWire } from "../test-support/kernel-mock.js";
+import {
+  invokeWire,
+  gatewayWire,
+} from "../test-support/kernel-mock.js";
 import { octoCliEnvironment } from "@mininglamp-oss/octo-channel-gateway";
 import {
   assertInvokeRequest,
@@ -15,6 +18,8 @@ import { sanitizePublicValue } from "../dist/packages/gateway/src/support/public
 import { adapter } from "./fixtures/tool-environment-adapter.js";
 import { nativeHost } from "./native-host-fixture.js";
 import { invokeRequest } from "./runtime-fixture.js";
+import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
+import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
 
 const token = `bf_${randomUUID()}`;
 const base = "https://im-test.deepminer.com.cn";
@@ -36,6 +41,116 @@ const context = {
     },
   ],
 };
+
+test("Agent MCP/env defaults compile only into execution settings, merge overrides and freeze retries", () => {
+  const bot = {
+    bot_id: "example",
+    api_url: `${base}/api`,
+    agent: {
+      adapter_type: "codex",
+      workdir: tmpdir(),
+      mcp: {
+        mcpServers: {
+          local: { type: "stdio", command: "/private/tool" },
+          remote: {
+            type: "streamable_http",
+            url: "https://example.test/mcp",
+            headers: { Authorization: "PRIVATE_HEADER" },
+          },
+        },
+      },
+      envs: {
+        env_variables: [
+          { key: "KEEP", value: "PRIVATE_ENV" },
+          { key: "OVERRIDE", value: "old" },
+          { key: "OCTO_BOT_TOKEN", value: "wrong-agent" },
+        ],
+      },
+    },
+  };
+  const ctx = {
+    schema: "octo.context-envelope/v3",
+    items: [
+      {
+        namespace: "octo.execution",
+        name: "mcp",
+        payload: {
+          mcpServers: { local: { type: "stdio", command: "/override/tool" } },
+        },
+      },
+      {
+        namespace: "octo.execution",
+        name: "envs",
+        payload: { env_variables: [{ key: "OVERRIDE", value: "new" }] },
+      },
+    ],
+  };
+  const before = structuredClone({ bot, ctx });
+  const message = {
+    messageId: "m",
+    senderId: "peer",
+    conversationId: "chat",
+    text: "Hello",
+  };
+  const prepare = (context, historyRetry = false) =>
+    createImInvocation(
+      bot,
+      { ...message, historyRetry },
+      context,
+      "key",
+      { id: "session", generation: 1 },
+      new AbortController().signal,
+    ).request;
+  const request = prepare(ctx);
+  const compiled = prepareKernelInput(
+    request,
+    octoCliEnvironment(`${base}/api`, token),
+  );
+  const find = (items, name) =>
+    items.find(
+      (item) => item.namespace === "octo.execution" && item.name === name,
+    )?.payload;
+  assert.equal(
+    find(compiled.agentEnv.items, "mcp").mcpServers.local.command,
+    "/override/tool",
+  );
+  assert.equal(
+    find(compiled.agentEnv.items, "mcp").mcpServers.remote.headers
+      .Authorization,
+    "PRIVATE_HEADER",
+  );
+  const env = Object.fromEntries(
+    find(compiled.agentEnv.items, "envs").env_variables.map(
+      ({ key, value }) => [key, value],
+    ),
+  );
+  assert.equal(env.KEEP, "PRIVATE_ENV");
+  assert.equal(env.OVERRIDE, "new");
+  assert.equal(env.OCTO_BOT_TOKEN, token);
+  for (const secret of [
+    "PRIVATE_HEADER",
+    "PRIVATE_ENV",
+    "https://example.test/mcp",
+    token,
+  ])
+    assert.ok(!JSON.stringify(compiled.inputs).includes(secret));
+  assert.deepEqual({ bot, ctx }, before);
+  bot.agent.mcp.mcpServers.added = { type: "stdio", command: "/new/tool" };
+  bot.agent.envs.env_variables.push({ key: "ADDED", value: "new" });
+  const retry = prepareKernelInput(prepare(request.contexts, true));
+  assert.deepEqual(
+    find(retry.agentEnv.items, "mcp"),
+    find(request.contexts.items, "mcp"),
+  );
+  assert.deepEqual(
+    find(retry.agentEnv.items, "envs"),
+    find(request.contexts.items, "envs"),
+  );
+  const originallyEmpty = { schema: ctx.schema, items: [] };
+  const frozenEmpty = prepareKernelInput(prepare(originallyEmpty, true));
+  assert.equal(find(frozenEmpty.agentEnv.items, "mcp"), undefined);
+  assert.equal(find(frozenEmpty.agentEnv.items, "envs"), undefined);
+});
 
 test("channel tool URL normalization removes only the final api segment", () => {
   for (const [input, expected] of [
@@ -85,20 +200,32 @@ test("tool overrides cross real Kernel RPC and reach child tools without changin
     ctx.items[0].payload.env_variables.find(
       (item) => item.key === "EXPECTED_TOKEN",
     ).value = value;
-    const request = invokeRequest({
-      invocationId: `tool-${index}`,
-      runId: `tool-${index}`,
-      approvalMode: "full_access",
-      context: ctx,
-    });
-    const input = invocationInput(request, "canonical");
-    input.agentEnv.items.unshift({
-      namespace: "octo.execution",
-      name: "adapter",
-      payload: { type: "tool-env" },
-    });
+    const { request } = createImInvocation(
+      {
+        bot_id: "env-bot",
+        api_url: `${base}/api`,
+        agent: {
+          adapter_type: "tool-env",
+          workdir: root,
+          envs: ctx.items[0].payload,
+        },
+      },
+      {
+        messageId: `tool-${index}`,
+        senderId: "peer",
+        conversationId: "chat",
+        text: "Check tool environment",
+      },
+      { schema: ctx.schema, items: [] },
+      "key",
+      { id: `session-${index}`, generation: 1 },
+      new AbortController().signal,
+    );
     const events = [];
-    const prepared = gatewayWire(gatewayDraft(input), octoCliEnvironment(`${base}/api`, value));
+    const prepared = gatewayWire(
+      request,
+      octoCliEnvironment(`${base}/api`, value),
+    );
     for await (const event of invokeWire(host.kernel.client, prepared))
       events.push(event);
     assert.deepEqual(

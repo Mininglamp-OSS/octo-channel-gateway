@@ -1,13 +1,10 @@
 import { createHash } from "node:crypto";
-import { isAbsolute, posix, win32 } from "node:path";
+import { posix, win32 } from "node:path";
 import { GatewayCommandError, type JsonObject } from "./command-types.js";
 
 export function validateRuntimeHomeConfig(config: JsonObject): void {
-  if (Object.hasOwn(config, "endpoint") || Object.hasOwn(config, "runtime_endpoint"))
-    throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "Use runtime_home instead of endpoint/runtime_endpoint; provide the Runtime directory, not its socket.");
-  if (config.runtime_home !== undefined &&
-      (typeof config.runtime_home !== "string" || !config.runtime_home.trim() || !isAbsolute(config.runtime_home) || config.runtime_home.includes("\0")))
-    throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "runtime_home must be an absolute directory path; omit it to use ~/.octo-runtime.");
+  if (["runtime_home", "endpoint", "runtime_endpoint"].some((key) => Object.hasOwn(config, key)))
+    throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "Runtime connection settings are not business configuration. Use start/run --runtime-home <path> instead.");
 }
 
 /** 只计算公开 Runtime 地址约定，不访问 Runtime Home 或依赖私有 SDK。 */

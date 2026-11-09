@@ -8,7 +8,7 @@ import type {
   CommandRunner,
   NormalizedServiceSpec,
   ServiceBackendKind,
-  ServiceSpec,
+  ServiceSpec
 } from "./types.js";
 
 const SERVICE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -24,16 +24,14 @@ const SENSITIVE_ARGUMENT =
  */
 export function normalizeServiceSpec(
   spec: ServiceSpec,
-  platform: NodeJS.Platform,
+  platform: NodeJS.Platform
 ): NormalizedServiceSpec {
   if (!SERVICE_ID.test(spec.id))
     invalid("id must contain only letters, digits, dot, underscore, or hyphen");
   assertText(spec.command, "command");
   assertText(spec.workingDirectory, "workingDirectory");
-  if (spec.description !== undefined)
-    assertText(spec.description, "description");
-  if (!isAbsoluteForPlatform(spec.command, platform))
-    invalid("command must be an absolute path");
+  if (spec.description !== undefined) assertText(spec.description, "description");
+  if (!isAbsoluteForPlatform(spec.command, platform)) invalid("command must be an absolute path");
   if (!isAbsoluteForPlatform(spec.workingDirectory, platform))
     invalid("workingDirectory must be an absolute path");
 
@@ -55,31 +53,25 @@ export function normalizeServiceSpec(
 
   for (const [key, value] of [
     ["stdoutPath", spec.stdoutPath],
-    ["stderrPath", spec.stderrPath],
+    ["stderrPath", spec.stderrPath]
   ] as const) {
     if (value === undefined) continue;
     assertText(value, key);
-    if (!isAbsoluteForPlatform(value, platform))
-      invalid(`${key} must be an absolute path`);
+    if (!isAbsoluteForPlatform(value, platform)) invalid(`${key} must be an absolute path`);
   }
 
   const delaySeconds = integerInRange(
     spec.restart?.delaySeconds ?? 5,
     1,
     3600,
-    "restart.delaySeconds",
+    "restart.delaySeconds"
   );
-  const maxBurst = integerInRange(
-    spec.restart?.maxBurst ?? 5,
-    1,
-    100,
-    "restart.maxBurst",
-  );
+  const maxBurst = integerInRange(spec.restart?.maxBurst ?? 5, 1, 100, "restart.maxBurst");
   const timeoutStopSeconds = integerInRange(
     spec.timeoutStopSeconds ?? 45,
     1,
     3600,
-    "timeoutStopSeconds",
+    "timeoutStopSeconds"
   );
   const policy = spec.restart?.policy ?? "on-failure";
   if (!(["always", "on-failure", "never"] as const).includes(policy))
@@ -99,21 +91,16 @@ export function normalizeServiceSpec(
     restart: Object.freeze({
       policy,
       delaySeconds,
-      maxBurst,
+      maxBurst
     }),
     timeoutStopSeconds,
-    names: Object.freeze({ ...(spec.names ?? {}) }),
+    names: Object.freeze({ ...(spec.names ?? {}) })
   });
 }
 
 /** Apply Windows or POSIX path rules without depending on the host platform. */
-export function isAbsoluteForPlatform(
-  value: string,
-  platform: NodeJS.Platform,
-): boolean {
-  return platform === "win32"
-    ? win32.isAbsolute(value)
-    : posix.isAbsolute(value);
+export function isAbsoluteForPlatform(value: string, platform: NodeJS.Platform): boolean {
+  return platform === "win32" ? win32.isAbsolute(value) : posix.isAbsolute(value);
 }
 
 /** Run one native manager command and translate spawn/exit failures to `ServiceError`. */
@@ -122,53 +109,37 @@ export async function runCommand(
   backend: ServiceBackendKind,
   command: string,
   args: readonly string[],
-  options: {
-    checked?: boolean;
-    env?: NodeJS.ProcessEnv;
-    timeoutMs?: number;
-  } = {},
+  options: { checked?: boolean; env?: NodeJS.ProcessEnv; timeoutMs?: number } = {}
 ): Promise<CommandResult> {
   let result: CommandResult;
   try {
-    result = await runner.run(command, args, {
-      env: options.env,
-      timeoutMs: options.timeoutMs,
-    });
+    result = await runner.run(command, args, { env: options.env, timeoutMs: options.timeoutMs });
   } catch (cause) {
-    throw new ServiceError(
-      "MANAGER_UNAVAILABLE",
-      `${backend} manager is unavailable`,
-      {
-        backend,
-        command,
-        cause,
-        detail: cause instanceof Error ? cause.message : String(cause),
-      },
-    );
+    throw new ServiceError("MANAGER_UNAVAILABLE", `${backend} manager is unavailable`, {
+      backend,
+      command,
+      cause,
+      detail: cause instanceof Error ? cause.message : String(cause)
+    });
   }
   if (options.checked ?? true) assertCommandSucceeded(result, backend);
   return result;
 }
 
 /** 平台仅在确认原生 not-found 后忽略失败，其他结果沿同一受控错误合同传播。 */
-export function assertCommandSucceeded(
-  result: CommandResult,
-  backend: ServiceBackendKind,
-): void {
+export function assertCommandSucceeded(result: CommandResult, backend: ServiceBackendKind): void {
   if (result.exitCode !== 0) {
     throw new ServiceError("COMMAND_FAILED", `${backend} command failed`, {
       backend,
       command: result.command,
       exitCode: result.exitCode,
-      detail: boundedDetail(result.stderr || result.stdout),
+      detail: boundedDetail(result.stderr || result.stdout)
     });
   }
 }
 
 /** 读取服务定义；兼容 Windows UTF-16LE BOM 与既有 UTF-8，缺失返回 undefined。 */
-export async function readDefinition(
-  path: string,
-): Promise<string | undefined> {
+export async function readDefinition(path: string): Promise<string | undefined> {
   try {
     const bytes = await readFile(path);
     return bytes[0] === 0xff && bytes[1] === 0xfe
@@ -187,12 +158,9 @@ export async function readDefinition(
 export async function writeDefinition(
   path: string,
   content: string,
-  encoding: "utf8" | "utf16le" = "utf8",
+  encoding: "utf8" | "utf16le" = "utf8"
 ): Promise<boolean> {
-  const bytes = Buffer.from(
-    encoding === "utf16le" ? `\uFEFF${content}` : content,
-    encoding,
-  );
+  const bytes = Buffer.from(encoding === "utf16le" ? `\uFEFF${content}` : content, encoding);
   try {
     if ((await readFile(path)).equals(bytes)) return false;
   } catch (error) {
@@ -222,10 +190,7 @@ export async function removeDefinition(path: string): Promise<void> {
 }
 
 /** Return stable drift identifiers for desired-versus-installed file content. */
-export function definitionDrift(
-  actual: string | undefined,
-  desired: string,
-): string[] {
+export function definitionDrift(actual: string | undefined, desired: string): string[] {
   if (actual === undefined) return ["definition_missing"];
   return actual === desired ? [] : ["definition_content"];
 }
@@ -254,9 +219,7 @@ export function parseProperties(output: string): Record<string, string> {
 /** Narrow an unknown error to a Node.js system error with the requested code. */
 export function isNodeError(error: unknown, code: string): boolean {
   return (
-    error instanceof Error &&
-    "code" in error &&
-    (error as NodeJS.ErrnoException).code === code
+    error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code
   );
 }
 
@@ -270,12 +233,7 @@ function assertTextAllowEmpty(value: string, field: string): void {
     invalid(`${field} must not contain NUL or line breaks`);
 }
 
-function integerInRange(
-  value: number,
-  minimum: number,
-  maximum: number,
-  field: string,
-): number {
+function integerInRange(value: number, minimum: number, maximum: number, field: string): number {
   if (!Number.isInteger(value) || value < minimum || value > maximum) {
     invalid(`${field} must be an integer between ${minimum} and ${maximum}`);
   }
