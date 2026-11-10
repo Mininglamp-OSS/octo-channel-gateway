@@ -15,15 +15,14 @@ export function createDefinition(options: {
       approval_mode: "ask",
     },
     credentials: (_bot, signal) => options.readToken(signal),
-    contextLoading: { timeout_ms: 5000, max_in_flight: 8 },
-    async loadContexts(_bot, { signal }) {
+    materialLoading: { timeout_ms: 5000, max_in_flight: 8 },
+    async loadMaterials(_bot, { signal }) {
       const text = await options.readBrief(signal);
       signal.throwIfAborted();
       return [
         {
-          namespace: "extra.business",
           name: "brief",
-          payload: { text },
+          parts: [{ type: "text", text }],
         },
       ];
     },

@@ -11,8 +11,8 @@ Import the primary entry from `@mininglamp-oss/octo-channel-gateway`. Protocol t
 | ChannelDefinition field | Contract                                                                                                      |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
 | bot                     | Required ImBotConfig; one Bot per registration; see configuration reference                                   |
-| loadContexts            | Optional per-turn (config, {signal}) returning readonly ContextItem[] or a Promise                            |
-| contextLoading          | Optional timeout_ms / max_in_flight; defaults 5000 / 8                                                        |
+| loadMaterials            | Optional per-turn (config, {signal}) returning readonly BusinessMaterial[] or a Promise                            |
+| materialLoading          | Optional timeout_ms / max_in_flight; defaults 5000 / 8                                                        |
 | credentials             | Optional async (config, signal) → string or undefined; defaults to bf_token                                   |
 | authorizeSpace          | Optional synchronous (spaceId) → void; throw to deny; spaceId comes from authenticated identity               |
 | createSessionStore      | Optional synchronous (config) → ImSessionStore; host owns the database, registration owns the returned handle |
@@ -34,3 +34,5 @@ Registration does not return an invocation handle for each turn; the channel man
 MemoryImSessionStore and ImSessionStore/Binding/Occurrence support [Session management](../guides/sessions.md). ImRuntime, ImChannelManager, ImInvocationInput, build_im_contexts, registerBot, WukongConnection, and imApi are advanced orchestration entries, not a new generic plugin protocol. Direct users must satisfy ownership and admission contracts themselves.
 
 validateImConfig/validateImBots validate local structure, not credentials or Provider readiness. octoCliEnvironment produces tool environment values; it does not install octo-cli. Start with the [shared SDK example](../../examples/registration.mts).
+
+`BusinessMaterial` is `{ name: string, parts: ModelInputPart[] }`; use `bot.materials` for static data and `loadMaterials` for current data. Neither accepts the old ContextItem envelope. See [Business material](../guides/contexts-and-credentials.md) for merge, limits, image integrity and migration.

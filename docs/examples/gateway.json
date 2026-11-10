@@ -16,5 +16,5 @@
       "groups_enabled": false
     }
   ],
-  "context_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
+  "material_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
 }

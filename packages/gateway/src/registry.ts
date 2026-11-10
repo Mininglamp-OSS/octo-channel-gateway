@@ -3,7 +3,7 @@ import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import type { ImBotConfig } from "./contracts.js";
 import type { GatewayDependencies, ImCredentialSource } from "./ports.js";
 import type { RuntimeLog } from "./support/types.js";
-import { createContextLoader } from "./support/context-loader.js";
+import { createMaterialLoader } from "./support/material-loader.js";
 import {
   shutdownDeadline,
   withinShutdown,
@@ -18,7 +18,7 @@ import { ImChannelManager } from "./lifecycle/manager.js";
 /** 渠道自身的业务定义；函数保留在调用进程，不受 Runtime 的配置格式约束。 */
 export interface ChannelDefinition extends GatewayDependencies {
   bot: ImBotConfig;
-  contextLoading?: { timeout_ms?: number; max_in_flight?: number };
+  materialLoading?: { timeout_ms?: number; max_in_flight?: number };
   authorizeSpace?: (spaceId: string) => void;
   credentials?: ImCredentialSource;
   log?: RuntimeLog;
@@ -37,13 +37,15 @@ export class ChannelRegistry {
     endpoint: string,
     definition: ChannelDefinition,
   ): Promise<ChannelRegistration> {
+    if (Object.hasOwn(definition, "loadContexts") || Object.hasOwn(definition, "contextLoading"))
+      throw new Error("IM_CONTEXT_API_REMOVED_USE_MATERIALS");
     validateImConfig(definition.bot);
     definition.signal?.throwIfAborted();
     const bot = structuredClone(definition.bot);
     const owner = new AbortController();
-    const contexts = createContextLoader(
-      definition.loadContexts,
-      definition.contextLoading,
+    const materials = createMaterialLoader(
+      definition.loadMaterials,
+      definition.materialLoading,
       owner.signal,
     );
     const client = attachKernel({ endpoint });
@@ -58,17 +60,7 @@ export class ChannelRegistry {
       credentials:
         definition.credentials ??
         ((config) => Promise.resolve(configuredCredential(config))),
-      prepareContexts: (config, signal) =>
-        contexts.load(config, signal, (items) => {
-          const selected = items.filter(
-            (item) => item.namespace !== "extra.im",
-          );
-          if (selected.length !== items.length)
-            log("warn", "channel.context.reserved_ignored", {
-              ignored_items: items.length - selected.length,
-            });
-          return selected;
-        }),
+      prepareMaterials: (config, signal) => materials.load(config, signal),
     });
     let closing: Promise<void> | undefined;
     const abort = () => {
@@ -97,9 +89,9 @@ export class ChannelRegistry {
                     throw new Error("IM_EXECUTION_CLEANUP_INCOMPLETE");
                 }),
               withinShutdown(
-                contexts.close(),
+                materials.close(),
                 until,
-                "IM_CONTEXT_CLEANUP_INCOMPLETE",
+                "IM_MATERIAL_CLEANUP_INCOMPLETE",
               ),
             ]);
             const errors = results

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validateImConfig } from "@mininglamp-oss/octo-channel-gateway";
-import { assertContextEnvelope } from "@mininglamp-oss/octo-runtime-client/protocol";
+import { assertModelInputParts } from "@mininglamp-oss/octo-runtime-client/protocol";
 import { withChannel } from "../examples/registration.mts";
 import { createDefinition } from "../examples/definition.mts";
 import { kernelFixture } from "../../test/kernel-fixture.js";
@@ -49,10 +49,10 @@ test("documented host callbacks keep credentials separate and observe cancellati
   });
   validateImConfig(definition.bot);
   const controller = new AbortController();
-  const items = await definition.loadContexts(definition.bot, {
+  const items = await definition.loadMaterials(definition.bot, {
     signal: controller.signal,
   });
-  assertContextEnvelope({ schema: "octo.context-envelope/v3", items });
+  assertModelInputParts(items.flatMap((item) => item.parts));
   const credential = await definition.credentials(
     definition.bot,
     controller.signal,
@@ -60,7 +60,7 @@ test("documented host callbacks keep credentials separate and observe cancellati
   assert.ok(!JSON.stringify(items).includes(credential));
   controller.abort(new Error("host cancelled"));
   await assert.rejects(
-    definition.loadContexts(definition.bot, { signal: controller.signal }),
+    definition.loadMaterials(definition.bot, { signal: controller.signal }),
     /host cancelled/,
   );
 });

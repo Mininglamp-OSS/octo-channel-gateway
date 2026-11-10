@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
 import {
   assertApprovalMode,
-  assertContextEnvelope,
+  assertAgentEnv,
+  CONTEXT_SCHEMA,
   assertJsonByteLimit,
   assertContextMcp,
   assertContextEnvs,
@@ -11,6 +12,7 @@ import {
 import type { ImBotConfig } from "../contracts.js";
 import { trimTrailingSlashes } from "../transport/api/url.js";
 import { ARTIFACT_LIMITS } from "../delivery/artifact-policy.js";
+import { assertMaterials } from "../materials.js";
 
 export const IM_MAX_BOTS = 64;
 export const IM_MAX_CONFIG_OPERATIONS = 64;
@@ -90,7 +92,9 @@ export function validateImConfig(config: ImBotConfig): void {
     if (agent.provider_agent_id !== undefined)
       throw new Error("IM_PROVIDER_AGENT_ID_UNSUPPORTED");
   }
-  if (config.context !== undefined) assertContextEnvelope(config.context);
+  if (Object.hasOwn(config, "context")) throw new Error("IM_CONTEXT_REMOVED_USE_MATERIALS");
+  if (config.materials !== undefined) assertMaterials(config.materials);
+  if (agent.items !== undefined) assertAgentEnv({ schema: CONTEXT_SCHEMA, items: agent.items });
   const refreshInterval = config.stable_context_refresh_interval_turns;
   if (
     refreshInterval !== undefined &&

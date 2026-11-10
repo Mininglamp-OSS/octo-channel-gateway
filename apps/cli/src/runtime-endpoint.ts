@@ -3,6 +3,7 @@ import { posix, win32 } from "node:path";
 import { GatewayCommandError, type JsonObject } from "./command-types.js";
 
 export function validateRuntimeHomeConfig(config: JsonObject): void {
+  if (Object.hasOwn(config, "context_loading")) throw new Error("IM_CONTEXT_LOADING_REMOVED_USE_MATERIAL_LOADING");
   if (["runtime_home", "endpoint", "runtime_endpoint"].some((key) => Object.hasOwn(config, key)))
     throw new GatewayCommandError("GATEWAY_CONFIG_INVALID", "Runtime connection settings are not business configuration. Use start/run --runtime-home <path> instead.");
 }

@@ -179,7 +179,7 @@ test("history failure, malformed result, missing sequence and budget overflow co
     incoming,
     "bf_fixture",
     new AbortController().signal,
-    { initialSession: true },
+    { initialSession: true, configuredItems: full.context.items },
   );
   assert.equal(items.length, 2);
   assert.equal(

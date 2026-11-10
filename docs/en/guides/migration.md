@@ -34,3 +34,7 @@ Bot execution configuration uses `agent.adapter_type` with model, effort and wor
 ## Runtime/client 1.1.13
 
 Both the production client and development Runtime dependencies use ^1.1.13. Gateway retains its own bot.agent/ImAgentConfig and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).
+
+## Named SDK materials
+
+Replace `bot.context.items` and `loadContexts` with `bot.materials` and `loadMaterials`, each returning `{ name, parts }[]`. Replace SDK `contextLoading` with `materialLoading`, and CLI `context_loading` with `material_loading`. Old fields fail instead of being silently ignored. Move ordinary text into text parts, images into validated image parts, and execution extensions into `agent.items`; `agent.mcp` and `agent.envs` remain available. Dynamic same-name materials replace whole static entries in place; empty results preserve static entries. See the updated [SDK integration](../getting-started/sdk.md) and [material guide](contexts-and-credentials.md).

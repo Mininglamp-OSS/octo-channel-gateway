@@ -11,8 +11,8 @@
 | ChannelDefinition 字段 | 合同                                                                 |
 | ---------------------- | -------------------------------------------------------------------- |
 | bot                    | 必填 ImBotConfig，一个注册一个 Bot，见配置参考                       |
-| loadContexts           | 可选，每轮 (config, {signal}) 返回 readonly ContextItem[] 或 Promise |
-| contextLoading         | 可选 timeout_ms / max_in_flight；默认 5000 / 8                       |
+| loadMaterials           | 可选，每轮 (config, {signal}) 返回 readonly BusinessMaterial[] 或 Promise |
+| materialLoading         | 可选 timeout_ms / max_in_flight；默认 5000 / 8                       |
 | credentials            | 可选 async (config, signal) → string 或 undefined；省略时读 bf_token |
 | authorizeSpace         | 可选同步 (spaceId) → void；不允许时抛错，spaceId 来自认证结果        |
 | createSessionStore     | 可选同步 (config) → ImSessionStore；宿主拥有数据库，注册拥有返回句柄 |
@@ -34,3 +34,5 @@ SDK 不直接返回某轮 invocation handle；渠道内部管理调用与 /stop�
 MemoryImSessionStore、ImSessionStore/Binding/Occurrence 用于[会话管理](../guides/sessions.md)。ImRuntime、ImChannelManager、ImInvocationInput、build_im_contexts、registerBot、WukongConnection、imApi 等为高级编排入口，不是额外的通用插件协议；直接使用需自行满足所有权和准入合同。
 
 validateImConfig/validateImBots 只校验本地结构，不证明凭据有效或 Provider 就绪。octoCliEnvironment 生成工具环境值，不安装 octo-cli。推荐从[共享 SDK 示例](../../examples/registration.mts)接入。
+
+`BusinessMaterial` 为 `{ name: string, parts: ModelInputPart[] }`；静态材料用 `bot.materials`，每轮材料用 `loadMaterials`，均不接收旧 ContextItem 信封。覆盖、预算、图片完整性及迁移见[业务材料](../guides/contexts-and-credentials.md)。

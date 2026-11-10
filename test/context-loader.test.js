@@ -1,30 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  createContextLoader,
-  mergeConfiguredContexts,
-} from "../dist/packages/gateway/src/support/context-loader.js";
+  createMaterialLoader,
+  mergeConfiguredMaterials,
+} from "../dist/packages/gateway/src/support/material-loader.js";
 
 const signal = () => new AbortController().signal;
 const item = (name, text) => ({
-  namespace: "extra.business",
   name,
-  payload: { text },
+  parts: [{ type: "text", text }],
 });
 const control = (...texts) => ({
-  namespace: "extra.persona",
   name: "instructions",
-  payload: { entries: texts.map((text) => ({ text })) },
+  parts: texts.map((text) => ({ type: "text", text })),
 });
 const config = {
-  context: {
-    schema: "octo.context-envelope/v3",
-    items: [
+  materials: [
       control("我是明略科技的Octo助理"),
       item("first", "base"),
       item("last", "last"),
-    ],
-  },
+  ],
 };
 
 test("dynamic contexts replace whole items at the base position, append in order and never mutate config", () => {
@@ -33,27 +28,27 @@ test("dynamic contexts replace whole items at the base position, append in order
     control("override", "override", "  preserved\n"),
     item("new", "new"),
   ];
-  const merged = mergeConfiguredContexts(config.context.items, dynamic);
+  const merged = mergeConfiguredMaterials(config.materials, dynamic);
   assert.deepEqual(
     merged.map((i) => i.name),
     ["instructions", "first", "last", "new"],
   );
   assert.equal(
-    merged[0].payload.entries.map(({ text }) => text).join("\n"),
+    merged[0].parts.map(({ text }) => text).join("\n"),
     "override\noverride\n  preserved\n",
   );
-  merged[1].payload.text = "changed";
-  assert.equal(dynamic[0].payload.text, "dynamic");
-  assert.equal(config.context.items[1].payload.text, "base");
+  merged[1].parts[0].text = "changed";
+  assert.equal(dynamic[0].parts[0].text, "dynamic");
+  assert.equal(config.materials[1].parts[0].text, "base");
 });
 
 test("sync and async callbacks load afresh, receive JSON copies and release every slot", async () => {
   for (const asynchronous of [false, true]) {
     let calls = 0;
-    const loader = createContextLoader(
+    const loader = createMaterialLoader(
       (copy, options) => {
         assert.equal(options.signal.aborted, false);
-        copy.context.items.length = 0;
+        copy.materials.length = 0;
         const value = [item("first", String(++calls))];
         return asynchronous ? Promise.resolve(value) : value;
       },
@@ -62,10 +57,10 @@ test("sync and async callbacks load afresh, receive JSON copies and release ever
     );
     for (let i = 1; i <= 2000; i++) {
       const result = await loader.load(config, signal());
-      assert.equal(result[1].payload.text, String(i));
+      assert.equal(result[1].parts[0].text, String(i));
       assert.equal(loader.inFlight, 0);
     }
-    assert.equal(config.context.items.length, 3);
+    assert.equal(config.materials.length, 3);
     await loader.close();
   }
 });
@@ -73,7 +68,7 @@ test("sync and async callbacks load afresh, receive JSON copies and release ever
 test("unsettled timeout occupies capacity, late rejection is consumed and close aborts callbacks", async () => {
   let rejectOperation;
   let callbackSignal;
-  const loader = createContextLoader(
+  const loader = createMaterialLoader(
     (_config, { signal }) => {
       callbackSignal = signal;
       return new Promise((_, reject) => {
@@ -85,14 +80,14 @@ test("unsettled timeout occupies capacity, late rejection is consumed and close 
   );
   await assert.rejects(
     loader.load(config, signal()),
-    /IM_CONTEXT_LOADING_TIMEOUT/,
+    /IM_MATERIAL_LOADING_TIMEOUT/,
   );
   assert.equal(callbackSignal.aborted, true);
   assert.equal(loader.inFlight, 1);
   for (let i = 0; i < 100; i++)
     await assert.rejects(
       loader.load(config, signal()),
-      /IM_CONTEXT_LOADING_BUSY/,
+      /IM_MATERIAL_LOADING_BUSY/,
     );
   rejectOperation(new Error("late private failure"));
   await loader.close();
@@ -101,7 +96,7 @@ test("unsettled timeout occupies capacity, late rejection is consumed and close 
 
 test("owner cancellation completes waiting callers and closes cooperative I/O", async () => {
   const owner = new AbortController();
-  const loader = createContextLoader(
+  const loader = createMaterialLoader(
     (_config, { signal }) =>
       new Promise((resolve) => {
         signal.addEventListener(
@@ -117,7 +112,7 @@ test("owner cancellation completes waiting callers and closes cooperative I/O", 
   );
   const pending = assert.rejects(
     loader.load(config, signal()),
-    /IM_CONTEXT_LOADING_CANCELLED/,
+    /IM_MATERIAL_LOADING_CANCELLED/,
   );
   await Promise.resolve();
   owner.abort();
@@ -128,11 +123,11 @@ test("owner cancellation completes waiting callers and closes cooperative I/O", 
 
 test("invalid, cyclic, oversized and duplicate results fail before invoke", async () => {
   const cycle = item("cycle", "");
-  cycle.payload.self = cycle;
+  cycle.parts[0].self = cycle;
   const sparse = item("sparse", "");
-  sparse.payload.values = new Array(2 ** 30);
+  sparse.parts[0].values = new Array(2 ** 30);
   const customJson = item("custom", "");
-  Object.defineProperty(customJson.payload, "toJSON", {
+  Object.defineProperty(customJson.parts[0], "toJSON", {
     value: () => {
       throw new Error("must not execute");
     },
@@ -141,13 +136,13 @@ test("invalid, cyclic, oversized and duplicate results fail before invoke", asyn
     [cycle],
     [sparse],
     [customJson],
-    [item("large", "x".repeat(300000))],
+    [item("large", "x".repeat(9 * 1024 * 1024))],
     [item("same", "a"), item("same", "b")],
     [item("bad", Infinity)],
     Array(33).fill(item("over", "")),
     { items: [] },
   ]) {
-    const loader = createContextLoader(() => result, undefined, signal());
+    const loader = createMaterialLoader(() => result, undefined, signal());
     await assert.rejects(loader.load(config, signal()));
     assert.equal(loader.inFlight, 0);
     await loader.close();
@@ -158,7 +153,7 @@ test(
   "ten thousand completed context loads retain bounded heap after warmup",
   { skip: !global.gc },
   async (t) => {
-    const loader = createContextLoader(
+    const loader = createMaterialLoader(
       () => [item("first", "dynamic")],
       undefined,
       signal(),

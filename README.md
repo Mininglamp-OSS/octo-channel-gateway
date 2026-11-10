@@ -79,10 +79,9 @@ const registration = await ChannelRegistry.register(endpoint, {
     bf_token: botToken,
     agent: { adapter_type: "codex", model: "gpt-6.1-sol", effort: "high", workdir }
   },
-  loadContexts(_bot, { signal }) {
+  loadMaterials(_bot, { signal }) {
     signal.throwIfAborted();
-    return [{ namespace: "extra.business", name: "brief",
-      data_format: "text", payload: { text: readCurrentBrief() } }];
+    return [{ name: "brief", parts: [{ type: "text", text: readCurrentBrief() }] }];
   }
 });
 try {
@@ -92,7 +91,7 @@ try {
 }
 ```
 
-Each registration owns its client and Bot resources, not the Kernel. `loadContexts` reads current material each turn; a host can supply its own session store through `createSessionStore`. Closing drains owned execution and delivery within a shared four-second deadline, reports cleanup failures, and leaves other registrations and the shared Kernel running.
+Each registration owns its client and Bot resources, not the Kernel. `bot.materials` supplies optional static `{ name, parts }` material. `loadMaterials` reads the same shape each turn; dynamic same-name entries replace static entries in place. Text and image parts go only to model inputs; execution settings stay in `bot.agent` (advanced items in `agent.items`). The old `loadContexts`, `ContextItem` business material and `bot.context` entry points are removed. A host can supply its own session store through `createSessionStore`. Closing drains owned execution and delivery within a shared four-second deadline, reports cleanup failures, and leaves other registrations and the shared Kernel running.
 
 Gateway prepares history, channel context, and business material before invoking `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv)`. Interrupt an execution using its `invocationId`; a business `sessionId` or Provider continuation identifier cannot replace it. MCP, environment variables, model/effort, and workspace settings travel in `agentEnv`. See [Inputs and execution environment](docs/en/concepts/inputs-and-agent-env.md) for the current boundary and remaining protocol migrations.
 

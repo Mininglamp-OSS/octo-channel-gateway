@@ -45,3 +45,9 @@ source: self
 # 追加交付要求
 
 用户继续授权 code review、提交并创建面向 main 的 PR，以及统一 Runtime 安装指引。最低要求为 1.1.13（当前支持 1.x）；README、双语入门/依赖/排错和 CLI 错误帮助统一使用 `@mininglamp-oss/octo-runtime@latest`，manifest 依赖范围保持 ^1.1.13。审查完成后提交英文 PR，不合并、不发布。
+
+# 已确认的 SDK 材料接口变更
+
+用户明确要求同时修改 SDK，移除 loadContexts / ContextItem 业务材料入口，并选择 `{ name, parts }` 命名材料：静态 bot.materials；动态 loadMaterials；同名整项替换、保留静态位置，新项按顺序追加。公开配置拒绝旧 bot.context、loadContexts/contextLoading，不做兼容层。材料只进入模型 inputs，包含文本或图片；自动渠道材料注入规则、冻结重试和回调超时/占额/关闭语义不变。执行参数仍由 bot.agent 编译；高级自定义执行项通过 agent.items 进入 AgentEnv.items，不进入业务材料正文。同步更新 README、双语 docs、共享示例、既有测试与手动验证脚本；专项新增案例仍显式本地执行。内部渠道历史/规则准备表示不作为宿主材料 API。
+
+追加设计就绪度 96/100：已确认数据形状、覆盖语义与无兼容层；模型 parts 与执行 items 分开，历史重试复用冻结快照；风险集中在图片 fallback、执行项隔离、旧配置拒绝和受控回调清理，专项逐项验证。原排除项中 SDK/渠道接口限制按这次明确授权更新，其余生命周期与 CI 边界保持。

@@ -14,4 +14,4 @@ export type GatewayExecutionContext = Pick<
   KernelClient,
   "invoke" | "interrupt" | "respondInteraction"
 >;
-export type { ChannelDependencies, LoadContexts } from "./context-loader.js";
+export type { ChannelDependencies, LoadMaterials } from "./material-loader.js";

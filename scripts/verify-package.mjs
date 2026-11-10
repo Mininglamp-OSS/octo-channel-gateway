@@ -94,7 +94,7 @@ try {
     import { ChannelRegistry, type ChannelDefinition, type ChannelRegistration } from "@mininglamp-oss/octo-channel-gateway";
     const definition: ChannelDefinition = {
       bot: { bot_id: "types", enabled: false, api_url: "https://example.test/api", agent: { adapter_type: "test" } },
-      loadContexts(_bot, { signal }) { signal.throwIfAborted(); return []; }
+      loadMaterials(_bot, { signal }) { signal.throwIfAborted(); return []; }
     };
     const registration: Promise<ChannelRegistration> = ChannelRegistry.register("endpoint", definition);
     void registration;

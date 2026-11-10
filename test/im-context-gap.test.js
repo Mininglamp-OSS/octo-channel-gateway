@@ -54,7 +54,7 @@ async function fixture(
   });
   const runtime = new ImRuntime(config, {
     sessions: store,
-    prepareContexts: async () => {
+    prepareMaterials: async () => {
       prepares++;
       return structuredClone(configuredItems);
     },
@@ -284,11 +284,8 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
     undefined,
     [
       {
-        namespace: "extra.persona",
         name: "instructions",
-        payload: {
-          entries: [{ text: MENTION_GUIDANCE }, { text: MENTION_GUIDANCE }],
-        },
+        parts: [{ type: "text", text: MENTION_GUIDANCE }, { type: "text", text: MENTION_GUIDANCE }],
       },
     ],
   );
@@ -298,8 +295,7 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
   await current.idle();
   const frozen = structuredClone(current.requests[1]);
   assert.equal(
-    modelItems(frozen).find((item) => item.namespace === "extra.persona")
-      .payload.entries.length,
+    frozen.inputs.filter((part) => part.type === "text" && part.text === MENTION_GUIDANCE).length,
     2,
     "two explicit host copies remain unchanged; channel guidance is a separate material item",
   );

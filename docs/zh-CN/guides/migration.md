@@ -34,3 +34,7 @@ Bot 执行配置使用 `agent.adapter_type`，model、effort、workdir 同属 `a
 ## Runtime/client 1.1.13
 
 生产 client 和开发 Runtime 依赖均为 ^1.1.13。保留 Gateway 自己的 bot.agent/ImAgentConfig；上游删除的 AgentConfig 不再生成。旧 octo.control/instructions 配置须改为 agent.instruction 或普通业务材料；workspace.mode 须移除，仅保留已准备目录的 path。Context 格式改为注释边界和逐项 context 标签，选取规则保持。私有执行 item 原样到 Adapter，OpenClaw agentId 位于 adapter.openclaw/options。没有旧协议兼容层，详见[输入与执行环境](../concepts/inputs-and-agent-env.md)和[配置参考](../reference/configuration.md)。
+
+## SDK 命名业务材料
+
+将 `bot.context.items`、`loadContexts` 改为 `bot.materials`、`loadMaterials`，使用 `{ name, parts }[]`。SDK 的 `contextLoading` 改为 `materialLoading`，CLI 的 `context_loading` 改为 `material_loading`。旧字段直接报错，不静默忽略。普通文本改为 text part，图片改为经过完整性校验的 image part；执行扩展改放 `agent.items`，仍可使用 `agent.mcp`、`agent.envs`。动态同名项整体替换静态项并保留位置，空数组保留静态项。参见新的 [SDK 接入](../getting-started/sdk.md)和[业务材料指引](contexts-and-credentials.md)。

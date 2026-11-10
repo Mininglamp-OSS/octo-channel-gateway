@@ -185,7 +185,7 @@ async function run(
             bot: bot as ImBotConfig,
             log,
             signal: controller.signal,
-            contextLoading: config.context_loading as
+            materialLoading: config.material_loading as
               { timeout_ms?: number; max_in_flight?: number } | undefined,
             authorizeSpace: spaces
               ? (spaceId) => {
@@ -425,17 +425,13 @@ export async function runCli(
     return await withConfigLock(home, async () => {
       const before = await snapshot();
       if (["install", "start", "restart"].includes(action)) assertLaunchAllowed(before);
+      try {
       if (action === "install") {
         const auto = parsed.options.autostart;
         if (auto !== "true" && auto !== "false")
           throw new Error("INVALID_ARGUMENTS");
         spec = { ...spec, enabled: auto === "true" };
         await backend.install(spec);
-        const installed = await snapshot();
-        if (installed.ownership.state === "unmanaged") {
-          await backend.stop(spec);
-          assertLaunchAllowed(installed);
-        }
       } else if (action === "start") {
         // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
         const installed = await backend.inspect(spec);
@@ -451,6 +447,32 @@ export async function runCli(
       } else if (action === "stop") await backend.stop(spec);
       else if (action === "uninstall") await backend.uninstall(spec);
       else throw new Error("INVALID_ARGUMENTS");
+      } catch (error) {
+        // 原生 start/restart 可在抢锁失败后直接返回非零；仍须核对归属并停止托管重试。
+        if (["install", "start", "restart"].includes(action)) {
+          const failed = await snapshot().catch(() => undefined);
+          if (failed?.ownership.state === "unmanaged") {
+            const safeCode = (value: unknown) => {
+              const code = value instanceof Error && "code" in value ? value.code
+                : value instanceof Error ? value.message : undefined;
+              return typeof code === "string" && /^[A-Z][A-Z0-9_]{1,95}$/.test(code) ? code : "GATEWAY_SERVICE_COMMAND_FAILED";
+            };
+            let cleanup = "The attempted managed service was stopped.";
+            try { await backend.stop(spec); }
+            catch (stopError) { cleanup = `Managed service cleanup failed (${safeCode(stopError)}); inspect the native manager to stop its retries.`; }
+            throw new GatewayCommandError("GATEWAY_HOME_OCCUPIED",
+              `${ownershipMessage(failed)}\nNative ${action} failed (${safeCode(error)}). ${cleanup}`);
+          }
+        }
+        throw error;
+      }
+      if (action === "install") {
+        const installed = await snapshot();
+        if (installed.ownership.state === "unmanaged") {
+          await backend.stop(spec);
+          assertLaunchAllowed(installed);
+        }
+      }
       if (action === "start" || action === "restart") {
         const end = Date.now() + (dependencies.readyTimeoutMs ?? 30_000);
         while (true) {

@@ -135,6 +135,23 @@ test("stop and uninstall report an unmanaged instance left running", async (t) =
   }
 });
 
+test("native startup failure still diagnoses the race and attempts managed cleanup", async (t) => {
+  for (const cleanupFails of [false, true]) {
+    const home = await homeFixture(t), child = await childFixture(t);
+    let started = false, stops = 0;
+    const result = await invoke(home, {
+      inspect: async () => manager(started ? child.pid : undefined, started ? "running" : "stopped"),
+      async restart() { started = true; await liveOwner(t, home); throw new Error("SERVICE_COMMAND_FAILED"); },
+      async stop() { stops++; if (cleanupFails) throw new Error("SERVICE_STOP_FAILED"); },
+    }, "restart");
+    assert.equal(stops, 1);
+    assert.equal(result.value.error.code, "GATEWAY_HOME_OCCUPIED");
+    assert.match(result.value.error.message, /SERVICE_COMMAND_FAILED/);
+    if (cleanupFails) assert.match(result.value.error.message, /cleanup failed \(SERVICE_STOP_FAILED\)/);
+    assert.equal((await inspectProcessLock(join(home, "service.lock"))).pid, process.pid);
+  }
+});
+
 test("malformed status/lock cannot prove readiness; stale locks retain safe reclamation", async (t) => {
   const home = await homeFixture(t);
   await writeFile(join(home, "service.lock"), "broken");

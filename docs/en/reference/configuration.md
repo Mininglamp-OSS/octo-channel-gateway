@@ -23,7 +23,7 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
       "groups_enabled": false
     }
   ],
-  "context_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
+  "material_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
 }
 ```
 
@@ -33,7 +33,7 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | bots                 | Up to 64 Bots; API address plus bot_id must be unique                                                                  |
 | enabled              | false prevents all Bot registrations                                                                                   |
-| context_loading      | timeout_ms defaults to 5000 (1..30000), max_in_flight to 8 (1..32); the CLI does not load callback functions from JSON |
+| material_loading      | timeout_ms defaults to 5000 (1..30000), max_in_flight to 8 (1..32); the CLI does not load callback functions from JSON |
 | authorized_space_ids | Optional authenticated-space allowlist; explicit [] denies all spaces                                                  |
 
 Configuration file/input size is limited to 1 MiB, and each Bot configuration to 256 KiB. extraset replaces configuration; use restart after changes. Arbitrary business data does not imply Runtime understands it.
@@ -51,7 +51,8 @@ Configuration file/input size is limited to 1 MiB, and each Bot configuration to
 | agent.provider_agent_id             | OpenClaw only, selects an existing Agent; this channel defaults to main                                                   |
 | approval_mode                         | Defaults to full_access; explicitly choose ask for approvals; the default is not an isolation sandbox                     |
 | run_timeout_ms                        | Optional integer 100..86400000, execution time budget                                                                     |
-| context                               | Optional Context v3 static material/execution configuration; see the business material guide for loading and splitting    |
+| materials | Optional `{ name, parts }[]` static business material; dynamic SDK material overrides by name |
+| agent.items | Optional advanced execution items, forwarded into AgentEnv.items without entering model text |
 | stable_context_refresh_interval_turns | Positive integer, default 30; first turn and reset restart counting                                                       |
 | codex_retry                           | Codex-specific recovery switch and count/time/backoff budgets, not a generic Provider replay switch                       |
 
@@ -61,10 +62,10 @@ MCP and environment variables are optional execution settings. Configure them on
 
 Use `agent.mcp` and `agent.envs` with the public protocol payloads. Gateway validates these optional fields and compiles them into `agentEnv.items`. They are supported by both CLI configuration and the registration SDK:
 
-| Optional setting | Context override | Bot field | Output |
+| Optional setting | Advanced execution override | Bot field | Output |
 | --- | --- | --- | --- |
-| MCP | context item `octo.execution / mcp` | `agent.mcp` containing `{ mcpServers: ... }` | `agentEnv.items`: same namespace/name/payload |
-| Environment | context item `octo.execution / envs` | `agent.envs` containing `{ env_variables: [{ key, value }] }` | `agentEnv.items`: same namespace/name/payload |
+| MCP | agent.items `octo.execution / mcp` | `agent.mcp` containing `{ mcpServers: ... }` | `agentEnv.items`: same namespace/name/payload |
+| Environment | agent.items `octo.execution / envs` | `agent.envs` containing `{ env_variables: [{ key, value }] }` | `agentEnv.items`: same namespace/name/payload |
 
 The following [complete optional example](../../examples/gateway-execution.json) uses these Agent fields. It deliberately disables the Bot and omits credentials. Supply an installed MCP executable, actual project path and Bot credential before enabling it. Saving the configuration validates its shape; it does not install or launch MCP, check a remote endpoint, or prove that the selected Provider supports it.
 
@@ -106,7 +107,7 @@ The following [complete optional example](../../examples/gateway-execution.json)
 
 `mcpServers` maps server names to definitions. A `stdio` definition uses `type`, `command`, optional `args`, `env`, and `cwd`. A `streamable_http` definition uses `type`, `url`, and optional `headers`. Server definitions may also specify `required`, `startupTimeoutMs`, and `toolTimeoutMs`; support must be checked against the selected Adapter/Provider. `envs.env_variables` is a list of string key/value entries, not an arbitrary object of protocol keys. A stdio server's `env` configures that MCP process, while `envs` configures the Agent execution environment.
 
-For the SDK, static settings use the same Bot configuration. Trusted host code may also return these context items from `loadContexts`; a dynamic item replaces the entire matching namespace/name payload, rather than merging individual MCP servers or environment keys. The resulting context overrides the Agent defaults: MCP servers merge by server name, and environment entries merge by key; matching context values win. Empty context collections do not clear Agent defaults. Same-turn retries reuse frozen execution settings rather than adding newly configured servers or variables. Gateway subsequently overlays its current `OCTO_BOT_TOKEN`, `OCTO_TOKEN`, and `OCTO_API_BASE_URL`, so custom values cannot replace the current Bot's tool identity. Windows compares these environment names case-insensitively; POSIX compares them case-sensitively. Tokens, MCP headers and environment values belong only in execution settings, never business text.
+The SDK and CLI use the same Bot object. `loadMaterials` returns only model material; it cannot supply MCP, environment values or private Adapter configuration. Advanced hosts may supply `agent.items` as namespace/name/payload execution entries. These override compiled Agent defaults using protocol merge semantics (MCP by server name, environment variables by key); private items pass through without model rendering, including private namespaces resembling material names. An empty items array does not erase defaults. Same-turn retries retain frozen items. Gateway then injects its current `OCTO_BOT_TOKEN`, `OCTO_TOKEN` and `OCTO_API_BASE_URL`, which custom values cannot replace (case-insensitive on Windows). Keep tokens, MCP headers and environment values in execution settings, never materials.
 
 Business callers only supply bot.agent. Gateway compiles source, Adapter, model, approval, MCP/envs and limits into an AgentEnv containing only schema/items, with no old AgentConfig projection. OpenClaw provider_agent_id maps to agentId in the private adapter.openclaw/options item. Workspace contains only path; mode is rejected. An explicit directory must already exist and permit read/write/access. Otherwise Gateway prepares ~/octo-runtime/channels/<bot_id>. OpenClaw needs no local workspace.
 
