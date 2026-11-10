@@ -34,8 +34,9 @@ import {
   saveConfig,
   withConfigLock,
 } from "./config.js";
-import { acquireProcessLock } from "./lock.js";
-import { readStatus, serveStatus } from "./control.js";
+import { acquireProcessLock, inspectProcessLock } from "./lock.js";
+import { serveStatus } from "./control.js";
+import { assertLaunchAllowed, inspectOwnership, ownershipMessage } from "./ownership.js";
 import { showChannelLogs } from "./logs.js";
 
 export interface CliDependencies {
@@ -140,7 +141,12 @@ async function run(
   const homeStat = await lstat(home);
   if (!homeStat.isDirectory() || homeStat.isSymbolicLink())
     throw new Error("GATEWAY_HOME_INVALID");
-  const release = await acquireProcessLock(join(home, "service.lock"));
+  const release = await acquireProcessLock(join(home, "service.lock")).catch(async (error) => {
+    if (!(error instanceof Error) || error.message !== "SETUP_IN_PROGRESS") throw error;
+    const lock = await inspectProcessLock(join(home, "service.lock"));
+    throw new GatewayCommandError("GATEWAY_HOME_OCCUPIED",
+      `Home: ${home}\nOwner PID: ${lock.pid ?? "unknown"}\nAnother Gateway run owns this Home, or its lock cannot be verified. Check status --home ${JSON.stringify(home)}; stop the existing run in its terminal before retrying. Do not delete a live service.lock or gateway.sock.`);
+  });
   const registrations: ChannelRegistration[] = [];
   let logger: RuntimeLogging | undefined;
   let closeStatus: (() => Promise<void>) | undefined;
@@ -356,7 +362,7 @@ export async function runCli(
       await withConfigLock(home, () => saveConfig(home, next));
       emit(
         { saved: true, file: configFile(home), reload_required: true },
-        `Configuration saved: ${configFile(home)}\nRestart Channel Gateway to apply.`,
+        `Configuration saved: ${configFile(home)}\nRestart the active Gateway to apply. For a foreground run, stop it in its terminal (Ctrl+C) and run it again; service restart only manages the native service.`,
       );
       return 0;
     }
@@ -387,10 +393,7 @@ export async function runCli(
         ].includes(entry)),
       };
     };
-    const snapshot = async () => ({
-      service: await inspect(),
-      runtime: await readStatus(home).catch(() => ({ available: false })),
-    });
+    const snapshot = async () => inspectOwnership(home, await inspect());
     if (action === "status" || action === "doctor") {
       const status = await snapshot();
       let kernel: unknown = {
@@ -415,17 +418,24 @@ export async function runCli(
             ? { manager: await backend.probe(), kernel }
             : {}),
         },
-        `Service: ${status.service.state}\nGateway: ${"pid" in status.runtime ? "ready" : "unavailable"}${action === "doctor" ? `\nKernel: ${"execution_ready" in (kernel as object) ? ((kernel as { execution_ready: boolean }).execution_ready ? "ready" : "unready") : "unavailable"}` : ""}\nLogs: ${join(home, "logs")}`,
+        `Service: ${status.service.state}\nManaged Gateway: ${status.ownership.ready ? "ready" : "unconfirmed"}\n${ownershipMessage(status)}${action === "doctor" ? `\nKernel: ${"execution_ready" in (kernel as object) ? ((kernel as { execution_ready: boolean }).execution_ready ? "ready" : "unready") : "unavailable"}` : ""}\nLogs: ${join(home, "logs")}`,
       );
       return 0;
     }
     return await withConfigLock(home, async () => {
+      const before = await snapshot();
+      if (["install", "start", "restart"].includes(action)) assertLaunchAllowed(before);
       if (action === "install") {
         const auto = parsed.options.autostart;
         if (auto !== "true" && auto !== "false")
           throw new Error("INVALID_ARGUMENTS");
         spec = { ...spec, enabled: auto === "true" };
         await backend.install(spec);
+        const installed = await snapshot();
+        if (installed.ownership.state === "unmanaged") {
+          await backend.stop(spec);
+          assertLaunchAllowed(installed);
+        }
       } else if (action === "start") {
         // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
         const installed = await backend.inspect(spec);
@@ -444,18 +454,27 @@ export async function runCli(
       if (action === "start" || action === "restart") {
         const end = Date.now() + (dependencies.readyTimeoutMs ?? 30_000);
         while (true) {
-          try {
-            await readStatus(home);
-            break;
-          } catch {
-            if (Date.now() >= end) throw new Error("GATEWAY_UNAVAILABLE");
-            await delay(100);
+          const current = await snapshot();
+          const replaced = action !== "restart" || before.ownership.manager_pid === undefined ||
+            current.ownership.manager_pid !== before.ownership.manager_pid;
+          if (current.ownership.ready && replaced) break;
+          if (Date.now() >= end) {
+            // 允许 manager/lock/IPC 的短暂交接；截止时确认无关占用才停止本次托管启动。
+            if (current.ownership.state === "unmanaged") {
+              await backend.stop(spec);
+              assertLaunchAllowed(current);
+            }
+            throw new GatewayCommandError("GATEWAY_UNAVAILABLE",
+              `The manager accepted ${action}, but readiness of the intended ${action === "restart" ? "replacement " : ""}process was not confirmed.\n${ownershipMessage(current)}`);
           }
+          await delay(100);
         }
       }
+      const after = await snapshot();
+      const remaining = ["stop", "uninstall"].includes(action) && ["unmanaged", "unknown"].includes(after.ownership.state);
       emit(
-        { action, service: await inspect() },
-        `${action} succeeded\nLogs: ${join(home, "logs")}`,
+        { action, ...after, ...(remaining ? { warning: "GATEWAY_INSTANCE_REMAINS" } : {}) },
+        `${action} succeeded${remaining ? `; an unmanaged or unverified Gateway may remain\n${ownershipMessage(after)}` : ""}\nLogs: ${join(home, "logs")}`,
       );
       return 0;
     });

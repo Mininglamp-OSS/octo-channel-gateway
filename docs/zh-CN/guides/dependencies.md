@@ -2,6 +2,9 @@
 
 [English](../../en/guides/dependencies.md) | [文档目录](../README.md)
 
+
+Runtime 最低版本为 **1.1.13**，当前兼容范围为 **>=1.1.13 <2.0.0**。安装示例使用 `@latest` 选择 npm 当前发行版；它是安装方式，不替代最低版本要求，也不表示未来主版本自动兼容。client 和开发 Runtime 的 manifest 保持 `^1.1.13`。安装新版包不会替换已经运行的 Kernel，需通过 Runtime 自身服务命令重启。
+
 **两种模式都依赖 Runtime 执行服务。** CLI 使用已启动的 Runtime Kernel，SDK 宿主也必须提供已有 Kernel endpoint，或自行使用完整 Runtime 的公开宿主 API 创建服务。Gateway 不内置执行器，不自动安装、启动或停止 Runtime。
 
 | 依赖                                       | 用途                       | 安装责任                              |
@@ -12,7 +15,7 @@
 | Provider CLI / 工具                        | 原生模型与工具能力         | 运行 Kernel 的宿主安装配置            |
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway

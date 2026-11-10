@@ -6,10 +6,10 @@ The SDK entry point is `ChannelRegistry.register(endpoint, definition)`. The end
 
 ## Prepare Runtime first
 
-Both CLI and SDK modes require the execution service supplied by the full Runtime. When using its CLI, run:
+Both CLI and SDK modes require the execution service supplied by the full Runtime: minimum 1.1.13 in the supported 1.x line (IPC v2). Install the current release using `@latest`. When using its CLI, run:
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 ```

@@ -126,7 +126,8 @@ export async function readStatus(
         if (
           response.id !== id ||
           !response.result ||
-          typeof response.result.pid !== "number"
+          typeof response.result.pid !== "number" ||
+          !Number.isSafeInteger(response.result.pid) || response.result.pid <= 0
         )
           throw new Error("INVALID_RESPONSE");
         resolve(response.result);

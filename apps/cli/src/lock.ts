@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { link, open, readFile, rm } from "node:fs/promises";
+import { link, lstat, open, readFile, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 export async function acquireProcessLock(
   path: string,
@@ -68,12 +68,29 @@ async function readLockOwner(
   }
 }
 
-function processAlive(pid: number): boolean {
+export function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
     return isNodeError(error, "EPERM");
+  }
+}
+
+/** 只读诊断，不回收文件；无法识别的锁必须由人工检查，不能推断为失效。 */
+export async function inspectProcessLock(path: string): Promise<{
+  state: "missing" | "live" | "stale" | "unknown";
+  pid?: number;
+}> {
+  try {
+    const stat = await lstat(path);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 4096)
+      return { state: "unknown" };
+    const owner = await readLockOwner(path);
+    if (!owner) return { state: "unknown" };
+    return { state: processAlive(owner.pid) ? "live" : "stale", pid: owner.pid };
+  } catch (error) {
+    return { state: isNodeError(error, "ENOENT") ? "missing" : "unknown" };
   }
 }
 

@@ -2,7 +2,7 @@
 
 [English](../../en/getting-started/cli.md) | [文档目录](../README.md)
 
-需要 Node.js 24 或 26、已就绪的本机 Runtime Kernel、平台 Bot 与有效凭据，以及 Kernel 对应的 Provider 安装。Runtime 与 Gateway 分别维护服务和 Home。Runtime/client 1.1.13 已在 npm 发布，版本与归档验证见[依赖与发行](../guides/dependencies.md)。
+需要 Node.js 24 或 26、已就绪的本机 Runtime Kernel（最低 1.1.13，支持 1.x 系列）、平台 Bot 与有效凭据，以及 Kernel 对应的 Provider 安装。Runtime 与 Gateway 分别维护服务和 Home。Runtime/client 1.1.13 已在 npm 发布，版本与归档验证见[依赖与发行](../guides/dependencies.md)。
 
 CLI 运行时使用公开 client 的 attachKernel 连接已有 Kernel；预检、注册和 doctor 都不会创建 Kernel、Adapter 或 Engine。Gateway start/run 只管理自己的渠道进程，停止 Gateway 不关闭共享 Runtime。
 
@@ -11,7 +11,7 @@ CLI 运行时使用公开 client 的 attachKernel 连接已有 Kernel；预检�
 CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务。若使用 Runtime CLI，先执行：
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 ```

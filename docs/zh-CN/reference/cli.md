@@ -8,7 +8,7 @@
 | --------- | ----------------------------------------------------------------------- |
 | install   | 使用默认 Runtime 目录安装 Gateway 服务定义；--autostart true/false，默认 true |
 | start     | 先检查 Runtime 就绪；缺服务时安装并开启自启，然后启动并等就绪           |
-| restart   | 先检查 Runtime 就绪；重启已安装服务，缺服务不安装                       |
+| restart   | 沿用已安装服务参数，等待替代进程就绪                                    |
 | stop      | 停 Gateway，保留自启设置                                                |
 | uninstall | 移除 Gateway 服务注册，保留配置/日志                                    |
 | run       | 先检查 Runtime 就绪；前台运行，CLI 处理终止信号                         |
@@ -32,6 +32,12 @@ CLI 示例使用 `https://im.deepminer.com.cn/api`、Codex 模型 `gpt-6.1-sol`�
 未知命令、未知选项、缺少值/必需参数、多余位置参数以退出码 2 返回 `INVALID_ARGUMENTS`，并提示使用 `--help`。参数诊断不回显传入值。`--json` 失败时 stdout 仅包含结构化错误，不混入帮助。
 
 默认 `~/.octo-channel-gateway`：config.json 是 CLI 自身配置，logs 保存渠道日志，service.lock 与状态端点只用于该 Home 的服务协作。不要手工删除未知活动锁或复用 Runtime Home 作为配置目录。配置写入使用临时文件原子替换；POSIX 文件模式为 0600。
+
+`install`、`start`、`restart` 在修改原生服务前检查 Home 归属。已有前台 `run` 占用时返回 `GATEWAY_HOME_OCCUPIED`，提示 Home、所属 PID 和恢复步骤。先在该前台终端按 Ctrl+C 停止，再启动托管服务。CLI 不自动终止前台进程，也不删除其活动锁或 socket。重复 `run` 同样提示 Home 已占用；只有正常获取锁的路径会回收已确认进程死亡的锁。
+
+`status`、`doctor` 关联管理器、锁和 IPC 的 PID。JSON 增加 `ownership.state`（`managed`、`unmanaged`、`none`、`unknown`）、`manager_pid`、`lock_pid`、`runtime_pid`、`lock_state` 和 `ready`；不可用的 PID 省略。托管就绪要求管理器 running、存活锁匹配、IPC 进程匹配且报告 `phase: ready`；重启还要求管理器 PID 已替换。交接期间或管理器不提供 PID（包括当前 Windows 任务后端）时无法证明就绪：即使管理器已接受操作，start/restart 在截止后仍返回 `GATEWAY_UNAVAILABLE`，请结合 `status`、`doctor` 和原生管理器确认后重试。启动期间发现持续无关占用时，在就绪截止后停止本次尝试启动的托管服务，前台占用者不受影响。
+
+IPC 可连接不代表最新保存的 Bot 配置已加载：`ownership.config_loaded` 为 `not_verified`。前台进程需回到对应终端重启；`restart` 只控制原生服务。`stop`、`uninstall` 后若还有非托管或无法确认的实例，文本提示并在 JSON 返回 `GATEWAY_INSTANCE_REMAINS` warning。
 
 JSON 错误为 error.code / error.message。Runtime 前置条件失败的 message 给出安装、启动、doctor 与 Runtime Home 指引，不泄露底层异常正文。退出码：0 命令完成；2 INVALID/REQUIRED；3 NOT_INSTALLED；4 UNAVAILABLE；5 INCOMPLETE/DISPOSE_FAILED；其他失败 1。就绪等待默认 30 秒，失败时查看 logs。
 

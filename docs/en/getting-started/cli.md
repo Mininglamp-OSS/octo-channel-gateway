@@ -2,7 +2,7 @@
 
 [简体中文](../../zh-CN/getting-started/cli.md) | [Documentation](../README.md)
 
-Use Node.js 24 or 26, a ready local Runtime Kernel, a platform Bot with valid credentials, and the Provider installation used by the Kernel. Runtime and Gateway have separate services and Homes. Runtime/client 1.1.13 is available from npm; see [Dependencies and releases](../guides/dependencies.md) for version and archive verification.
+Use Node.js 24 or 26, a ready local Runtime Kernel (minimum 1.1.13, supported 1.x), a platform Bot with valid credentials, and the Provider installation used by the Kernel. Runtime and Gateway have separate services and Homes. Runtime/client 1.1.13 is available from npm; see [Dependencies and releases](../guides/dependencies.md) for version and archive verification.
 
 CLI execution uses the public client's attachKernel to connect to an existing Kernel. Prerequisite checks, registration and doctor never create a Kernel, Adapter or Engine. Gateway start/run manages its channel process; stopping Gateway leaves shared Runtime running.
 
@@ -11,7 +11,7 @@ CLI execution uses the public client's attachKernel to connect to an existing Ke
 Both CLI and SDK modes require the execution service supplied by the full Runtime. When using its CLI, run:
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 ```

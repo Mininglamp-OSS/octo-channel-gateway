@@ -6,10 +6,10 @@ Independent Octo IM registration SDK and service CLI. Gateway owns Bot configura
 
 ## Install
 
-Requires Node.js 24 or 26. Install and start Runtime separately; installing the client does not install or start a Kernel.
+Requires Node.js 24 or 26 and Runtime **1.1.13 or later in the supported 1.x line** (IPC v2). The installation example uses npm `@latest`; the minimum supported version remains 1.1.13. Install and start Runtime separately; installing the client does not install or start a Kernel.
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.12
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
@@ -118,6 +118,6 @@ npm run test:package
 
 `apps/cli` contains command and service management; `packages/gateway` contains the SDK and channel behavior. One npm package exports both the SDK and CLI. The full `@mininglamp-oss/octo-runtime` package is a development dependency used to launch real Kernels and exercise execution behavior in tests and manual verification. Production execution uses the independent client; installing Gateway globally does not install the full Runtime through that development dependency.
 
-The client dependency is `^1.1.12`; npm resolves it at installation or explicit update, without background upgrades or crossing into 2.x. For explicit three-package interoperability verification, run `node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz` with actual archives. Candidate-lock tooling is for manual candidate verification, not a substitute for registry-backed release lockfiles.
+The client dependency is `^1.1.13`; npm resolves it at installation or explicit update, without background upgrades or crossing into 2.x. For explicit three-package interoperability verification, run `node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz` with actual archives. Candidate-lock tooling is for manual candidate verification, not a substitute for registry-backed release lockfiles.
 
 This repository follows Mininglamp-OSS/octo-spec. Engineering plans and validation records are indexed in [.octospec](.octospec/index.md).

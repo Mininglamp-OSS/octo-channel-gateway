@@ -3,6 +3,8 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import test from "node:test";
 import { readConfig } from "../dist/apps/cli/src/config.js";
 import { readStatus, serveStatus } from "../dist/apps/cli/src/control.js";
@@ -479,13 +481,20 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     endpoint = kernel.endpoint,
     calls = [];
   let installed = false,
-    close;
+    close, child;
+  const replaceProcess = async () => {
+    if (child) { const exited = once(child, "exit"); child.kill(); await exited; }
+    child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+    await once(child, "spawn");
+    await writeFile(join(home, "service.lock"), JSON.stringify({ pid: child.pid }));
+  };
   const backend = {
     kind: "fixture",
     async inspect() {
       return {
         state: installed ? "running" : "not_installed",
         enabled: installed,
+        pid: child?.pid,
         drift: [],
       };
     },
@@ -496,8 +505,9 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     async start(spec) {
       calls.push(["start", spec]);
       await close?.();
+      await replaceProcess();
       close = await serveStatus(home, () => ({
-        pid: process.pid,
+        pid: child.pid,
         phase: "ready",
         endpoint,
         bots: [],
@@ -505,10 +515,12 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     },
     async restart(spec) {
       calls.push(["restart", spec]);
+      await replaceProcess();
     },
   };
   t.after(async () => {
     await close?.();
+    if (child) { const exited = once(child, "exit"); child.kill(); await exited; }
   });
   const invoke = (...args) =>
     runCli([...args, "--home", home], {
@@ -570,7 +582,7 @@ test("startup explains the Runtime prerequisite before changing Gateway services
         : output.join("\n");
       assert.match(
         message,
-        /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.13/,
+        /npm install -g @mininglamp-oss\/octo-runtime@latest/,
       );
       assert.match(message, /octo-runtime start/);
       assert.match(message, /octo-runtime doctor --json/);

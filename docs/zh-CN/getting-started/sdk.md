@@ -6,10 +6,10 @@ SDK 的入口是 `ChannelRegistry.register(endpoint, definition)`。endpoint 必
 
 ## 先准备 Runtime
 
-CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务。若使用 Runtime CLI，先执行：
+CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务：最低 1.1.13，支持 1.x 系列（IPC v2）。安装当前发行版使用 `@latest`。若使用 Runtime CLI，先执行：
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 ```

@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [CLI 实例归属与发布完成合同](tasks/cli-release-fixes/brief.md)：Issue 30/31/32，[实际验证与 CI 范围核对](tasks/cli-release-fixes/validation.md)。
+
 - [Runtime/client 1.1.13 迁移](tasks/runtime-client-1.1.13/brief.md)：[设计](tasks/runtime-client-1.1.13/design.md)、[实施计划](tasks/runtime-client-1.1.13/plan.md)、[实际验证](tasks/runtime-client-1.1.13/validation.md)。
 
 - [英文 PR 交付与依赖审计](tasks/issue-24-cli/pr-delivery.md)
