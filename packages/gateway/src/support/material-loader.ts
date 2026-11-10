@@ -112,7 +112,7 @@ export function createMaterialLoader(
           return mergeConfiguredMaterials(
             base as unknown as BusinessMaterial[],
             items,
-            );
+          );
         });
       pending.add(operation);
       // 跟踪真实操作，而非 race 的等待结果；迟到 reject 也必须被消费，避免未处理拒绝。

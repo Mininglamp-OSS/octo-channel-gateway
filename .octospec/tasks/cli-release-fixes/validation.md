@@ -7,7 +7,7 @@ tags: [lifecycle, release, verification]
 
 # 验证环境
 
-2026-11-10，macOS，Node 24.22.2，pnpm 11.25.0。独立 worktree `gateway-cli-release-fixes/octo-channel-gateway`，分支 `fix/cli-ownership-and-release`，main 基线 `beb804933ff34e75225645a34b1a7fd038c52ad8`。未提交、推送、创建 tag 或执行远端发布。
+2026-11-10，macOS，Node 24.22.2，pnpm 11.25.0。独立 worktree `gateway-cli-release-fixes/octo-channel-gateway`，分支 `fix/cli-ownership-and-release`，main 基线 `beb804933ff34e75225645a34b1a7fd038c52ad8`。初次实现阶段未提交或发布；用户随后授权 review、提交和创建 PR，仍不合并或发布。
 
 # 结果
 
@@ -31,3 +31,11 @@ tags: [lifecycle, release, verification]
 - 发布不修改不可变版本，tag 在上传前和 Release 更新前重新核对；恢复使用原包，dry-run 无远端写入，完成前验证 registry 和附件摘要。
 - latest 记录本次执行已观察到的最高版本并重新读取指针；两个外部系统没有原子事务，工作流串行及失败后恢复是必要条件。并发手动改指针可能使确认失败，不能承诺跨系统原子性。
 - 发布 API 使用模拟故障测试；没有真实执行 npm 上传、GitHub Release 写入或 provenance 签发。合并后的手动 dry-run/实际发布仍需等待 publish job 最终成功。
+
+# 审查后扩展与修复
+
+Spec 审查发现 P1：后端启动命令抛错绕过启动竞争后的归属检查。已修复为失败后复查，确认无关 owner 时停止本次托管重试；保留占用 PID/Home、原生失败及清理失败码。专项增加成功清理/失败清理两条分支。
+
+用户继续确认 SDK 业务材料改为 bot.materials / loadMaterials，使用 `{ name, parts }`、动态同名整项覆盖，不留 loadContexts / bot.context 兼容层；执行扩展独立 agent.items。对应接口、共享示例、README、双语入门/参考/迁移文档和既有测试已同步。新增 `scripts/verify-materials.mjs` 5 项显式专项，覆盖文本/图片、旧字段拒绝、私有执行项隔离、fallback 和同代次重试冻结/下轮重读。既有默认测试保持 588 项。完整验证及第二轮独立审查在交付前记录。
+
+最终清空 dist 后重新构建，迁移仍引用旧 loader 的默认测试夹具；没有材料时保留原渠道前缀 parts 布局。完整回归 587 通过/1 跳过；CLI/发布专项 24 项和材料专项 5 项共 29 项通过；Runtime 1.1.13 专项 9 项通过；双语文档、类型、打包及独立消费者安装通过。隐藏 getter 的 P2 在两轴分别复现、修复并定向复核，详见 [审查记录](review.md)。新增专项仍在 scripts/ 显式运行，默认测试 glob、总用例数与 CI 结构保持。

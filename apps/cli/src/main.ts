@@ -426,27 +426,27 @@ export async function runCli(
       const before = await snapshot();
       if (["install", "start", "restart"].includes(action)) assertLaunchAllowed(before);
       try {
-      if (action === "install") {
-        const auto = parsed.options.autostart;
-        if (auto !== "true" && auto !== "false")
-          throw new Error("INVALID_ARGUMENTS");
-        spec = { ...spec, enabled: auto === "true" };
-        await backend.install(spec);
-      } else if (action === "start") {
-        // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
-        const installed = await backend.inspect(spec);
-        spec = {
-          ...spec,
-          enabled: installed.state === "not_installed" ? true : installed.enabled,
-        };
-        await backend.install(spec);
-        await backend.start(spec);
-      } else if (action === "restart") {
-        // 后端重启已安装定义，不能用当前命令默认值覆盖持久化 argv。
-        await backend.restart(spec);
-      } else if (action === "stop") await backend.stop(spec);
-      else if (action === "uninstall") await backend.uninstall(spec);
-      else throw new Error("INVALID_ARGUMENTS");
+        if (action === "install") {
+          const auto = parsed.options.autostart;
+          if (auto !== "true" && auto !== "false")
+            throw new Error("INVALID_ARGUMENTS");
+          spec = { ...spec, enabled: auto === "true" };
+          await backend.install(spec);
+        } else if (action === "start") {
+          // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
+          const installed = await backend.inspect(spec);
+          spec = {
+            ...spec,
+            enabled: installed.state === "not_installed" ? true : installed.enabled,
+          };
+          await backend.install(spec);
+          await backend.start(spec);
+        } else if (action === "restart") {
+          // 后端重启已安装定义，不能用当前命令默认值覆盖持久化 argv。
+          await backend.restart(spec);
+        } else if (action === "stop") await backend.stop(spec);
+        else if (action === "uninstall") await backend.uninstall(spec);
+        else throw new Error("INVALID_ARGUMENTS");
       } catch (error) {
         // 原生 start/restart 可在抢锁失败后直接返回非零；仍须核对归属并停止托管重试。
         if (["install", "start", "restart"].includes(action)) {

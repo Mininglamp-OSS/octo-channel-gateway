@@ -18,11 +18,11 @@ export function prepareKernelInput(
   void _session;
   void _provider;
   const rendered = renderModelContexts(contexts);
-  const leading = [
+  const leading = materials.length ? [
     ...(rendered ? [{ type: "text" as const, text: rendered }] : []),
     ...materialParts(materials),
-    ...(rendered || materials.length ? [{ type: "text" as const, text: "\n\n<!-- Query Input -->\n\n" }] : []),
-  ];
+    { type: "text" as const, text: "\n\n<!-- Query Input -->\n\n" },
+  ] : rendered ? [{ type: "text" as const, text: `${rendered}\n\n<!-- Query Input -->\n\n` }] : [];
   const prefix = leading.map((part) => part.type === "text" ? part.text : "[Image]").join("\n\n");
   const instructionParts = instruction?.trim() ? [{ type: "text" as const, text: instruction }] : [];
   const primaryLeading = [...(includeInstruction ? instructionParts : []), ...leading];

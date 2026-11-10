@@ -42,6 +42,15 @@ test("materials reject old envelopes, execution fields, invalid images, duplicat
   let reads = 0;
   assert.throws(() => assertMaterials([{ name: "brief", get parts() { reads++; return []; } }]));
   assert.equal(reads, 0);
+  for (const key of ["name", "parts"]) {
+    const hidden = material("brief", "text");
+    Object.defineProperty(hidden, key, { enumerable: false, get() { reads++; return key === "name" ? "brief" : []; } });
+    assert.throws(() => assertMaterials([hidden]));
+    assert.equal(reads, 0);
+    const hiddenValue = material("brief", "text");
+    Object.defineProperty(hiddenValue, key, { enumerable: false });
+    assert.throws(() => assertMaterials([hiddenValue]));
+  }
 });
 
 test("removed public fields fail explicitly before registration and CLI configuration", async () => {

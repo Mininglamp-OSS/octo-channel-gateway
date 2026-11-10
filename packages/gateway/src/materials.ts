@@ -22,11 +22,13 @@ export function assertMaterials(value: unknown): asserts value is BusinessMateri
     const toJSON = Object.getOwnPropertyDescriptor(entry, "toJSON");
     if (toJSON && (!Object.hasOwn(toJSON, "value") || typeof toJSON.value === "function")) throw new Error("IM_MATERIAL_RESULT_INVALID");
     ancestors.add(entry);
-    for (const key in entry) {
-      if (!Object.hasOwn(entry, key)) continue;
+    for (const key of Reflect.ownKeys(entry)) {
+      if (typeof key !== "string") throw new Error("IM_MATERIAL_RESULT_INVALID");
       budget -= key.length;
       const descriptor = Object.getOwnPropertyDescriptor(entry, key)!;
-      if (!Object.hasOwn(descriptor, "value")) throw new Error("IM_MATERIAL_RESULT_INVALID");
+      if (!Object.hasOwn(descriptor, "value") ||
+        (!descriptor.enumerable && !(Array.isArray(entry) && key === "length")))
+        throw new Error("IM_MATERIAL_RESULT_INVALID");
       visit(descriptor.value, depth + 1);
     }
     ancestors.delete(entry);

@@ -29,7 +29,7 @@ source: self
 
 # 排除范围
 
-不修改渠道、SDK、AgentEnv、WebSocket、Runtime 生命周期；不实际发布或创建 tag；不新增 workflow/job/矩阵/自动触发/门禁。
+不改变消息准入、投递、WebSocket 和 Runtime 生命周期；不实际发布或创建 tag；不新增 workflow/job/矩阵/自动触发/门禁。
 
 # 验收
 
