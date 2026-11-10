@@ -73,7 +73,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          ARCHIVE="release/mininglamp-oss-octo-channel-gateway-$VERSION.tgz"
+          ARCHIVE="./release/mininglamp-oss-octo-channel-gateway-$VERSION.tgz"
           test -f "$ARCHIVE"
           if [ "$DRY_RUN" = true ]; then
             npm publish "$ARCHIVE" --ignore-scripts --access public --dry-run
