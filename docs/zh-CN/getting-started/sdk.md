@@ -4,6 +4,8 @@
 
 SDK 的入口是 `ChannelRegistry.register(endpoint, definition)`。endpoint 必须指向已启动且 execution_ready 的本机 Kernel：POSIX 使用 socket，Windows 使用 named pipe。Kernel 与所需 Adapter/Provider 的安装和启动归宿主，Gateway 不替你启动服务。
 
+本文示例对应当前实现。待迁移的 ChannelGateway 将借用宿主提供的 KernelClient，保留多次 register 添加/去重覆盖和统一 close。嵌入 CLI/Electron 必须等待清理完成；职责与无泄漏验收要求见[嵌入与关闭合同](../guides/lifecycle-and-delivery.md)，不要将目标接口混用到本文示例。
+
 ## 先准备 Runtime
 
 CLI 和 SDK 模式都依赖完整 Runtime 提供执行服务：最低 1.1.13，支持 1.x 系列（IPC v2）。安装当前发行版使用 `@latest`。若使用 Runtime CLI，先执行：

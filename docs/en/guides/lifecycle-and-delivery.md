@@ -10,6 +10,20 @@ Await registration.close when the application finishes. Close stops admission, r
 
 Aborting definition.signal triggers closure, but abort() cannot synchronously report asynchronous cleanup failure; still await close. The SDK does not own the shared Kernel or sibling registrations. CLI stop/uninstall also does not replace Runtime shutdown commands.
 
+## Embedding and shutdown contract (target API)
+
+This section specifies the planned ChannelGateway instance API; the ChannelRegistry API above does not yet implement it. See [Architecture and ownership](../concepts/architecture.md) for Runtime injection.
+
+- Keep `await gateway.register({ bot, agent })`: add or replace by stable Bot identity while running. Success means initialization completed; no separate start is required. Replacement cleans up only that identity's old binding. A brief interruption is possible; automatic restoration of the old configuration is not promised.
+- The host needs only `await gateway.close()` to clean up the whole Gateway, without registration handles or individual Bot shutdown. Close must stop message/execution admission, cancel queued registrations, coordinate initialization/replacement in progress and clean up resources that arrive late. Closed instances reject registration; repeated close calls share one Promise.
+- Successful close must release Bot sockets, reconnect/heartbeat timers, event listeners, owned executions and observers, delivery tasks, material callbacks and owned session-store handles. No background reconnect or delivery may remain. Clearing a registry or disconnecting a client alone is insufficient.
+- Failure of one cleanup step must not skip the remaining resources. Aggregate failures and unfinished items at the end. Timeout does not prove release; a host callback that ignores cancellation must be reported as unfinished. The host records errors and decides its exit policy; rejection must not be interpreted as successful cleanup.
+- Gateway manages only its own invocations. It must not call global stopAdmission/drain/close on a borrowed client, shut down a shared Kernel or close a host Engine. The host waits for Gateway cleanup before releasing owned Runtime resources. Failure of an earlier step must not skip later cleanup attempts or hide their errors.
+
+Electron should own Gateway in its main process. During normal before-quit, synchronously preventDefault and start host cleanup once; await success before allowing a second app.quit. Electron does not automatically await a listener's Promise, and closing a window does not necessarily exit the application. This coordination belongs to the host, not the SDK; no SDK waitForShutdown is needed. CLI hosts likewise await close on exit and failure paths. Forced termination, crashes and system interruption cannot guarantee callback execution and require host/Runtime recovery mechanisms. See [Electron before-quit](https://www.electronjs.org/docs/latest/api/app#event-before-quit).
+
+Migration verification must cover repeated registration and token rotation, concurrent replacement, initialization/rollback failures, register/close races, idempotent close, uncooperative cancellation and shared-client isolation. Inspect actual resources and invocation identities; process exit alone does not prove leak-free cleanup. Run focused checks explicitly locally without expanding CI.
+
 ## Execution and delivery
 
 Cancellation acknowledgement, execution terminal, resource cleanup, and message delivery are separate facts. Delivery can fail after run.completed, and delivery failure must not rerun the Provider. Preserve original invocation identity when outcomes are unknown or timed out; a missing UI result does not justify creating another execution.

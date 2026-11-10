@@ -4,6 +4,8 @@
 
 The SDK entry point is `ChannelRegistry.register(endpoint, definition)`. The endpoint must identify an existing local Kernel whose execution_ready status is true: a socket on POSIX or a named pipe on Windows. The host installs and starts the Kernel and its required Adapter/Provider; Gateway does not start it.
 
+Examples here describe the current implementation. The planned ChannelGateway borrows a host-supplied KernelClient, keeps repeated register calls for adding/replacing bindings, and provides one close operation. Embedded CLI/Electron hosts must await cleanup. See the [embedding and shutdown contract](../guides/lifecycle-and-delivery.md) for ownership and leak-prevention acceptance criteria; do not mix the target API into these examples.
+
 ## Prepare Runtime first
 
 Both CLI and SDK modes require the execution service supplied by the full Runtime: minimum 1.1.13 in the supported 1.x line (IPC v2). Install the current release using `@latest`. When using its CLI, run:

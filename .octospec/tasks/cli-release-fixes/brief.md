@@ -55,3 +55,5 @@ source: self
 # 宿主边界规范补充
 
 用户进一步确认一个 Gateway 通过循环 register 多个 Bot ↔ Agent 绑定，register 返回 Promise<void>，仅统一 close；等待退出、CLI online 主循环、Electron 退出事件、PID 和宿主控制 IPC 不进入 SDK。本次将该目标及 ChannelGateway 命名写入架构规则与双语架构文档，明确当前 ChannelRegistry 尚待迁移；不据此提前修改尚未确认具体类型的 Agent 接入参数，不把设计示例伪装成已实现 API。
+
+用户继续明确宿主负责 Runtime 接入，并要求文档约束嵌入资源清理、保留 register 且去重覆盖。目标构造改为借用公开 KernelClient，覆盖之前“Gateway 自建 client”的目标所有权；当前实现不在此次文档补充中修改。沿用平台地址与稳定 Bot ID 的身份，认证后串行替换：校验、清理旧绑定、启动新绑定；不承诺自动恢复旧配置。close 是终止边界，清理全部自建资源和自身执行，不操作共享 client 全局生命周期；失败继续清理并汇总，超时不伪装成功。新增/覆盖、并发注册关闭、晚到资源、清理失败和共享 client 隔离作为后续迁移的本地验收项，不扩大 CI。

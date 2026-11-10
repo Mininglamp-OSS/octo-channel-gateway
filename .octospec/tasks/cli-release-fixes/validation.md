@@ -39,3 +39,7 @@ Spec 审查发现 P1：后端启动命令抛错绕过启动竞争后的归属检
 用户继续确认 SDK 业务材料改为 bot.materials / loadMaterials，使用 `{ name, parts }`、动态同名整项覆盖，不留 loadContexts / bot.context 兼容层；执行扩展独立 agent.items。对应接口、共享示例、README、双语入门/参考/迁移文档和既有测试已同步。新增 `scripts/verify-materials.mjs` 5 项显式专项，覆盖文本/图片、旧字段拒绝、私有执行项隔离、fallback 和同代次重试冻结/下轮重读。既有默认测试保持 588 项。完整验证及第二轮独立审查在交付前记录。
 
 最终清空 dist 后重新构建，迁移仍引用旧 loader 的默认测试夹具；没有材料时保留原渠道前缀 parts 布局。完整回归 587 通过/1 跳过；CLI/发布专项 24 项和材料专项 5 项共 29 项通过；Runtime 1.1.13 专项 9 项通过；双语文档、类型、打包及独立消费者安装通过。隐藏 getter 的 P2 在两轴分别复现、修复并定向复核，详见 [审查记录](review.md)。新增专项仍在 scripts/ 显式运行，默认测试 glob、总用例数与 CI 结构保持。
+
+# 嵌入生命周期规范补充验证（2026-11-10）
+
+仅更新架构规则、brief 与中英文架构/SDK 入门/生命周期文档。核对已安装 client 1.1.13 的公开 KernelClient 导出及 v1.1.13 KernelService.client；参照现有 Manager 的稳定身份与串行替换行为拟定目标 register 合同。docs:check 通过：17 对页面、202 个本地链接、共享示例类型检查和 2 项现有用例；Octospec lint 通过（43 单元、4 规则、266 链接），git diff --check 通过。本次没有修改代码、测试或 workflow；文档检查不代表目标 ChannelGateway、共享 client 隔离或无泄漏合同已经实现，相关专项仍须在后续接口迁移时验证。
