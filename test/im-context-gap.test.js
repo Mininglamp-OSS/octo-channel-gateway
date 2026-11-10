@@ -284,7 +284,7 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
     undefined,
     [
       {
-        namespace: "octo.control",
+        namespace: "extra.persona",
         name: "instructions",
         payload: {
           entries: [{ text: MENTION_GUIDANCE }, { text: MENTION_GUIDANCE }],
@@ -298,10 +298,10 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
   await current.idle();
   const frozen = structuredClone(current.requests[1]);
   assert.equal(
-    frozen.agentEnv.items.find((item) => item.namespace === "octo.control")
+    modelItems(frozen).find((item) => item.namespace === "extra.persona")
       .payload.entries.length,
-    3,
-    "two explicit host copies and one Gateway default must remain distinct entries",
+    2,
+    "two explicit host copies remain unchanged; channel guidance is a separate material item",
   );
   const revision = current.binding().gap.revision;
   const fetches = current.historyCalls.length;
@@ -342,7 +342,7 @@ for (const conversationKind of ["group", "thread"]) {
           schema: "octo.context-envelope/v3",
           items: [
             {
-              namespace: "octo.control",
+              namespace: "extra.persona",
               name: "instructions",
               payload: {
                 entries: [{ text: "host persona" }, { text: "host persona" }],

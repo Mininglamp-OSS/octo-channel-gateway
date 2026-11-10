@@ -3,8 +3,8 @@ import {
   gatewayWire,
 } from "../test-support/kernel-mock.js";
 import { octoCliEnvironment } from "@mininglamp-oss/octo-channel-gateway";
+import { assertAdapterAgentEnv } from "@mininglamp-oss/octo-runtime/adapter-sdk";
 import {
-  assertInvokeRequest,
   invocationInput,
   InvokeInput,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
@@ -249,7 +249,7 @@ test("tool overrides cross real Kernel RPC and reach child tools without changin
   );
   assert.ok(!(await readFile(join(root, "logs", log), "utf8")).includes(token));
   const request = invokeRequest({
-    context,
+    agentEnv: context,
     executionEnvOverrides: octoCliEnvironment(`${base}/api`, token),
   });
   assert.equal(
@@ -262,7 +262,7 @@ test("tool overrides cross real Kernel RPC and reach child tools without changin
         ...invocationInput(request),
         executionEnvOverrides: request.executionEnvOverrides,
       }),
-    /local invoke environment/,
+    /unknown field/,
   );
   for (const invalid of [
     { env_variables: [{ key: "BAD-KEY", value: "x" }] },
@@ -276,6 +276,8 @@ test("tool overrides cross real Kernel RPC and reach child tools without changin
     { env_variables: [{ key: "X", value: "a".repeat(65536) }] },
   ])
     assert.throws(() =>
-      assertInvokeRequest({ ...request, executionEnvOverrides: invalid }),
+      assertAdapterAgentEnv({ ...request, agentEnv: { ...context, items: [
+        { namespace: "octo.execution", name: "envs", payload: invalid },
+      ] } }),
     );
 });

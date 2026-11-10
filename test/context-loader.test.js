@@ -1,4 +1,3 @@
-import { contextControlInstructions } from "@mininglamp-oss/octo-runtime-client/protocol";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -13,7 +12,7 @@ const item = (name, text) => ({
   payload: { text },
 });
 const control = (...texts) => ({
-  namespace: "octo.control",
+  namespace: "extra.persona",
   name: "instructions",
   payload: { entries: texts.map((text) => ({ text })) },
 });
@@ -40,10 +39,7 @@ test("dynamic contexts replace whole items at the base position, append in order
     ["instructions", "first", "last", "new"],
   );
   assert.equal(
-    contextControlInstructions({
-      schema: config.context.schema,
-      items: merged,
-    }),
+    merged[0].payload.entries.map(({ text }) => text).join("\n"),
     "override\noverride\n  preserved\n",
   );
   merged[1].payload.text = "changed";

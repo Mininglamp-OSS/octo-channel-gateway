@@ -4,7 +4,7 @@ export type JsonValue =
 export interface JsonObject {
   [key: string]: JsonValue;
 }
-export type RuntimeLogLevel = "info" | "warn" | "error";
+export type RuntimeLogLevel = "debug" | "info" | "warn" | "error";
 export type RuntimeLog = (
   level: RuntimeLogLevel,
   event: string,

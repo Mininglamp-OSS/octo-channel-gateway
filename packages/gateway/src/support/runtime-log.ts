@@ -8,7 +8,7 @@ import {
 } from "./service-status.js";
 import { sanitizeDiagnosticBody } from "./public-display.js";
 
-export type RuntimeLogLevel = "info" | "warn" | "error";
+export type RuntimeLogLevel = "debug" | "info" | "warn" | "error";
 export type RuntimeLog = (
   level: RuntimeLogLevel,
   event: string,
@@ -172,6 +172,16 @@ export class RuntimeLogging {
     }
     if (!this.#worker || this.#pending >= 128) return;
     try {
+      // 显式诊断开关允许完整请求（含图片和凭据）；只进入渠道日志，绝不进入状态镜像。
+      if (level === "debug") {
+        if (process.env.OCO_CHANNEL_GATEWAY_DEUBG !== "1" || source !== "channel" ||
+          channel !== "channel-gateway" || event !== "agent_run.client_input" || this.#pending >= 8) return;
+        this.#worker.postMessage({ channel, line: `${JSON.stringify({
+          time: new Date().toISOString(), level, source, event, channel_type: channel, data,
+        })}\n` });
+        this.#pending++;
+        return;
+      }
       if (
         !["info", "warn", "error"].includes(level) ||
         !/^[a-z][a-z0-9_.-]{0,63}$/.test(event)

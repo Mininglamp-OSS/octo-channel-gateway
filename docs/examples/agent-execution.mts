@@ -6,6 +6,7 @@ export const agent: ImAgentConfig = {
   workdir: "/absolute/project",
   model: "gpt-6.1-sol",
   effort: "high",
+  instruction: "Answer the current request with a concise conclusion first.",
   mcp: {
     mcpServers: {
       "project-tools": {

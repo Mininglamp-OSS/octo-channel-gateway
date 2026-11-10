@@ -62,10 +62,7 @@ export const testAdapter = {
         payload: {
           exact: { future: [1, "retained"] },
           inputs: request.modelInputParts,
-          contexts: request.context,
-          ...(request.executionEnvOverrides
-            ? { environment: request.executionEnvOverrides }
-            : {}),
+          agentEnv: request.agentEnv,
         },
       };
       yield { kind: "control", control: { type: "state", state: "completed" } };

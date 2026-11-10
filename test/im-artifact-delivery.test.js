@@ -44,7 +44,7 @@ const context = (workspace) => ({
     {
       namespace: "octo.execution",
       name: "workspace",
-      payload: { mode: "fixed", path: workspace },
+      payload: { path: workspace },
     },
   ],
 });

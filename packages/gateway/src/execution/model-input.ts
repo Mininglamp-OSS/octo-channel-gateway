@@ -1,16 +1,17 @@
-import type { ContextEnvelope } from "@mininglamp-oss/octo-runtime-client/protocol";
+import type { ContextEnvelope, ContextItem } from "@mininglamp-oss/octo-runtime-client/protocol";
 
 const MODEL_CONTEXT_PATTERNS = [/^extra\.[^/]+\/[^/]+$/, /^octo\.content\/(inline|references)$/];
 
+export function isModelContextItem(item: ContextItem): boolean {
+  return MODEL_CONTEXT_PATTERNS.some((pattern) => pattern.test(item.namespace + "/" + item.name));
+}
+
 /** 仅渲染本轮业务 Context；默认完整 JSON，显式文本格式保留原文，不修改输入。 */
 export function renderModelContexts(context: ContextEnvelope): string {
-  const items = context.items.filter((item) =>
-    MODEL_CONTEXT_PATTERNS.some((pattern) => pattern.test(item.namespace + "/" + item.name))
-  );
+  const items = context.items.filter(isModelContextItem);
   if (!items.length) return "";
   return [
     "<!-- Context information begins: the following is the current context -->",
-    "<contexts>",
     ...items.map((item) => {
       // 拆分 CDATA 终止符为相邻区段，避免材料中的标记提前结束数据边界；不解析内部内容。
       const data = (
@@ -19,13 +20,12 @@ export function renderModelContexts(context: ContextEnvelope): string {
           : JSON.stringify(sorted(item.payload))
       ).replaceAll("]]>", "]]]]><![CDATA[>");
       return [
-        `  <context-item namespace="${item.namespace}" name="${item.name}">`,
+        `  <context namespace="${item.namespace}" name="${item.name}">`,
         ...(item.guidance ? [`    <guidence>${item.guidance}</guidence>`] : []),
         `    <data><![CDATA[${data}]]></data>`,
-        "  </context-item>"
+        "  </context>"
       ].join("\n");
     }),
-    "</contexts>",
     "<!-- Context information ends -->"
   ].join("\n");
 }

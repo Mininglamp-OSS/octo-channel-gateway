@@ -11,8 +11,7 @@ import { setImmediate as settle } from "node:timers/promises";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
 import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
-import { adapters } from "../test-support/im-diagnostic-host.mjs";
-import { nativeHost } from "./native-host-fixture.js";
+import { createDiagnosticHost } from "../test-support/im-diagnostic-host.mjs";
 const event = (type, payload = {}) => ({ protocolVersion: 2, type, payload });
 const failure = () => {
   const payload = failurePayload(
@@ -231,7 +230,7 @@ for (const mode of [
     `Codex subprocess → Host/RPC → IM: ${mode}`,
     { timeout: 10000 },
     async (t) => {
-      const hosted = await nativeHost(adapters);
+      const hosted = await createDiagnosticHost();
       t.after(() => hosted.close());
       const f = await fixture(t, async function* (request, environment) {
         yield* canonicalEvents(

@@ -14,17 +14,3 @@ export function runtimeModuleUrl(name, file = "index.js") {
   const entry = require.resolve(`@mininglamp-oss/octo-runtime-${name}`);
   return pathToFileURL(join(dirname(entry), file)).href;
 }
-
-/** 仅供迁移的人工验证脚本使用已安装发行物，不依赖 Runtime checkout。 */
-export function runtimeFixtureUrl(path) {
-  const match = path.match(/^\.\.\/packages\/octo-runtime-(.+)\/dist\/(.+)$/);
-  if (match) return runtimeModuleUrl(match[1], match[2]);
-  if (path.startsWith("../apps/cli/dist/"))
-    return new URL(
-      `../../apps/cli/dist/${path.slice(17)}`,
-      import.meta.resolve("@mininglamp-oss/octo-runtime/host"),
-    );
-  if (path.startsWith("../test/fixtures/"))
-    return new URL(path, import.meta.url);
-  throw new Error("Unsupported verification fixture path");
-}

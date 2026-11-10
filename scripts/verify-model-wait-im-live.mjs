@@ -1,12 +1,10 @@
-import { runtimeFixtureUrl } from "../test-support/runtime-module.mjs";
+import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createKernelService } from "@mininglamp-oss/octo-runtime/executor-kernel";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
 import { getCardProfile } from "../dist/packages/gateway/src/transport/api/cards.js";
 import { parseOctoJson } from "../dist/packages/gateway/src/transport/api/client.js";
@@ -182,44 +180,7 @@ try {
     return response;
   };
   directory = await mkdtemp(join(tmpdir(), "octo-wait-"));
-  const manifest = join(directory, "manifest.json");
-  await writeFile(
-    manifest,
-    JSON.stringify({
-      version: 1,
-      adapters: [
-        {
-          type: realModel ? "codex" : "model-wait-fixture",
-          module: fileURLToPath(
-            runtimeFixtureUrl(
-              realModel
-                ? "../packages/octo-runtime-adapter-codex/dist/index.js"
-                : "../test/fixtures/model-wait-adapter.js",
-            ),
-          ),
-          export: realModel ? "codexAdapter" : "modelWaitAdapter",
-        },
-      ],
-    }),
-  );
-  kernel = createKernelService({
-    home: directory,
-    endpoint: join(directory, "k.sock"),
-    adapters: await (
-      await import(runtimeFixtureUrl("../apps/cli/dist/adapters.js"))
-    ).loadCliAdapters(
-      (
-        await (
-          await import(
-            runtimeFixtureUrl(
-              "../packages/octo-runtime-adapter-sdk/dist/module-manifest.js",
-            )
-          )
-        ).readModuleManifest(manifest, { legacy: true })
-      ).adapters,
-    ),
-  });
-  await kernel.initialize();
+  kernel = await createVerificationKernel({ home: directory, endpoint: join(directory, "k.sock"), adapters: realModel ? undefined : [(await import("../test/fixtures/model-wait-adapter.js")).modelWaitAdapter], });
   runtime = new ImRuntime(
     {
       bot_id: receiver.id,
@@ -237,7 +198,8 @@ try {
     },
     {
       kernel: {
-        async *invoke(input, environment) {
+        async *invoke(...args) {
+          const input = clientInput(...args);
           const entry = {
             scenario,
             at: Date.now(),
@@ -245,7 +207,7 @@ try {
             firstOutputMs: undefined,
           };
           invocations.push(entry);
-          for await (const event of kernel.client.invoke(input, environment)) {
+          for await (const event of kernel.client.invoke(...args)) {
             if (
               event.type === "message.delta" &&
               ["final", "commentary"].includes(event.payload.channel) &&
@@ -261,9 +223,9 @@ try {
             yield event;
           }
         },
-        async cancelInvocation(...args) {
+        async interrupt(...args) {
           cancellations.push({ scenario, at: Date.now() });
-          return kernel.client.cancelInvocation(...args);
+          return kernel.client.interrupt(...args);
         },
         respondInteraction: (...args) =>
           kernel.client.respondInteraction(...args),

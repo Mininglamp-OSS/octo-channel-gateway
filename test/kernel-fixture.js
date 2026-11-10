@@ -57,7 +57,6 @@ export const kernelInput = (prompt = "kernel fixture", fields = {}) =>
       prompt,
       runId: randomUUID(),
       invocationId: randomUUID(),
-      approvalMode: "full_access",
       ...fields,
     }),
     "canonical",

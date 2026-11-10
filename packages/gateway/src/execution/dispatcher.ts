@@ -3,17 +3,14 @@
  * IM 默认值、业务材料渲染与 prompt 封装均归 Gateway。
  */
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { accessSync, constants, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   assertContextEnvelope,
   mergeContext,
-  type ApprovalMode,
-  type AgentSource,
   type ContextEnvelope,
   type ContextItem,
-  type ContextInstructionsPayload,
   type InvokeInput,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImBotConfig, ImInboundMessage, ImSession } from "../contracts.js";
@@ -32,12 +29,12 @@ import { modelHistoryContexts } from "../application/history-context.js";
 /** Gateway 内部准备稿，业务 Context 在跨 client 边界前转成模型 parts。 */
 export type ImInvocationInput = Omit<InvokeInput, "agentEnv"> & {
   contexts: ContextEnvelope;
-  agentSource: AgentSource;
-  approvalMode: ApprovalMode;
   runId: string;
   invocationId: string;
   sessionId: string;
   protocol_mode: "canonical";
+  instruction?: string;
+  includeInstruction?: boolean;
 };
 export function createImInvocation(
   config: ImBotConfig,
@@ -81,6 +78,8 @@ export function createImInvocation(
   const submittedWorkspace = context.items.find(
     (item) => item.namespace === "octo.execution" && item.name === "workspace",
   );
+  if (submittedWorkspace && Object.keys(submittedWorkspace.payload).some((key) => key !== "path"))
+    throw new Error("IM_AGENT_WORKSPACE_INVALID");
   if (submittedWorkspace && submittedWorkspace.payload.path !== workdir)
     throw new Error("IM_AGENT_WORKDIR_FIXED");
   const defaults: ContextEnvelope = {
@@ -98,11 +97,13 @@ export function createImInvocation(
         name: "adapter",
         payload: {
           type: config.agent.adapter_type ?? "codex",
-          ...(config.agent.adapter_type === "openclaw"
-            ? { provider_agent_id: config.agent.provider_agent_id ?? "main" }
-            : {}),
         },
       },
+      { namespace: "octo.execution", name: "agent", payload: { source: agentSource } },
+      ...(selectedAdapter === "openclaw" ? [{
+        namespace: "adapter.openclaw", name: "options",
+        payload: { agentId: config.agent.provider_agent_id ?? "main" },
+      }] : []),
       {
         namespace: "octo.security",
         name: "approval_policy",
@@ -125,7 +126,7 @@ export function createImInvocation(
             {
               namespace: "octo.execution",
               name: "workspace",
-              payload: { mode: "fixed", path: workdir },
+              payload: { path: workdir },
             },
           ]
         : []),
@@ -148,35 +149,20 @@ export function createImInvocation(
     ],
   };
   // Gateway 先冻结内部业务快照，调用前分离执行环境与模型材料。
-  // 宿主已先解析静态/动态 Context；渠道默认指令仅在刷新轮与有效 entries 保序组合。
-  // 不改变公共 mergeContext 或动态人设替换合同，也不把上一轮的组合结果累积回来。
+  // 宿主已先解析静态/动态 Context；渠道说明作为普通材料在刷新轮追加。
   let submitted = context;
   // 同代次卡片重试已从 occurrence 取得组合后的冻结快照，不能再次追加或按文本去重。
   if (!message.historyRetry && refreshStableContext) {
-    const instructions = context.items.find(
-      (item) =>
-        item.namespace === "octo.control" && item.name === "instructions",
-    );
     const channelInstructions = {
-      namespace: "octo.control",
-      name: "instructions",
-      payload: {
-        entries: [
-          ...((
-            instructions?.payload as unknown as
-              ContextInstructionsPayload | undefined
-          )?.entries ?? []),
-          { text: MENTION_GUIDANCE },
-        ],
-      },
+      namespace: "extra.im",
+      name: "mention-guidance",
+      data_format: "text" as const,
+      payload: { text: MENTION_GUIDANCE },
     };
     submitted = {
       schema: context.schema,
-      items: instructions
-        ? context.items.map((item) =>
-            item === instructions ? channelInstructions : item,
-          )
-        : [...context.items, channelInstructions],
+      items: [...context.items.filter((item) =>
+        !(item.namespace === "extra.im" && item.name === "mention-guidance")), channelInstructions],
     };
   }
   submitted = { ...submitted, items: submitted.items.map(modelRulesContext) };
@@ -319,13 +305,12 @@ export function createImInvocation(
     ...(session.sessionName ? { sessionName: session.sessionName } : {}),
     sessionGeneration: session.generation,
     providerEpoch: session.generation,
-    agentSource,
     inputs: [{ type: "text", text: prompt }],
     contexts: snapshot,
-    approvalMode: snapshot.items.find(
-      (item) =>
-        item.namespace === "octo.security" && item.name === "approval_policy",
-    )?.payload.mode as ApprovalMode,
+    ...(config.agent.instruction?.trim() ? {
+      instruction: config.agent.instruction,
+      includeInstruction: !session.providerSession?.sessionId || session.providerSession.resumable === false,
+    } : {}),
     ...(session.providerSession
       ? { providerSession: session.providerSession }
       : {}),
@@ -347,6 +332,14 @@ export function createImInvocation(
     workdir === defaultWorkdir
   )
     mkdirSync(defaultWorkdir, { recursive: true, mode: 0o700 });
+  if (agentSource === "provisioned" && workdir) {
+    try {
+      if (!statSync(workdir).isDirectory()) throw new Error("not a directory");
+      accessSync(workdir, constants.R_OK | constants.W_OK | constants.X_OK);
+    } catch {
+      throw new Error("IM_AGENT_WORKDIR_UNAVAILABLE");
+    }
+  }
   session.lastEventId = eventId;
   session.lastRunId = runId;
   return {

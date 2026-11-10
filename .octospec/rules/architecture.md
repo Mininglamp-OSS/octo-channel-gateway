@@ -24,8 +24,8 @@ supersedes: []
 
 保留迁移前准入、身份/代次、重试预算、投递、上下文和会话语义。取消 ACK 不等于终态，终态不等于投递成功，观察中断不自动重放。
 
-工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，不记录凭据。知识 Markdown 须有 type/title/description/tags。CI 按 ci-release 任务覆盖测试、文档、依赖和打包；真实外部服务专项仍显式运行。
+工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，默认不记录凭据。用户明确启用 `OCO_CHANNEL_GATEWAY_DEUBG=1` 时，允许完整 client 输入仅进入渠道 debug 日志（含图片和凭据），不得进入状态镜像。知识 Markdown 须有 type/title/description/tags。CI 按 ci-release 任务覆盖测试、文档、依赖和打包；真实外部服务专项仍显式运行，不扩大既有 CI 范围。
 
 ## agentEnv 合同
 
-公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务材料只在 Gateway 转为模型 parts；执行信封只承载环境配置，凭据不进入正文。使用 1.1.12 起的公开 client 与 IPC v2；不保留旧 request/contexts/signal 兼容层。
+公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务只提供 `bot.agent`，Gateway 编译为仅 schema/items 的 AgentEnv；非模型项不透明透传，凭据不进入正文。`agent.instruction` 为新 Provider 会话首轮和 fresh fallback 的普通文本前缀。模型材料选取规则保持，只更改 context 外层表示。使用 1.1.13 起的公开 client 与 IPC v2；不保留旧 request/contexts/signal、instructions 或配置投影兼容层。

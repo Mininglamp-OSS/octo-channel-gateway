@@ -29,6 +29,8 @@ export interface ImPositionObservation {
 }
 
 export interface ImAgentConfig {
+  /** 新 Provider 会话首轮的输入前缀；普通续聊不重复，恢复稿复用本轮快照。 */
+  instruction?: string;
   /** 可选执行配置，按公开协议编译为 agentEnv，不进入模型输入。 */
   mcp?: { mcpServers: McpServers };
   envs?: ContextEnvsPayload;

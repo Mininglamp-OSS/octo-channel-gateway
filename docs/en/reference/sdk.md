@@ -16,7 +16,7 @@ Import the primary entry from `@mininglamp-oss/octo-channel-gateway`. Protocol t
 | credentials             | Optional async (config, signal) → string or undefined; defaults to bf_token                                   |
 | authorizeSpace          | Optional synchronous (spaceId) → void; throw to deny; spaceId comes from authenticated identity               |
 | createSessionStore      | Optional synchronous (config) → ImSessionStore; host owns the database, registration owns the returned handle |
-| log                     | Optional (level, message, fields?); consume redacted events without adding secrets                            |
+| log                     | Optional (level, message, fields?); redacted by default; the explicit debug switch supplies full requests including images and credentials, as described in the configuration reference |
 | signal                  | Optional revocation of the whole registration, not an invoke argument                                         |
 
 ## ChannelRegistration

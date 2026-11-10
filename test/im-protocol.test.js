@@ -749,18 +749,18 @@ test("Empty Context remains empty and per-run snapshots do not mutate the caller
       .text,
     "original",
   );
-  assert.deepEqual(second.context, first.context);
+  assert.deepEqual(second.agentEnv, first.agentEnv);
   assert.notEqual(second.runId, first.runId);
   assert.equal(first.prompt, "request");
-  assert.ok(first.modelInput.endsWith("request"));
-  assert.equal(first.approvalMode, "full_access");
+  assert.equal(first.modelInputParts.at(-1).text, "request");
+  assert.equal(first.agentEnv.items.find((item) => item.name === "approval_policy").payload.mode, "full_access");
 });
 
 test("Channel public input keeps automatic material budget fallback without dropping explicit items", () => {
   const context = {
     schema: "octo.context-envelope/v3",
     items: [
-      ...Array.from({ length: 24 }, (_, i) => ({
+      ...Array.from({ length: 23 }, (_, i) => ({
         namespace: "extra.business",
         name: `item-${i}`,
         payload: {},
@@ -800,13 +800,13 @@ test("Channel public input keeps automatic material budget fallback without drop
   assert.equal(
     request.contexts.items.filter((item) => item.namespace === "extra.business")
       .length,
-    24,
+    23,
   );
   assert.equal(
     request.contexts.items.some((item) => item.name === "history"),
     false,
   );
-  assert.equal(context.items.length, 25);
+  assert.equal(context.items.length, 24);
   context.items.at(-1).payload.automatic = false;
   assert.throws(create, /CONTEXT_BUDGET_EXCEEDED/);
 });
@@ -823,7 +823,7 @@ test("Execution choices preserve the fixed IM Agent directory without entering r
       {
         namespace: "octo.execution",
         name: "workspace",
-        payload: { mode: "fixed", path: "/tmp" },
+        payload: { path: "/tmp" },
       },
       {
         namespace: "octo.execution",
@@ -851,12 +851,13 @@ test("Execution choices preserve the fixed IM Agent directory without entering r
     new AbortController().signal,
   );
   assert.equal(adapterType, "claude-code");
-  assert.equal(request.agentConfig.model, "model");
-  assert.equal(request.agentConfig.effort, "high");
-  assert.equal(request.workdir, "/tmp");
-  assert.equal(request.approvalMode, "assisted");
+  const bean = (name) => request.agentEnv.items.find((item) => item.name === name).payload;
+  assert.equal(bean("model").selection.id, "model");
+  assert.equal(bean("model").reasoning.effort, "high");
+  assert.equal(bean("workspace").path, "/tmp");
+  assert.equal(bean("approval_policy").mode, "assisted");
   assert.equal(request.prompt, "request");
-  assert.ok(request.modelInput.endsWith("request"));
+  assert.equal(request.modelInputParts.at(-1).text, "request");
   context.items.find((item) => item.name === "workspace").payload.path =
     "/tmp/other";
   assert.throws(

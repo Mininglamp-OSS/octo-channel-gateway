@@ -4,8 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { nativeHost } from "../test/native-host-fixture.js";
-import { createRetryAdapters } from "../test-support/im-retry-live-host.mjs";
+import { createRetryKernel } from "../test-support/im-retry-live-host.mjs";
 import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
 import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
 import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
@@ -56,11 +55,10 @@ const config = {
 let task;
 let failure;
 try {
-  native = await nativeHost(
-    createRetryAdapters(`http://127.0.0.1:${server.address().port}/v1`),
-  );
-  const rpc = native.kernel.client;
-  await rpc.list();
+  native = await createRetryKernel({ home: directory, endpoint: join(directory, "kernel.sock"),
+    faultUrl: `http://127.0.0.1:${server.address().port}/v1` });
+  const rpc = native.client;
+  await rpc.status();
   const { request } = createImInvocation(
     config,
     {
@@ -74,16 +72,16 @@ try {
     { id: `as_${randomUUID()}`, generation: 1 },
     AbortSignal.timeout(180000),
   );
-  assert.equal(request.runtimeLimits.runTimeoutMs, 86400000);
+  assert.equal(request.contexts.items.find((item) => item.name === "limits").payload.run_timeout_ms, 86400000);
   let firstFailure;
   const host = {
-    async *invoke(input, environment) {
-      for await (const event of rpc.invoke(input, environment)) {
+    async *invoke(...args) {
+      for await (const event of rpc.invoke(...args)) {
         if (event.type === "run.failed") firstFailure ??= event.payload.message;
         yield event;
       }
     },
-    cancelInvocation: (id, reason) => rpc.cancelInvocation(id, reason),
+    interrupt: (id, reason) => rpc.interrupt(id, reason),
   };
   task = new ImTask(host, request, "codex", config, {}, () => {});
   let terminal,

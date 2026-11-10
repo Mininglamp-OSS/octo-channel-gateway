@@ -9,12 +9,12 @@
 start/run 在修改服务或启动前台注册前通过公开 client 查询 execution_ready。CLI 从 start/run --runtime-home 参数推导 Kernel 地址（默认 ~/.octo-runtime）；restart 沿用已安装定义，由实际 run 进程检查就绪；连接失败、协议不匹配或未就绪返回 KERNEL_UNAVAILABLE。普通输出和 JSON error.message 都附安装、启动、诊断及 Runtime Home 指引。
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.12
+npm install -g @mininglamp-oss/octo-runtime@^1.1.13
 octo-runtime start
 octo-runtime doctor --json
 ```
 
-使用已发布的 Runtime/client 1.1.12 或受支持的匹配版本；不要安装不支持 IPC v2 的旧版本。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
+使用已发布的 Runtime/client 1.1.13 或受支持的匹配版本；不要安装不支持 IPC v2 的旧版本。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
 
 ## 常见故障
 
@@ -36,3 +36,5 @@ octo-channel-gateway logs --lines 200
 ```
 
 doctor 退出 0 只表示检查完成。不要提交包含凭据的 extraget 输出、完整 agentEnv 或原始工具输出。关联诊断用 bot_id、sessionId、invocationId、runId 与代次；含义见[身份参考](../concepts/identifiers.md)。
+
+需要核对实际 client 请求时，可在启动 Gateway 的进程环境中设置 OCO_CHANNEL_GATEWAY_DEUBG=1；完整图片和凭据进入渠道原始 debug 日志，见[配置参考](../reference/configuration.md)。logs 命令读取状态镜像，不展示这些完整请求；直接查看 Gateway Home 下 logs/channels/channel-gateway-YYYYMMDDTHH.log。诊断后移除开关，不分享原始敏感日志。

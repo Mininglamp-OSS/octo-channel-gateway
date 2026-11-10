@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [Runtime/client 1.1.13 迁移](tasks/runtime-client-1.1.13/brief.md)：[设计](tasks/runtime-client-1.1.13/design.md)、[实施计划](tasks/runtime-client-1.1.13/plan.md)、[实际验证](tasks/runtime-client-1.1.13/validation.md)。
+
 - [英文 PR 交付与依赖审计](tasks/issue-24-cli/pr-delivery.md)
 
 - [Runtime 命令行连接与 cross-service](tasks/runtime-cli-attachment/brief.md)：[实际验证与全局安装](tasks/runtime-cli-attachment/validation.md)

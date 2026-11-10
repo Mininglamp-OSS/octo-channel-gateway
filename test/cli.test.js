@@ -570,7 +570,7 @@ test("startup explains the Runtime prerequisite before changing Gateway services
         : output.join("\n");
       assert.match(
         message,
-        /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.12/,
+        /npm install -g @mininglamp-oss\/octo-runtime@\^1\.1\.13/,
       );
       assert.match(message, /octo-runtime start/);
       assert.match(message, /octo-runtime doctor --json/);

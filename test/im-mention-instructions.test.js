@@ -1,8 +1,6 @@
 import { modelItems } from "../test-support/kernel-mock.js";
 import { gatewayWire } from "../test-support/kernel-mock.js";
 import { kernelMock } from "../test-support/kernel-mock.js";
-import { contextControlInstructions } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
@@ -21,7 +19,7 @@ const config = {
   agent: { adapter_type: "codex", workdir: process.cwd() },
 };
 const control = (...texts) => ({
-  namespace: "octo.control",
+  namespace: "extra.persona",
   name: "instructions",
   payload: { entries: texts.map((text) => ({ text })) },
 });
@@ -49,15 +47,11 @@ test("Gateway supplies English stable instructions on fresh sessions, including 
   for (const items of [[], [control()]]) {
     const request = invoke({ schema, items });
     assert.equal(
-      contextControlInstructions(request.contexts),
+      modelItems(gatewayWire(request)).find((item) => item.name === "mention-guidance").payload.text,
       MENTION_GUIDANCE,
     );
     assert.equal(
-      prepareInvokeInput(gatewayWire(request)).request.controlInstructions,
-      MENTION_GUIDANCE,
-    );
-    assert.equal(
-      request.contexts.items.filter((item) => item.namespace === "octo.control")
+      request.contexts.items.filter((item) => item.name === "mention-guidance")
         .length,
       1,
     );
@@ -83,15 +77,14 @@ test("Gateway appends defaults after effective host entries without deduplicatio
   for (const providerSession of [undefined, resumed]) {
     const request = invoke(context, providerSession);
     const instructions = request.contexts.items.find(
-      (item) => item.namespace === "octo.control",
+      (item) => item.namespace === "extra.persona",
     );
     assert.deepEqual(instructions.payload.entries, [
       ...original.items[1].payload.entries,
-      ...(providerSession ? [] : [{ text: MENTION_GUIDANCE }]),
     ]);
     assert.equal(
-      contextControlInstructions(request.contexts),
-      `persona\npersona\n  keep\nwhitespace  ${providerSession ? "" : `\n${MENTION_GUIDANCE}`}`,
+      modelItems(gatewayWire(request)).filter((item) => item.name === "mention-guidance").length,
+      providerSession ? 0 : 1,
     );
     assert.equal(
       request.providerSession?.sessionId,
@@ -123,8 +116,8 @@ test("dynamic host instructions replace the host persona before channel defaults
       const items = await loader.load(hostConfig, signal);
       const request = invoke({ schema, items });
       assert.equal(
-        contextControlInstructions(request.contexts),
-        `${text}\n${MENTION_GUIDANCE}`,
+        modelItems(gatewayWire(request)).find((item) => item.namespace === "extra.persona").payload.entries[0].text,
+        text,
       );
       assert.deepEqual(items, [control(text)]);
     }
@@ -243,12 +236,12 @@ test("application omits stable instructions on ordinary resumed turns and refres
   assert.equal(requests[2].providerSession, undefined);
   for (const index of [0, 2])
     assert.equal(
-      contextControlInstructions({ schema: requests[index].agentEnv.schema, items: requests[index].agentEnv.items }),
-      `host persona\n${MENTION_GUIDANCE}`,
+      modelItems(requests[index]).find((item) => item.name === "mention-guidance").payload.text,
+      MENTION_GUIDANCE,
     );
   assert.equal(
-    contextControlInstructions({ schema: requests[1].agentEnv.schema, items: requests[1].agentEnv.items }),
-    "host persona",
+    modelItems(requests[1]).some((item) => item.name === "mention-guidance"),
+    false,
   );
   assert.equal(
     modelItems(requests[1]).some(
