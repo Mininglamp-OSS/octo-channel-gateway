@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { AgentExecutor } from "@mininglamp-oss/octo-runtime/executor-core";
-import { createCodexAdapter } from "@mininglamp-oss/octo-runtime/adapters/codex";
+import { createVerificationCodex } from "../test-support/verification-kernel.mjs";
+import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
 import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
 import {
   planHistoryGap,
@@ -48,7 +49,7 @@ const workdir =
   (await mkdtemp(join(tmpdir(), "octo-intent-")));
 const host = new AgentExecutor();
 let prepared;
-const adapter = createCodexAdapter({
+const ownedCodex = await createVerificationCodex({
   spawnFn(command, args, options) {
     // 禁用非评估所需的配置扩展；认证继续使用宿主已有配置，不读取或记录其内容。
     return spawn(
@@ -58,12 +59,14 @@ const adapter = createCodexAdapter({
     );
   },
 });
+const adapter = ownedCodex.adapter;
 host.register({
   ...adapter,
-  async *invoke(request, context) {
+  createExecutionScope() {
+    const scope = adapter.createExecutionScope();
+    return { ...scope, async *invoke(request, context) {
     if (prepared) {
       prepared.modelInputHash = hash(request.modelInput);
-      prepared.controlHash = hash(request.controlInstructions);
       prepared.providerResumeRequested = Boolean(request.providerSession);
       prepared.normalizedModelInputHash = hash(
         request.modelInput.replaceAll(workdir, "<evaluation-workspace>"),
@@ -79,8 +82,8 @@ host.register({
       }
       prepared.materialInputHash = hash(material);
     }
-    yield* adapter.invoke(request, context);
-  },
+    yield* scope.invoke(request, context);
+  } }; },
 });
 const server = createServer(async (request, response) => {
   const sample = selected.find((entry) =>
@@ -168,7 +171,9 @@ await writeFile(
 
 async function run(request, result) {
   prepared = result;
-  for await (const event of host.invoke(request, {
+  const { inputs: { parts, ...metadata }, agentEnv } = prepareKernelInput(request);
+  for await (const event of host.invoke({ ...metadata, inputs: parts, agentEnv,
+    sessionId: request.sessionId, ...(request.providerSession ? { providerSession: request.providerSession } : {}) }, {
     signal: AbortSignal.timeout(90000),
   })) {
     if (event.type === "message.delta" && event.payload.channel === "final")
@@ -359,7 +364,8 @@ try {
   }
 } finally {
   try {
-    assert.equal((await host.shutdown()).cleanup, "complete");
+    try { assert.equal((await host.shutdown()).cleanup, "complete"); }
+    finally { assert.equal((await ownedCodex.close()).complete, true); }
   } finally {
     server.closeAllConnections();
     await new Promise((done) => server.close(done));

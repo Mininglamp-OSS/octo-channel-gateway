@@ -16,7 +16,7 @@
 | credentials            | 可选 async (config, signal) → string 或 undefined；省略时读 bf_token |
 | authorizeSpace         | 可选同步 (spaceId) → void；不允许时抛错，spaceId 来自认证结果        |
 | createSessionStore     | 可选同步 (config) → ImSessionStore；宿主拥有数据库，注册拥有返回句柄 |
-| log                    | 可选 (level, message, fields?)；处理脱敏事件，勿自行加入秘密         |
+| log                    | 可选 (level, message, fields?)；默认脱敏；显式调试开关会收到含图片和凭据的完整请求，见配置参考 |
 | signal                 | 可选，撤销整个注册生命周期，不是 invoke 参数                         |
 
 ## ChannelRegistration

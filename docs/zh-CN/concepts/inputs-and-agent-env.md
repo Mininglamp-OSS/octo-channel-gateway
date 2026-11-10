@@ -6,12 +6,12 @@
 
 | 数据                                                              | 所属位置        | 如何使用                                         |
 | ----------------------------------------------------------------- | --------------- | ------------------------------------------------ |
-| 本轮文字、图片、历史、业务规则和资料                              | inputs          | Gateway 准备实际模型材料                         |
-| cwd/workdir、Adapter、model/effort、环境变量、MCP、审批、受信指令 | agentEnv        | Kernel/Core 解析执行配置，不作为普通业务文本拼接 |
+| 本轮文字、图片、历史、业务规则、资料和首轮 instruction | inputs | Gateway 准备实际模型材料 |
+| cwd/workdir、Adapter、model/effort、环境变量、MCP、审批和私有执行参数 | agentEnv | Adapter 解释消费的配置，Kernel/Core 不生成旧配置投影 |
 | 逻辑会话标识                                                      | sessionId       | 业务关联与代次管理                               |
 | Provider 原生续聊信息                                             | providerSession | Adapter 判断和执行续聊                           |
 
-agentEnv 保留 `schema: octo.context-envelope/v3` 与 items 的 namespace/name/payload 格式，也承载高级执行配置。这里固定的是协议结构，不是禁止宿主在后续调用改变设置；client 为每次调用复制快照，已经开始的一轮不随原对象修改。
+agentEnv 仅含 `schema: octo.context-envelope/v3` 与 items 的 namespace/name/payload 格式。source 使用 octo.execution/agent，审批使用 octo.security/approval_policy，workspace 只有 path；私有 bean 由宿主与 Adapter 约定，无需公共 schema 登记。业务仍填写 bot.agent，由 Gateway 编译；client 为每次调用复制快照，已经开始的一轮不随原对象修改。
 
 ## 当前 Gateway 编译过程
 

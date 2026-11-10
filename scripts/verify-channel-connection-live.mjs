@@ -122,7 +122,7 @@ try {
   };
   invalid = new ImRuntime(
     { ...config, bf_token: "bf_invalid_connection_verification" },
-    { host: {} },
+    { kernel: {} },
   );
   const before = authAttempts;
   await invalid.start();
@@ -139,7 +139,7 @@ try {
   runtime = new ImRuntime(
     { ...config, allowed_sender_ids: [sender.id] },
     {
-      host: {
+      kernel: {
         async *invoke() {
           calls.push(marker);
           yield {
@@ -149,7 +149,7 @@ try {
           };
           yield { protocolVersion: 2, type: "run.completed", payload: {} };
         },
-        cancel: async () => ({ cancelled: true }),
+        interrupt: async () => ({ accepted: true }),
         respondInteraction: async () => {},
       },
     },

@@ -30,3 +30,7 @@ extraset 是完整替换，不是 patch；extraget 原样输出凭据。不要�
 Runtime 连接只使用命令参数 `start/run --runtime-home <path>`，默认 `~/.octo-runtime`。不要在业务配置中放入 `runtime_home`、`endpoint` 或 `runtime_endpoint`；重启所需启动参数由原生服务定义保存。SDK 的 endpoint 参数保持原义。
 
 Bot 执行配置使用 `agent.adapter_type`，model、effort、workdir 同属 `agent`。旧外层 `adapter` 字段和 `ImAdapterConfig` 类型替换为 `agent`、`ImAgentConfig`，不做兼容转换。
+
+## Runtime/client 1.1.13
+
+生产 client 和开发 Runtime 依赖均为 ^1.1.13。保留 Gateway 自己的 bot.agent/ImAgentConfig；上游删除的 AgentConfig 不再生成。旧 octo.control/instructions 配置须改为 agent.instruction 或普通业务材料；workspace.mode 须移除，仅保留已准备目录的 path。Context 格式改为注释边界和逐项 context 标签，选取规则保持。私有执行 item 原样到 Adapter，OpenClaw agentId 位于 adapter.openclaw/options。没有旧协议兼容层，详见[输入与执行环境](../concepts/inputs-and-agent-env.md)和[配置参考](../reference/configuration.md)。

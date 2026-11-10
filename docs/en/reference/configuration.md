@@ -47,6 +47,7 @@ Configuration file/input size is limited to 1 MiB, and each Bot configuration to
 | agent.adapter_type                  | Adapter selection; explicit configuration and a matching Kernel Provider installation are recommended                     |
 | agent.workdir                       | Optional absolute local path; not accepted by OpenClaw                                                                    |
 | agent.model / effort                | Provider model/reasoning selection; actual support is Adapter-specific                                                    |
+| agent.instruction | Optional ordinary prompt; first part of a fresh Provider session, omitted on continuation and frozen for reset/fresh fallback |
 | agent.provider_agent_id             | OpenClaw only, selects an existing Agent; this channel defaults to main                                                   |
 | approval_mode                         | Defaults to full_access; explicitly choose ask for approvals; the default is not an isolation sandbox                     |
 | run_timeout_ms                        | Optional integer 100..86400000, execution time budget                                                                     |
@@ -107,7 +108,15 @@ The following [complete optional example](../../examples/gateway-execution.json)
 
 For the SDK, static settings use the same Bot configuration. Trusted host code may also return these context items from `loadContexts`; a dynamic item replaces the entire matching namespace/name payload, rather than merging individual MCP servers or environment keys. The resulting context overrides the Agent defaults: MCP servers merge by server name, and environment entries merge by key; matching context values win. Empty context collections do not clear Agent defaults. Same-turn retries reuse frozen execution settings rather than adding newly configured servers or variables. Gateway subsequently overlays its current `OCTO_BOT_TOKEN`, `OCTO_TOKEN`, and `OCTO_API_BASE_URL`, so custom values cannot replace the current Bot's tool identity. Windows compares these environment names case-insensitively; POSIX compares them case-sensitively. Tokens, MCP headers and environment values belong only in execution settings, never business text.
 
-Application instructions are business prompts and should be assembled into `inputs.parts` by Gateway. Removal of the current special Runtime instructions protocol is tracked in [Runtime #334](https://github.com/Mininglamp-OSS/octo-runtime/issues/334); caller-owned path-only workspaces are tracked in [Runtime #335](https://github.com/Mininglamp-OSS/octo-runtime/issues/335). The MCP/envs mapping is implemented here; the instructions and workspace protocol migrations remain separate work.
+Business callers only supply bot.agent. Gateway compiles source, Adapter, model, approval, MCP/envs and limits into an AgentEnv containing only schema/items, with no old AgentConfig projection. OpenClaw provider_agent_id maps to agentId in the private adapter.openclaw/options item. Workspace contains only path; mode is rejected. An explicit directory must already exist and permit read/write/access. Otherwise Gateway prepares ~/octo-runtime/channels/<bot_id>. OpenClaw needs no local workspace.
+
+## Complete request debug logging
+
+The process environment variable `OCO_CHANNEL_GATEWAY_DEUBG=1` (spelled exactly as shown) enables the `agent_run.client_input` debug event before each client call. It records complete inputs and agentEnv, including fallback parts, image mimeType/data/byteSize/sha256 and tool credentials. Base64 remains complete, without placeholders or truncation. CLI writes to the existing channels/channel-gateway-YYYYMMDDTHH.log file; SDK consumers receive it through the optional log callback, remaining silent without a callback. Other variable values do not emit this event. It never enters status mirrors.
+
+Set the variable in the actual Gateway process environment. For foreground use, run `OCO_CHANNEL_GATEWAY_DEUBG=1 octo-channel-gateway run`. For a service manager, configure the service environment; temporary shell variables are not automatically written into an installed service definition.
+
+This explicit mode writes prompts, images, private configuration and credentials to logs. Existing hourly 100 MiB capacity and retention rules apply. Debug records are dropped whole when eight records are pending, preserving complete JSON; logging failures do not affect execution. Remove the variable after diagnosis.
 
 ## Admission and delivery
 

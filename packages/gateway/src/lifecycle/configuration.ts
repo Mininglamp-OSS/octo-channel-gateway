@@ -46,6 +46,8 @@ export function validateImConfig(config: ImBotConfig): void {
   const agent = config.agent;
   if (!agent || typeof agent !== "object" || Array.isArray(agent))
     throw new Error("IM_AGENT_REQUIRED");
+  if (agent.instruction !== undefined && typeof agent.instruction !== "string")
+    throw new Error("IM_AGENT_INSTRUCTION_INVALID");
   // 协议错误可能包含用户填写的键或地址；只返回稳定诊断码。
   if (agent.mcp !== undefined) {
     try { assertContextMcp(agent.mcp); }

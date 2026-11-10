@@ -1,4 +1,5 @@
-import { gatewayWire } from "../test-support/kernel-mock.js";
+import { gatewayWire, modelItems } from "../test-support/kernel-mock.js";
+import { invocationRuntimeLimits } from "@mininglamp-oss/octo-runtime/adapter-sdk";
 import { kernelMock, invokeWire } from "../test-support/kernel-mock.js";
 import {
   KernelError,
@@ -190,15 +191,14 @@ test("an exhausted stream without a terminal records unknown rather than running
 
 test("IM defaults to one day, accepts explicit long and short limits, validates retry options", () => {
   const f = fixture(async function* () {});
-  assert.equal(f.request.runtimeLimits.runTimeoutMs, 86_400_000);
-  assert.equal(f.request.runtimeLimits.toolTimeoutMs, 86_400_000);
-  assert.equal(f.request.runtimeLimits.firstFrameTimeoutMs, 310_000);
-  assert.equal(f.request.runtimeLimits.modelIdlePolicy, "observe");
+  assert.equal(invocationRuntimeLimits(f.request).runTimeoutMs, 86_400_000);
+  assert.equal(invocationRuntimeLimits(f.request).toolTimeoutMs, 86_400_000);
+  assert.equal(invocationRuntimeLimits(f.request).firstFrameTimeoutMs, 310_000);
+  assert.equal(invocationRuntimeLimits(f.request).modelIdlePolicy, "observe");
   for (const ms of [100, 60_000, 86_400_000]) {
     validateImConfig({ ...config, run_timeout_ms: ms });
     assert.equal(
-      fixture(async function* () {}, { config: { run_timeout_ms: ms } }).request
-        .runtimeLimits.runTimeoutMs,
+      invocationRuntimeLimits(fixture(async function* () {}, { config: { run_timeout_ms: ms } }).request).runTimeoutMs,
       ms,
     );
   }
@@ -222,7 +222,7 @@ test("IM limits allow a quiet 15-minute tool and preserve explicit watchdog over
   const f = fixture(async function* () {});
   const controller = new AbortController();
   const watchdog = new InvocationWatchdog(
-    f.request.runtimeLimits,
+    invocationRuntimeLimits(f.request),
     controller,
     () => {},
     f.time,
@@ -254,10 +254,10 @@ test("IM limits allow a quiet 15-minute tool and preserve explicit watchdog over
       ],
     },
   });
-  assert.equal(explicit.request.runtimeLimits.runTimeoutMs, 60_000);
-  assert.equal(explicit.request.runtimeLimits.toolTimeoutMs, 10_000);
-  assert.equal(explicit.request.runtimeLimits.firstFrameTimeoutMs, 20_000);
-  assert.equal(explicit.request.runtimeLimits.modelIdlePolicy, "enforce");
+  assert.equal(invocationRuntimeLimits(explicit.request).runTimeoutMs, 60_000);
+  assert.equal(invocationRuntimeLimits(explicit.request).toolTimeoutMs, 10_000);
+  assert.equal(invocationRuntimeLimits(explicit.request).firstFrameTimeoutMs, 20_000);
+  assert.equal(invocationRuntimeLimits(explicit.request).modelIdlePolicy, "enforce");
 });
 
 test("active tools pass 120 seconds and ten minutes; one day still cancels", async () => {
@@ -286,7 +286,7 @@ for (const kind of ["executing_tool", "waiting_approval", "waiting_input"]) {
     const f = fixture(async function* () {});
     const controller = new AbortController();
     const watchdog = new InvocationWatchdog(
-      f.request.runtimeLimits,
+      invocationRuntimeLimits(f.request),
       controller,
       () => {},
       f.time,
@@ -349,14 +349,14 @@ test("temporary Codex failure retries with frozen context, new identities and re
   assert.notEqual(f.calls[0].runId, f.calls[1].runId);
   assert.notEqual(f.calls[0].invocationId, f.calls[1].invocationId);
   assert.equal(f.calls[0].agentSessionId, f.calls[1].agentSessionId);
-  assert.equal(f.calls[1].runtimeLimits.runTimeoutMs, 86_400_000 - 31_000);
+  assert.equal(invocationRuntimeLimits(f.calls[1]).runTimeoutMs, 86_400_000 - 31_000);
   assert.equal(f.calls[1].runMetadata.eventId, f.calls[0].runMetadata.eventId);
   assert.equal(f.calls[1].runMetadata.triggerOccurrenceId, "msg");
   assert.deepEqual(
-    f.calls[1].context.items.filter(
+    modelItems(f.calls[1]).filter(
       (i) => i.namespace === "extra.retry-fixture",
     ),
-    f.calls[0].context.items.filter(
+    modelItems(f.calls[0]).filter(
       (i) => i.namespace === "extra.retry-fixture",
     ),
   );

@@ -174,68 +174,6 @@ export function resolvedRuntimeSelection(runtimeId = "runtime-1") {
   };
 }
 
-export function executionContext(plan, items = []) {
-  return contextEnvelope([
-    {
-      namespace: "octo.execution",
-      name: "adapter",
-      payload: {
-        type: plan.adapter_type,
-        ...(plan.provider_agent_id
-          ? { provider_agent_id: plan.provider_agent_id }
-          : {}),
-      },
-    },
-    {
-      namespace: "octo.execution",
-      name: "workspace",
-      payload: plan.workspace ?? { mode: "fixed", path: plan.workdir },
-    },
-    {
-      namespace: "octo.execution",
-      name: "model",
-      payload: {
-        selection:
-          plan.model === undefined
-            ? { use_provider_default: true }
-            : { id: plan.model },
-        reasoning:
-          plan.effort === undefined
-            ? { use_provider_default: true }
-            : { effort: plan.effort },
-      },
-    },
-    {
-      namespace: "octo.security",
-      name: "approval_policy",
-      payload: { mode: plan.approval_mode },
-    },
-    ...(plan.runtime_limits === undefined
-      ? []
-      : [
-          {
-            namespace: "octo.execution",
-            name: "limits",
-            payload: plan.runtime_limits,
-          },
-        ]),
-    ...items,
-  ]);
-}
-
-export function withExecutionPlan(envelope, plan) {
-  const items = envelope.effective_context.items.filter(
-    (item) =>
-      item.namespace !== "octo.execution" &&
-      !(item.namespace === "octo.security" && item.name === "approval_policy"),
-  );
-  return {
-    ...envelope,
-    resolved_execution_plan: structuredClone(plan),
-    effective_context: executionContext(plan, items),
-  };
-}
-
 export function continuityItem({
   sessionGeneration = 7,
   triggerMessageId = "message-current",
@@ -276,13 +214,12 @@ export function invokeRequest(overrides = {}) {
     runId: "run-test",
     prompt: "Display-safe input",
     modelInput: "Provider model input",
-    controlInstructions: "Keep changes scoped.",
-    context: contextEnvelope(),
+    agentEnv: contextEnvelope([
+      { namespace: "octo.execution", name: "agent", payload: { source: "provisioned" } },
+      { namespace: "octo.execution", name: "workspace", payload: { path: process.cwd() } },
+      { namespace: "octo.security", name: "approval_policy", payload: { mode: "ask" } },
+    ]),
     runMetadata: { namespace: "test", triggerOccurrenceId: "test/invoke" },
-    approvalMode: "ask",
-    workdir: process.cwd(),
-    agentSource: "provisioned",
-    agentConfig: {},
     ...overrides,
   };
 }

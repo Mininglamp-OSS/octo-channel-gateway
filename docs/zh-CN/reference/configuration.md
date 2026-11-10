@@ -47,6 +47,7 @@ config 文件/输入上限 1 MiB；每个 Bot 配置上限 256 KiB。extraset �
 | agent.adapter_type                  | Adapter 选择；推荐显式填写并在 Kernel 安装相应 Provider                 |
 | agent.workdir                       | 可选本地绝对路径；OpenClaw 不接受此字段                                 |
 | agent.model / effort                | Provider 模型/思考强度选择；实际支持由 Adapter 决定                     |
+| agent.instruction | 可选普通提示词；新 Provider 会话首轮前置，续聊不重复，reset/fresh fallback 携带冻结文本 |
 | agent.provider_agent_id             | 仅 OpenClaw，选择已有 Agent；本渠道省略时使用 main                      |
 | approval_mode                         | 默认 full_access；需要人工批准时显式 ask，不能把默认值误认为隔离沙箱    |
 | run_timeout_ms                        | 可选整数 100..86400000，执行时间预算                                    |
@@ -107,7 +108,15 @@ MCP 和环境变量属于可选执行配置，仅在 Bot 有需要时填写；CL
 
 SDK 静态配置使用同样的 Bot 对象；可信宿主代码也可通过 `loadContexts` 返回这些 context 项。动态同 namespace/name 项整体替换，不按单个 MCP server 或环境键合并。合并后的 context 再覆盖 Agent 默认项：MCP 按 server 名合并，环境变量按键合并，同名时 context 值优先；空 context 集合不会清空 Agent 默认项。同一轮重试复用冻结执行配置，不补入新配置的 server 或变量。随后 Gateway 会覆盖注入当前 `OCTO_BOT_TOKEN`、`OCTO_TOKEN` 和 `OCTO_API_BASE_URL`，自定义值不能替换当前 Bot 的工具身份。Windows 按不区分大小写的名称比较，POSIX 区分大小写。token、MCP headers 和环境变量值只能进入执行配置，不应放入业务文本。
 
-业务 instructions 是提示词，应由 Gateway 拼入 `inputs.parts`。当前 Runtime 特殊 instructions 协议的移除见 [Runtime #334](https://github.com/Mininglamp-OSS/octo-runtime/issues/334)，调用方拥有工作目录、仅传 path 的协议调整见 [Runtime #335](https://github.com/Mininglamp-OSS/octo-runtime/issues/335)。MCP/envs 映射已在本仓实现；instructions 和 workspace 的协议迁移仍为独立任务。
+业务只需提供 bot.agent，Gateway 将 source、Adapter、模型、审批、MCP/envs 和预算编译为仅含 schema/items 的 AgentEnv；没有旧 AgentConfig 投影。OpenClaw 的 provider_agent_id 编译为私有 adapter.openclaw/options 的 agentId。workspace 仅传 path，不接受 mode；显式目录须已存在且可读写访问，未指定时由 Gateway 准备 ~/octo-runtime/channels/<bot_id>。OpenClaw 不需要本地工作目录。
+
+## 完整请求调试日志
+
+进程环境变量 `OCO_CHANNEL_GATEWAY_DEUBG=1`（名称按此拼写）启用 `agent_run.client_input` debug 事件，在每次 client 调用前记录完整 inputs 和 agentEnv，包括 fallback、图片 part 的 mimeType/data/byteSize/sha256 和工具凭据。保留完整 base64，不转文本占位或截断。CLI 写入既有 channels/channel-gateway-YYYYMMDDTHH.log，SDK 通过可选 log 回调接收；未配置回调时静默。开关为其他值时不生成该事件；不写入状态镜像。
+
+变量须设置在实际 Gateway 进程环境中。前台可用 `OCO_CHANNEL_GATEWAY_DEUBG=1 octo-channel-gateway run`；由服务管理器启动时应配置该服务的环境，临时 shell 变量不会自动写入已安装的服务定义。
+
+该显式模式会把提示词、图片、私有配置和凭据写入日志。沿用每小时 100 MiB 容量与保留策略，debug 在待写记录达到 8 条时丢弃整条，不输出残缺 JSON；日志写入失败不影响执行。退出诊断时移除变量。
 
 ## 准入与投递
 

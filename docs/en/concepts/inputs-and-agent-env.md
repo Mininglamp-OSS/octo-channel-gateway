@@ -6,12 +6,12 @@ The public execution entry is `KernelClient.invoke(inputs, sessionId, providerSe
 
 | Data                                                                                           | Location        | Use                                                                                           |
 | ---------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------- |
-| Current text, images, history, business rules, and material                                    | inputs          | Gateway prepares the actual model material                                                    |
-| cwd/workdir, Adapter, model/effort, environment variables, MCP, approval, trusted instructions | agentEnv        | Kernel/Core interprets execution settings instead of appending them as ordinary business text |
+| Current text, images, history, business rules, material and first-turn instruction | inputs | Gateway prepares actual model material |
+| cwd/workdir, Adapter, model/effort, environment variables, MCP, approval and private execution parameters | agentEnv | Adapters interpret consumed configuration; Kernel/Core creates no old configuration projections |
 | Logical conversation identifier                                                                | sessionId       | Business correlation and generation tracking                                                  |
 | Native Provider continuation information                                                       | providerSession | Adapter checks and performs continuation                                                      |
 
-agentEnv retains `schema: octo.context-envelope/v3` and the namespace/name/payload item format, and carries advanced execution settings. The protocol structure is stable; hosts can change settings for later calls. The client copies a snapshot per call, so later mutations do not change an existing invocation.
+agentEnv contains only `schema: octo.context-envelope/v3` and namespace/name/payload items. Source uses octo.execution/agent, approval uses octo.security/approval_policy, and workspace contains only path. Private beans are agreed between host and Adapter without public schema registration. Business callers still supply bot.agent for Gateway to compile. The client copies a snapshot per call, so later mutations do not change an existing invocation.
 
 ## Gateway's current compilation boundary
 

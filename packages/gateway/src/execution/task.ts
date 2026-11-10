@@ -1,4 +1,5 @@
 import { prepareKernelInput } from "./kernel-input.js";
+import { noopRuntimeLog, type RuntimeLog } from "../support/runtime-log.js";
 import type { ImModuleDependencies } from "../ports.js";
 import type { ImInvocationInput } from "./dispatcher.js";
 /** IM 业务恢复编排。Host 每次仍只执行一个 invoke，不承担重放决策。 */
@@ -82,6 +83,7 @@ export class ImTask {
     readonly onAttempt: (request: ImInvocationInput) => void,
     readonly time: ImTaskClock = clock,
     readonly onModelWaitChanged: () => void = () => {},
+    readonly log: RuntimeLog = noopRuntimeLog,
   ) {
     this.#policy = { ...DEFAULT_CODEX_RETRY, ...config.codex_retry };
     this.#signal = AbortSignal.any([
@@ -304,6 +306,18 @@ export class ImTask {
         const ignoredAsyncQuestions = new Set<string>();
         try {
           const prepared = prepareKernelInput(request, this.environment.executionEnvOverrides);
+          if (process.env.OCO_CHANNEL_GATEWAY_DEUBG === "1") {
+            try {
+              const result: unknown = this.log("debug", "agent_run.client_input", structuredClone({
+                inputs: prepared.inputs, agentEnv: prepared.agentEnv,
+              }));
+              // void 日志端口也允许 async 回调；观察拒绝但不等待，避免日志阻塞执行。
+              if (result && typeof (result as PromiseLike<unknown>).then === "function")
+                void Promise.resolve(result).catch(() => undefined);
+            } catch {
+              /* 日志失败不能改变本次调用或图片内容。 */
+            }
+          }
           const run = this.kernel.invoke(prepared.inputs, request.sessionId, request.providerSession, prepared.agentEnv);
           const interrupt = () => { void this.cancelExecution("IM owner aborted").catch(() => this.modelWait.unconfirmed()); };
           this.#signal.addEventListener("abort", interrupt, { once: true });

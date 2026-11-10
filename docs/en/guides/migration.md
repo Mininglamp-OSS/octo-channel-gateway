@@ -30,3 +30,7 @@ extraset replaces the whole configuration rather than patching it; extraget outp
 Runtime connection settings are command arguments only: `start/run --runtime-home <path>` (default `~/.octo-runtime`). Do not put `runtime_home`, `endpoint`, or `runtime_endpoint` in business configuration. Service definitions retain the launch arguments for restart. SDK endpoint arguments are unchanged.
 
 Bot execution configuration uses `agent.adapter_type` with model, effort and workdir under `agent`. The previous outer `adapter` field and `ImAdapterConfig` type are replaced by `agent` and `ImAgentConfig`; there is no compatibility conversion.
+
+## Runtime/client 1.1.13
+
+Both the production client and development Runtime dependencies use ^1.1.13. Gateway retains its own bot.agent/ImAgentConfig and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).

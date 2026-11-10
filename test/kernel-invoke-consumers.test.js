@@ -59,5 +59,5 @@ test("Gateway consumes actual Kernel invoke results for delivery; ACK loss execu
     "packages/gateway/src/execution/task.ts",
     "utf8",
   );
-  assert.doesNotMatch(source, /\.submit\(|\.subscribe\(|agent_run\./);
+  assert.doesNotMatch(source, /\.submit\(|\.subscribe\(|["']agent_run\.(?:invoke|submit|subscribe)["']/);
 });

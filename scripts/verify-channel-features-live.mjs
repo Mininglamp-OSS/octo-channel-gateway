@@ -1,4 +1,5 @@
-import { runtimeFixtureUrl } from "../test-support/runtime-module.mjs";
+import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
+import { modelItems } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import {
   executeVerificationCommand as execute,
@@ -8,12 +9,7 @@ import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { crc32, deflateSync } from "node:zlib";
-import {
-  createKernelService,
-  attachKernel,
-} from "@mininglamp-oss/octo-runtime/executor-kernel";
-import { canonicalEvents } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { fileURLToPath } from "node:url";
+import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import { randomBytes } from "node:crypto";
 import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
@@ -181,43 +177,7 @@ async function createTestGroup() {
   }
 }
 try {
-  const manifest = join(directory, "adapters.json");
-  await writeFile(
-    manifest,
-    JSON.stringify({
-      version: 1,
-      adapters: [
-        {
-          type: "codex",
-          module: fileURLToPath(
-            runtimeFixtureUrl(
-              "../packages/octo-runtime-adapter-codex/dist/index.js",
-            ),
-          ),
-          export: "createCodexAdapter",
-          factory: true,
-        },
-      ],
-    }),
-  );
-  kernel = createKernelService({
-    home: directory,
-    endpoint: socket,
-    adapters: await (
-      await import(runtimeFixtureUrl("../apps/cli/dist/adapters.js"))
-    ).loadCliAdapters(
-      (
-        await (
-          await import(
-            runtimeFixtureUrl(
-              "../packages/octo-runtime-adapter-sdk/dist/module-manifest.js",
-            )
-          )
-        ).readModuleManifest(manifest, { legacy: true })
-      ).adapters,
-    ),
-  });
-  await kernel.initialize();
+  kernel = await createVerificationKernel({ home: directory, endpoint: socket,  });
   assert.equal((await kernel.client.status()).pid, process.pid);
   report.nativeKernelHost = true;
   group = await createTestGroup();
@@ -252,7 +212,8 @@ try {
   };
   runtime = new ImRuntime(config, {
     kernel: {
-      async *invoke(input, environment) {
+      async *invoke(...args) {
+          const input = clientInput(...args);
         const { request } = prepareInvokeInput(input);
         calls.push(request);
         const image = input.inputs.some((part) => part.type === "image");
@@ -260,7 +221,7 @@ try {
           let answer = "",
             terminal,
             toolEvents = 0;
-          for await (const event of host.invoke(input, environment)) {
+          for await (const event of host.invoke(...args)) {
             if (event.type.startsWith("tool_call.")) toolEvents++;
             if (
               event.type === "message.update" &&
@@ -299,7 +260,7 @@ try {
           yield { protocolVersion: 2, type: "run.completed", payload: {} };
         }
       },
-      cancelInvocation: (...args) => host.cancelInvocation(...args),
+      interrupt: (...args) => host.interrupt(...args),
       respondInteraction: (...args) => host.respondInteraction(...args),
     },
     onDiagnostic: (code) => diagnostics.push(code),
@@ -339,7 +300,7 @@ try {
     mention: { uids: [receiver.id] },
   });
   await wait(() => calls.length === 1 && runtime.status.sessions.length === 0);
-  const first = calls[0].context.items.find((item) => item.name === "history");
+  const first = modelItems(calls[0]).find((item) => item.name === "history");
   assert.ok(first);
   assert.ok(first.payload.text.includes("QA_HISTORY_05"));
   assert.ok(first.payload.text.includes("QA_HISTORY_19"));
@@ -357,7 +318,7 @@ try {
     mention: { ais: 1 },
   });
   await wait(() => calls.length === 2 && runtime.status.sessions.length === 0);
-  assert.ok(!calls[1].context.items.some((item) => item.name === "history"));
+  assert.ok(!modelItems(calls[1]).some((item) => item.name === "history"));
   report.aiBroadcastRuns = 1;
   report.serverExpandsAiBroadcastUids = received.some(
     (m) => m.text === "QA_CONTINUE" && m.mention?.uids?.includes(receiver.id),
@@ -379,9 +340,10 @@ try {
   });
   await wait(() => calls.length === 3 && runtime.status.sessions.length === 0);
   assert.notEqual(calls[0].agentSessionId, calls[2].agentSessionId);
-  assert.equal(calls[0].workdir, calls[2].workdir);
+  const workspace = (request) => request.agentEnv.items.find((item) => item.name === "workspace").payload.path;
+  assert.equal(workspace(calls[0]), workspace(calls[2]));
   assert.ok(
-    calls[2].context.items.some(
+    modelItems(calls[2]).some(
       (item) =>
         item.name === "history" && item.payload.text.includes("QA_CONTINUE"),
     ),
@@ -402,7 +364,7 @@ try {
   });
   await wait(() => calls.length === 4 && runtime.status.sessions.length === 0);
   assert.ok(
-    calls[3].context.items.some(
+    modelItems(calls[3]).some(
       (item) =>
         item.name === "history" &&
         item.payload.text.includes("QA_TOPIC_HISTORY") &&

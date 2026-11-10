@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { AgentExecutor } from "@mininglamp-oss/octo-runtime/executor-core";
-import { createCodexAdapter } from "@mininglamp-oss/octo-runtime/adapters/codex";
+import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
+import { modelItems } from "../test-support/kernel-mock.js";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
 import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
 import {
@@ -63,8 +63,8 @@ assert.ok(
   "An existing isolated Channel_QA_ group shared by both bots is required",
 );
 const workdir = await mkdtemp(join(tmpdir(), "octo-intent-im-"));
-const executor = new AgentExecutor();
-executor.register(createCodexAdapter());
+const kernel = await createVerificationKernel({ home: workdir, endpoint: join(workdir, "kernel.sock") });
+const executor = kernel.client;
 const calls = [];
 const report = {
   endpoint: "https://im-test.deepminer.com.cn",
@@ -93,7 +93,7 @@ const runtime = new ImRuntime(
       schema: "octo.context-envelope/v3",
       items: [
         {
-          namespace: "octo.control",
+          namespace: "extra.persona",
           name: "instructions",
           payload: {
             entries: [
@@ -108,17 +108,18 @@ const runtime = new ImRuntime(
   },
   {
     kernel: {
-      async *invoke(input, environment) {
+      async *invoke(...args) {
+        const input = clientInput(...args);
         const call = {
           answer: "",
           toolEvents: 0,
-          historyPresent: input.contexts.items.some(
+          historyPresent: modelItems(input).some(
             (item) => item.name === "history",
           ),
           resumed: Boolean(input.providerSession),
         };
         calls.push(call);
-        for await (const event of executor.invoke(input, environment)) {
+        for await (const event of executor.invoke(...args)) {
           if (
             event.type === "message.delta" &&
             event.payload.channel === "final"
@@ -135,8 +136,8 @@ const runtime = new ImRuntime(
         }
         call.finished = true;
       },
-      async cancelInvocation(id, reason) {
-        return { accepted: executor.cancel(id, reason) };
+      async interrupt(id, reason) {
+        return executor.interrupt(id, reason);
       },
       respondInteraction(id, response) {
         return executor.respondInteraction(id, response);
@@ -245,7 +246,7 @@ try {
     await runtime.close();
   } finally {
     try {
-      assert.equal((await executor.shutdown()).cleanup, "complete");
+      assert.equal((await kernel.close()).complete, true);
     } finally {
       await writeFile(
         resolve(process.argv[2] ?? "/tmp/octo-2-im-live.json"),

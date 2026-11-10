@@ -93,6 +93,8 @@ function readableSessionName(
 
 // 仅精确匹配已定义的准备期原因；未知异常正文不得进入回复或新增诊断。
 const preparationFailureMessages = new Map([
+  ["IM_AGENT_WORKDIR_UNAVAILABLE", "工作目录不存在、不是目录或无法访问，尚未发起执行。请准备可读写的工作目录。"],
+  ["IM_AGENT_WORKSPACE_INVALID", "工作目录配置仅支持 path，尚未发起执行。请移除旧 mode 等字段。"],
   [
     "IM_AGENT_WORKDIR_FIXED",
     "本轮工作目录与固定目录配置冲突，尚未发起执行。请检查工作目录配置。",
@@ -1335,6 +1337,8 @@ export class ImRuntime {
         if (saved?.freshFallbackModelInput !== undefined)
           prepared.request.freshFallbackModelInput =
             saved.freshFallbackModelInput;
+        prepared.request.instruction = saved?.instruction;
+        prepared.request.includeInstruction = saved?.includeInstruction;
         if (saved?.freshFallbackModelInputParts)
           prepared.request.freshFallbackModelInputParts = structuredClone(
             saved.freshFallbackModelInputParts,
@@ -1469,6 +1473,7 @@ export class ImRuntime {
       },
       undefined,
       () => updatePresentation(),
+      this.dependencies.log,
     );
     this.#tasks.set(key, { rootInvocationId: request.invocationId, task });
     const snapshot = () => ({
@@ -1543,7 +1548,8 @@ export class ImRuntime {
           if (
             event.type === "interaction.requested" &&
             event.payload.kind === "approval" &&
-            request.approvalMode === "full_access" &&
+            request.contexts.items.some((item) => item.namespace === "octo.security" &&
+              item.name === "approval_policy" && item.payload.mode === "full_access") &&
             (event.payload.request.policy as { mode?: unknown } | undefined)
               ?.mode === "full_access"
           )

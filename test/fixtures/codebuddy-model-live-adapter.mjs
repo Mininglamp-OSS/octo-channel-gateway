@@ -12,6 +12,7 @@ const model = (value) =>
 
 // 真实 ACP 透传；只记录模型、会话和调用顺序，不记录 prompt、环境或原始错误元数据。
 export default createCodeBuddyAdapter({
+  command: process.env.OCTO_CODEBUDDY_COMMAND ?? "codebuddy",
   acpClientFactory(options) {
     const client = spawnAcpClient(options);
     const record = (value) =>

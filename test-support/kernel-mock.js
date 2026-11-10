@@ -37,7 +37,7 @@ export function gatewayWire(request, credentials) {
 export function modelItems(request) {
   const parts = request.modelInputParts ?? request.inputs;
   const text = parts.filter((part) => part.type === "text").map((part) => part.text).join("\n");
-  return [...text.matchAll(/<context-item namespace="([^"]+)" name="([^"]+)">([\s\S]*?)<\/context-item>/g)].map((match) => {
+  return [...text.matchAll(/<context namespace="([^"]+)" name="([^"]+)">([\s\S]*?)<\/context>/g)].map((match) => {
     const data = [...match[3].matchAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g)].map((part) => part[1]).join("");
     let payload;
     try { payload = JSON.parse(data); } catch { payload = { text: data }; }
@@ -48,5 +48,5 @@ export function modelItems(request) {
 export function gatewayDraft(input) {
   const { agentEnv, ...content } = input;
   return { ...content, contexts: { schema: agentEnv.schema, items: agentEnv.items },
-    agentSource: agentEnv.agentSource ?? "provisioned", approvalMode: agentEnv.approvalMode ?? "ask" };
+  };
 }

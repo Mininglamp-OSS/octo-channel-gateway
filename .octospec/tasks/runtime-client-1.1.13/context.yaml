@@ -1,0 +1,26 @@
+task: runtime-client-1.1.13
+phase: pr-delivery
+date: '2026-11-10'
+gateway_base: a6e661b9c81826b56e79c333949bb1e470dd4d17
+runtime_tag: v1.1.13
+runtime_commit: 7892ebdf2ed9b1fa859bd51f15da6d7f03c247e2
+rules_read:
+  - AGENTS.md
+  - .octospec/index.md
+  - .octospec/rules/_index.yaml
+  - .octospec/rules/architecture.md
+  - .octospec/rules/channel-behavior.md
+  - .octospec/rules/review.md
+  - .octospec/rules/documentation.md
+related_tasks_read:
+  - .octospec/tasks/runtime-home/brief.md
+  - .octospec/tasks/agent-env-invocation/brief.md
+inherited_global_rules: 本仓未提供 .octospec/_global 目录，未声明已读取不存在的规则。
+precedence: 用户已要求在新 worktree 实施并完成 review 修复，随后授权提交推送与创建面向 main 的 PR；不扩大 CI，不合并或发布。
+confirmed_decisions:
+  - D01 保留 bot.agent/ImAgentConfig，由 Gateway 统一编译为 AgentEnv.items；业务无需理解信封，不新增 bot.agentEnv。
+  - D02 bot.agent 增加可选 instruction，Gateway 在新会话首轮输入前置；模型材料不进入执行信封。
+  - D03 仅将模型材料外层改为注释边界和逐项 context 标签；内部表示及原有注入/排除规则保持，不扩大 namespace/name 匹配范围。
+  - D04 OCO_CHANNEL_GATEWAY_DEUBG 严格为 1 时记录完整最终 inputs/agentEnv，包括图片和凭据；默认关闭，不写状态镜像。
+  - 生产 CLI 使用公开 attachKernel，Engine 由 Runtime 宿主管理。
+pending_decisions: []

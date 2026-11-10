@@ -1,13 +1,11 @@
-import { runtimeFixtureUrl } from "../test-support/runtime-module.mjs";
+import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, mkdtemp, rm, readdir } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import { join, basename } from "node:path";
-import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { createKernelService } from "@mininglamp-oss/octo-runtime/executor-kernel";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
 import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
 import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
@@ -127,60 +125,18 @@ async function providerRequests() {
   return requests;
 }
 try {
-  const manifest = join(directory, "manifest.json");
-  await writeFile(
-    manifest,
-    JSON.stringify({
-      version: 1,
-      adapters: [
-        {
-          type: "codebuddy",
-          module: fileURLToPath(
-            new URL(
-              "../test/fixtures/codebuddy-model-live-adapter.mjs",
-              import.meta.url,
-            ),
-          ),
-        },
-      ],
-    }),
-  );
-  kernel = createKernelService({
-    home: directory,
-    endpoint: join(directory, "k.sock"),
-    adapters: await (
-      await import(runtimeFixtureUrl("../apps/cli/dist/adapters.js"))
-    ).loadCliAdapters(
-      (
-        await (
-          await import(
-            runtimeFixtureUrl(
-              "../packages/octo-runtime-adapter-sdk/dist/module-manifest.js",
-            )
-          )
-        ).readModuleManifest(manifest, { legacy: true })
-      ).adapters,
-    ),
-  });
-  await kernel.initialize();
-  const subscribe = kernel.client.subscribe.bind(kernel.client);
-  // 旁观原订阅记录 Host 控制帧，执行、取消和登记继续走真实 KernelClient.invoke。
-  kernel.client.subscribe = async function* (...args) {
-    for await (const frame of subscribe(...args)) {
-      if (frame.kind === "control") traces.at(-1).host.push(frame.control);
-      yield frame;
-    }
-  };
+  kernel = await createVerificationKernel({ home: directory, endpoint: join(directory, "k.sock"), adapters: [(await import("../test/fixtures/codebuddy-model-live-adapter.mjs")).default], });
   const tracedKernel = {
-    async *invoke(input, environment) {
-      const trace = { input, events: [], host: [] };
+    async *invoke(...args) {
+          const input = clientInput(...args);
+      const trace = { input, events: [] };
       traces.push(trace);
-      for await (const event of kernel.client.invoke(input, environment)) {
+      for await (const event of kernel.client.invoke(...args)) {
         trace.events.push(event);
         yield event;
       }
     },
-    cancelInvocation: (...args) => kernel.client.cancelInvocation(...args),
+    interrupt: (...args) => kernel.client.interrupt(...args),
     respondInteraction: (...args) => kernel.client.respondInteraction(...args),
   };
   async function turn(name, model, expected) {
@@ -256,14 +212,8 @@ try {
     );
     assert.equal(terminals.length, 1, `${name}: one canonical terminal`);
     const terminal = terminals[0];
-    const hostTerminal = trace.host.at(-1)?.state;
-    assert.equal(
-      terminal.type,
-      `run.${hostTerminal}`,
-      `${name}: Host/canonical agree`,
-    );
     if (expected)
-      assert.equal(hostTerminal, expected, `${name}: expected outcome`);
+      assert.equal(terminal.type, `run.${expected}`, `${name}: expected outcome`);
     assert.ok(
       delivered,
       `${name}: full final result must be read back from IM`,
@@ -276,7 +226,6 @@ try {
       resumedSessionId: trace.input.providerSession?.sessionId ?? null,
       receipt: receipt ?? null,
       terminal: terminal.type,
-      hostTerminal,
       errorCode: terminal.payload.code ?? null,
       providerRequests: (await providerRequests()).filter(
         (v) => !requestsBefore.has(v.requestId),

@@ -7,9 +7,9 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { nativeHost } from "../test/native-host-fixture.js";
-import { adapters } from "../test-support/im-diagnostic-host.mjs";
-import { canonicalEvents } from "@mininglamp-oss/octo-runtime-client/protocol";
+import { createDiagnosticHost } from "../test-support/im-diagnostic-host.mjs";
+import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
+import { clientInput } from "../test-support/verification-kernel.mjs";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
 import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
 import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
@@ -82,7 +82,8 @@ for (const account of [receiver, sender])
   assert.ok(members.some((m) => m.uid === account.id));
 
 const directory = await mkdtemp(join(tmpdir(), "octo-diagnostic-live-"));
-const hosted = await nativeHost(adapters);
+const hosted = await createDiagnosticHost();
+const client = attachKernel({ endpoint: (await hosted.kernel.status()).endpoint });
 const calls = [],
   snapshots = [],
   diagnostics = [];
@@ -103,14 +104,14 @@ const runtime = new ImRuntime(
     agent: { adapter_type: "codex", workdir: directory },
   },
   {
-    host: {
-      async *invoke(input, environment) {
-        calls.push(input);
-        yield* canonicalEvents(hosted.client.invokeFrames(input, environment));
+    kernel: {
+      async *invoke(...args) {
+        calls.push(clientInput(...args));
+        yield* client.invoke(...args);
       },
-      cancel: (id) => hosted.client.cancel(id),
+      interrupt: (id, reason) => client.interrupt(id, reason),
       respondInteraction: (id, response) =>
-        hosted.client.respondInteraction(id, response),
+        client.respondInteraction(id, response),
     },
     onDiagnostic: (code) => diagnostics.push(code),
   },
@@ -225,6 +226,7 @@ try {
   throw error;
 } finally {
   await runtime.close();
+  client.close();
   await hosted.close();
   CardSession.prototype.update = update;
   await rm(directory, { recursive: true, force: true });

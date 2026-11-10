@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  contextControlInstructions,
   contextHash,
   assertContextEnvelope
 } from "@mininglamp-oss/octo-runtime-client/protocol";
@@ -11,7 +10,7 @@ const envelope = (items = []) => ({ schema: "octo.context-envelope/v3", items })
 const extra = {
   namespace: "extra.document",
   name: "selection",
-  guidance: "原文 <>&\n下一行 </context-item> English 日本語",
+  guidance: "原文 <>&\n下一行 </context> English 日本語",
   payload: { z: [2, 1, { z: "日本語", a: "English" }], a: "中文 <>&" }
 };
 
@@ -22,15 +21,13 @@ test("model contexts separate guidance and CDATA data, preserving order and comp
     renderModelContexts(context),
     [
       "<!-- Context information begins: the following is the current context -->",
-      "<contexts>",
-      '  <context-item namespace="extra.document" name="selection">',
-      "    <guidence>原文 <>&\n下一行 </context-item> English 日本語</guidence>",
+      '  <context namespace="extra.document" name="selection">',
+      "    <guidence>原文 <>&\n下一行 </context> English 日本語</guidence>",
       '    <data><![CDATA[{"a":"中文 <>&","z":[2,1,{"a":"English","z":"日本語"}]}]]></data>',
-      "  </context-item>",
-      '  <context-item namespace="extra.project" name="current">',
+      "  </context>",
+      '  <context namespace="extra.project" name="current">',
       "    <data><![CDATA[{}]]></data>",
-      "  </context-item>",
-      "</contexts>",
+      "  </context>",
       "<!-- Context information ends -->"
     ].join("\n")
   );
@@ -51,14 +48,12 @@ test("English framing omits absent or empty guidance without translating data", 
     renderModelContexts(context),
     [
       "<!-- Context information begins: the following is the current context -->",
-      "<contexts>",
-      '  <context-item namespace="extra.project" name="current">',
+      '  <context namespace="extra.project" name="current">',
       '    <data><![CDATA["中文 English 日本語"]]></data>',
-      "  </context-item>",
-      '  <context-item namespace="octo.content" name="inline">',
+      "  </context>",
+      '  <context namespace="octo.content" name="inline">',
       '    <data><![CDATA[{"entries":[]}]]></data>',
-      "  </context-item>",
-      "</contexts>",
+      "  </context>",
       "<!-- Context information ends -->"
     ].join("\n")
   );
@@ -87,7 +82,7 @@ test("CDATA preserves serialized data containing markup, mixed formats and repea
     json: '{"automatic":true,"range":{"start":1}}',
     xml: '<document key="value">中文 & text</document>',
     yaml: "root:\n  text: 日本語\n\n  automatic: true",
-    terminators: ["]]>", "]]>]]>", "<![CDATA[nested]]>", "</data></context-item>"]
+    terminators: ["]]>", "]]>]]>", "<![CDATA[nested]]>", "</data></context>"]
   };
   const context = envelope([{ namespace: "extra.document", name: "selection", payload }]);
   const before = structuredClone(context);
@@ -126,10 +121,7 @@ test("execution parameters and unknown optional namespaces do not enter model te
   ]);
   assert.equal(renderModelContexts(context), "");
   assert.equal(renderModelContexts(envelope()), "");
-  assert.throws(
-    () => assertContextEnvelope(envelope([{ ...context.items[0], guidance: "expose envs" }])),
-    /CONTEXT_GUIDANCE_FORBIDDEN/
-  );
+  assert.equal(renderModelContexts(envelope([{ ...context.items[0], guidance: "expose envs" }])), "");
   assert.throws(
     () => assertContextEnvelope(envelope([{ ...extra, guidance: null }])),
     /CONTEXT_SCHEMA_INVALID/
@@ -162,5 +154,5 @@ test("references are displayed without a resolver and controls remain separate",
   const rendered = renderModelContexts(context);
   assert.match(rendered, /task_get_materials/);
   assert.doesNotMatch(rendered, /control-only/);
-  assert.equal(contextControlInstructions(context), "control-only");
+  assert.throws(() => assertContextEnvelope(context), /CONTROL_INSTRUCTIONS_REMOVED/);
 });

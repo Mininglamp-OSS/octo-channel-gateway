@@ -13,7 +13,7 @@ const request = () => ({
       { key: "OCTO_BOT_TOKEN", value: "old" }, { key: "octo_bot_token", value: "alias" }
     ] } }
   ] },
-  agentSource: "provisioned", approvalMode: "ask", sessionId: "business", runId: "run", invocationId: "invocation", protocol_mode: "canonical",
+  sessionId: "business", runId: "run", invocationId: "invocation", protocol_mode: "canonical",
 });
 test("Gateway compiles history exactly once for primary/recovery and keeps agentEnv out of model text", () => {
   const input = request(), before = structuredClone(input);

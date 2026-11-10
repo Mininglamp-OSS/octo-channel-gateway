@@ -1,15 +1,13 @@
-import { runtimeFixtureUrl } from "../test-support/runtime-module.mjs";
+import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
 import assert from "node:assert/strict";
 import {
   executeVerificationCommand as execute,
   verificationCommandError,
 } from "./verification-command.mjs";
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { createKernelService } from "@mininglamp-oss/octo-runtime/executor-kernel";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
 import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
 
@@ -74,42 +72,7 @@ let kernel, runtime;
 const calls = [],
   diagnostics = [];
 try {
-  const manifest = join(directory, "manifest.json");
-  await writeFile(
-    manifest,
-    JSON.stringify({
-      version: 1,
-      adapters: [
-        {
-          type: "opencode",
-          module: fileURLToPath(
-            new URL(
-              "../test/fixtures/opencode-v2-live-adapter.mjs",
-              import.meta.url,
-            ),
-          ),
-        },
-      ],
-    }),
-  );
-  kernel = createKernelService({
-    home: directory,
-    endpoint: join(directory, "kernel.sock"),
-    adapters: await (
-      await import(runtimeFixtureUrl("../apps/cli/dist/adapters.js"))
-    ).loadCliAdapters(
-      (
-        await (
-          await import(
-            runtimeFixtureUrl(
-              "../packages/octo-runtime-adapter-sdk/dist/module-manifest.js",
-            )
-          )
-        ).readModuleManifest(manifest, { legacy: true })
-      ).adapters,
-    ),
-  });
-  await kernel.initialize();
+  kernel = await createVerificationKernel({ home: directory, endpoint: join(directory, "kernel.sock"), adapters: [(await import("../test/fixtures/opencode-v2-live-adapter.mjs")).default], });
   runtime = new ImRuntime(
     {
       bot_id: receiver.id,
@@ -130,10 +93,11 @@ try {
     },
     {
       kernel: {
-        async *invoke(input, environment) {
+        async *invoke(...args) {
+          const input = clientInput(...args);
           const trace = { terminals: [], text: "", sessions: [] };
           calls.push(trace);
-          for await (const event of kernel.client.invoke(input, environment)) {
+          for await (const event of kernel.client.invoke(...args)) {
             if (
               ["run.completed", "run.failed", "run.cancelled"].includes(
                 event.type,
@@ -150,7 +114,7 @@ try {
             yield event;
           }
         },
-        cancelInvocation: (...args) => kernel.client.cancelInvocation(...args),
+        interrupt: (...args) => kernel.client.interrupt(...args),
         respondInteraction: (...args) =>
           kernel.client.respondInteraction(...args),
       },

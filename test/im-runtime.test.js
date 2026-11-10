@@ -256,7 +256,7 @@ test("IM receives over binary WS, reuses session, and replies over REST only aft
       const { adapterType: adapter, request } = prepareInvokeInput(input);
       request.signal = environment?.signal;
       assert.equal(adapter, "codex");
-      assert.equal(request.approvalMode, "ask");
+      assert.equal(request.agentEnv.items.find((item) => item.name === "approval_policy").payload.mode, "ask");
       assert.equal(request.runMetadata.actorId, "owner");
       calls.push(request);
       if (request.prompt === "approval") {
