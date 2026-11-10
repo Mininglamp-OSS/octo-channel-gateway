@@ -12,6 +12,7 @@ import {
   type ContextEnvelope,
   type ContextItem,
   type InvokeInput,
+  type AgentEnv,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImBotConfig, ImInboundMessage, ImSession } from "../contracts.js";
 import { validateImConfig } from "../lifecycle/configuration.js";
@@ -25,6 +26,7 @@ import type { ImArtifactPolicy } from "../delivery/artifact-policy.js";
 import { stableChannelContexts } from "../application/stable-context.js";
 import { modelRulesContext } from "../application/rules-context.js";
 import { modelHistoryContexts } from "../application/history-context.js";
+import type { BusinessMaterial } from "../materials.js";
 
 /** Gateway 内部准备稿，业务 Context 在跨 client 边界前转成模型 parts。 */
 export type ImInvocationInput = Omit<InvokeInput, "agentEnv"> & {
@@ -35,6 +37,8 @@ export type ImInvocationInput = Omit<InvokeInput, "agentEnv"> & {
   protocol_mode: "canonical";
   instruction?: string;
   includeInstruction?: boolean;
+  materials?: BusinessMaterial[];
+  agentItems?: AgentEnv["items"];
 };
 export function createImInvocation(
   config: ImBotConfig,
@@ -57,7 +61,9 @@ export function createImInvocation(
   validateImConfig(config);
   assertContextEnvelope(context);
   if (!session.id) throw new Error("IM_SESSION_NOT_ALLOCATED");
+  const agentItems = message.historyRetry ? message.frozenAgentItems ?? [] : config.agent.items ?? [];
   const selectedAdapter =
+    agentItems.find((item) => item.namespace === "octo.execution" && item.name === "adapter")?.payload.type ??
     context.items.find(
       (item) => item.namespace === "octo.execution" && item.name === "adapter",
     )?.payload.type ??
@@ -75,7 +81,7 @@ export function createImInvocation(
   const workdir =
     config.agent.workdir ??
     (agentSource === "provisioned" ? defaultWorkdir : undefined);
-  const submittedWorkspace = context.items.find(
+  const submittedWorkspace = [...agentItems, ...context.items].find(
     (item) => item.namespace === "octo.execution" && item.name === "workspace",
   );
   if (submittedWorkspace && Object.keys(submittedWorkspace.payload).some((key) => key !== "path"))
@@ -307,6 +313,7 @@ export function createImInvocation(
     providerEpoch: session.generation,
     inputs: [{ type: "text", text: prompt }],
     contexts: snapshot,
+    ...(!message.historyRetry ? { materials: structuredClone(config.materials ?? []), agentItems: structuredClone(agentItems) } : {}),
     ...(config.agent.instruction?.trim() ? {
       instruction: config.agent.instruction,
       includeInstruction: !session.providerSession?.sessionId || session.providerSession.resumable === false,

@@ -10,7 +10,7 @@ import type {
   JsonObject,
   ChannelDependencies,
 } from "./support/types.js";
-import type { ContextItem } from "@mininglamp-oss/octo-runtime-client/protocol";
+import type { BusinessMaterial } from "./materials.js";
 
 export type ImCredentialSource = (
   config: ImBotConfig,
@@ -30,10 +30,10 @@ export interface ImChannelManagerDependencies extends ImModuleDependencies {
   createSessionStore?: CreateSessionStore;
 }
 export interface ImModuleDependencies {
-  prepareContexts?: (
+  prepareMaterials?: (
     config: JsonObject,
     signal: AbortSignal,
-  ) => Promise<ContextItem[]>;
+  ) => Promise<BusinessMaterial[]>;
   log?: RuntimeLog;
   kernel: Pick<
     GatewayExecutionContext,

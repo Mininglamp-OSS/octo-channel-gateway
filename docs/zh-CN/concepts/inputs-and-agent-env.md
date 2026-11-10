@@ -11,12 +11,12 @@
 | 逻辑会话标识                                                      | sessionId       | 业务关联与代次管理                               |
 | Provider 原生续聊信息                                             | providerSession | Adapter 判断和执行续聊                           |
 
-agentEnv 仅含 `schema: octo.context-envelope/v3` 与 items 的 namespace/name/payload 格式。source 使用 octo.execution/agent，审批使用 octo.security/approval_policy，workspace 只有 path；私有 bean 由宿主与 Adapter 约定，无需公共 schema 登记。业务仍填写 bot.agent，由 Gateway 编译；client 为每次调用复制快照，已经开始的一轮不随原对象修改。
+agentEnv 仅含 `schema: octo.context-envelope/v3` 与 items 的 namespace/name/payload 格式。source 使用 octo.execution/agent，审批使用 octo.security/approval_policy，workspace 只有 path；私有 bean 由宿主与 Adapter 约定，无需公共 schema 登记。SDK 业务通过 register 第二个参数传入 agent，CLI 配置仍使用 bot.agent；client 为每次调用复制快照，已经开始的一轮不随原对象修改。
 
 ## 当前 Gateway 编译过程
 
-Bot 配置与 loadContexts 结果先进入本仓业务草稿。prepareKernelInput 将业务项渲染为模型文本/图片，将执行项抽出为 agentEnv，并为恢复内容保留同一冻结材料。环境与工具 token 不进入模型正文，展示投影剔除整个 agentEnv。
+宿主通过独立 agent 参数提供执行设置，通过可选 `bot.materials` / `bot.loadMaterials` 提供业务材料。命名材料按规则合并后直接展开为文本/图片 parts；`prepareKernelInput` 将其与已选中的渠道规则/历史及当前消息组合。高级 `agent.items` 独立并入 AgentEnv，绝不作为模型材料渲染；工具凭据只注入执行项。重试及 fresh fallback 复用同一冻结材料和图片字节。
 
-因此当前内部仍有混合 `contexts` 草稿，不应宣称已删除所有 Context。`extra.im` 是本渠道拥有的材料约定，`extra.business` 等由应用提供；namespace 格式是此 Gateway 加载/渲染机制的约定，Runtime 执行没有强制模型正文遵循它。
+旧 `loadContexts` 回调与 `bot.context` 信封直接拒绝。渠道内部仍有规则/历史准备稿，但应用无需构造 ContextItem 或选择材料 namespace。渠道自动材料的注入和省略规则保持。Runtime 收到 `inputs.parts` 和独立的仅含 `schema/items` 的 `agentEnv`。
 
-中断使用 `client.interrupt(invocationId, reason?)`；不在 invoke 传入 signal。注册 signal 和 loadContexts 的 signal 是本地资源/IO 生命周期，不是这个公开执行参数。身份区别见[标识参考](identifiers.md)，原生取消由 Runtime Adapter 映射。
+中断使用 `client.interrupt(invocationId, reason?)`；不在 invoke 传入 signal。Gateway 构造参数 signal 和 loadMaterials 的 signal 是本地资源/IO 生命周期，不是这个公开执行参数。身份区别见[标识参考](identifiers.md)，原生取消由 Runtime Adapter 映射。

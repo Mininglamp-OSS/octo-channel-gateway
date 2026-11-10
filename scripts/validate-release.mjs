@@ -2,6 +2,11 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+export function validateWorkflowRef(event, ref) {
+  if (event === "workflow_dispatch" && ref !== "refs/heads/main")
+    throw new Error("Manual npm Publish must run from main. Select main as the workflow ref and supply the release tag in the tag input.");
+}
+
 export function releaseVersion(tag) {
   if (
     !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag) ||
@@ -35,6 +40,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
+  validateWorkflowRef(process.env.GITHUB_EVENT_NAME, process.env.GITHUB_REF);
   const { sha, version } = validateRelease(process.env.RELEASE_TAG ?? "");
   appendFileSync(process.env.GITHUB_OUTPUT, `sha=${sha}\nversion=${version}\n`);
 }

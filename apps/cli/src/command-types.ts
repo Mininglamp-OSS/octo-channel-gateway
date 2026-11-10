@@ -86,6 +86,6 @@ export function savedConfigResult(
 ): GatewayCommandResult {
   return {
     value: { ...saved },
-    message: `${saved.name}: configuration saved. Restart Channel Gateway to apply it.\nConfig file: ${saved.file}`,
+    message: `${saved.name}: configuration saved. Restart the active Gateway to apply it. For a foreground run, stop it in its terminal (Ctrl+C) and run it again; service restart only manages the native service.\nConfig file: ${saved.file}`,
   };
 }

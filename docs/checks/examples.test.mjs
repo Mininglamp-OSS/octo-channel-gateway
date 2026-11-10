@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validateImConfig } from "@mininglamp-oss/octo-channel-gateway";
-import { assertContextEnvelope } from "@mininglamp-oss/octo-runtime-client/protocol";
+import { assertModelInputParts } from "@mininglamp-oss/octo-runtime-client/protocol";
 import { withChannel } from "../examples/registration.mts";
 import { createDefinition } from "../examples/definition.mts";
 import { kernelFixture } from "../../test/kernel-fixture.js";
@@ -10,17 +10,17 @@ test("documented registration scopes cleanup and preserves the real Kernel on su
   const kernel = await kernelFixture(t);
   const definition = {
     bot: {
-      bot_id: "docs",
-      api_url: "https://example.test/api",
+      botId: "docs",
+      apiUrl: "https://example.test/api",
       enabled: false,
-      agent: { adapter_type: "test", workdir: kernel.directory },
     },
+    agent: { adapter_type: "test", workdir: kernel.directory },
   };
   let registration;
   assert.equal(
-    await withChannel(kernel.endpoint, definition, async (value) => {
+    await withChannel(kernel.client, [definition], async (value) => {
       registration = value;
-      assert.equal(value.endpoint, kernel.endpoint);
+      assert.equal(value.status.length, 1);
       return "served";
     }),
     "served",
@@ -28,7 +28,7 @@ test("documented registration scopes cleanup and preserves the real Kernel on su
   await registration.close();
   const failure = new Error("application stopped");
   await assert.rejects(
-    withChannel(kernel.endpoint, definition, async () => {
+    withChannel(kernel.client, [definition], async () => {
       throw failure;
     }),
     (error) => error === failure,
@@ -47,20 +47,21 @@ test("documented host callbacks keep credentials separate and observe cancellati
       return "Application material";
     },
   });
-  validateImConfig(definition.bot);
+  const config = { api_url: definition.bot.apiUrl, bot_id: definition.bot.botId, agent: definition.agent };
+  validateImConfig(config);
   const controller = new AbortController();
-  const items = await definition.loadContexts(definition.bot, {
+  const items = await definition.bot.loadMaterials(config, {
     signal: controller.signal,
   });
-  assertContextEnvelope({ schema: "octo.context-envelope/v3", items });
-  const credential = await definition.credentials(
-    definition.bot,
+  assertModelInputParts(items.flatMap((item) => item.parts));
+  const credential = await definition.bot.credentials(
+    config,
     controller.signal,
   );
   assert.ok(!JSON.stringify(items).includes(credential));
   controller.abort(new Error("host cancelled"));
   await assert.rejects(
-    definition.loadContexts(definition.bot, { signal: controller.signal }),
+    definition.bot.loadMaterials(config, { signal: controller.signal }),
     /host cancelled/,
   );
 });

@@ -21,7 +21,7 @@ function validate(config: JsonObject): void {
         spaces.some((id) => typeof id !== "string" || !id.trim()))
     )
       throw new Error("IM_AUTHORIZED_SPACES_INVALID");
-    const settings = config.context_loading;
+    const settings = config.material_loading;
     if (settings !== undefined) {
       if (
         !settings ||
@@ -31,7 +31,7 @@ function validate(config: JsonObject): void {
           (key) => !["timeout_ms", "max_in_flight"].includes(key),
         )
       )
-        throw new Error("IM_CONTEXT_LOADING_CONFIG_INVALID");
+        throw new Error("IM_MATERIAL_LOADING_CONFIG_INVALID");
       for (const [key, max] of [
         ["timeout_ms", 30000],
         ["max_in_flight", 32],
@@ -44,7 +44,7 @@ function validate(config: JsonObject): void {
             value < 1 ||
             value > max)
         )
-          throw new Error("IM_CONTEXT_LOADING_CONFIG_INVALID");
+          throw new Error("IM_MATERIAL_LOADING_CONFIG_INVALID");
       }
     }
   } catch (error) {
@@ -68,8 +68,8 @@ function validate(config: JsonObject): void {
         "bots must be an array within the Gateway Bot limit.",
       IM_AUTHORIZED_SPACES_INVALID:
         "authorized_space_ids must contain non-empty strings.",
-      IM_CONTEXT_LOADING_CONFIG_INVALID:
-        "context_loading accepts timeout_ms (1..30000) and max_in_flight (1..32).",
+      IM_MATERIAL_LOADING_CONFIG_INVALID:
+        "material_loading accepts timeout_ms (1..30000) and max_in_flight (1..32).",
     };
     const code =
       error instanceof Error && Object.hasOwn(hints, error.message)

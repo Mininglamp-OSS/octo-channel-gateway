@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [CLI 实例归属、发布完成与 SDK 命名材料](tasks/cli-release-fixes/brief.md)：Issue 30/31/32，[实际验证](tasks/cli-release-fixes/validation.md)、[双轴审查](tasks/cli-release-fixes/review.md)。
+
 - [Runtime/client 1.1.13 迁移](tasks/runtime-client-1.1.13/brief.md)：[设计](tasks/runtime-client-1.1.13/design.md)、[实施计划](tasks/runtime-client-1.1.13/plan.md)、[实际验证](tasks/runtime-client-1.1.13/validation.md)。
 
 - [英文 PR 交付与依赖审计](tasks/issue-24-cli/pr-delivery.md)

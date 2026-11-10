@@ -2,35 +2,34 @@
 
 [简体中文](../../zh-CN/reference/sdk.md) | [Documentation](../README.md)
 
-Import the primary entry from `@mininglamp-oss/octo-channel-gateway`. Protocol types come from the public client's `/protocol` export rather than private Runtime packages. Full types live in the [exports](../../../packages/gateway/src/index.ts) and [registration contract](../../../packages/gateway/src/registry.ts).
+Import the facade and types from `@mininglamp-oss/octo-channel-gateway`; import KernelClient from the public Runtime client. See [exports](../../../packages/gateway/src/index.ts) and [implementation](../../../packages/gateway/src/gateway.ts).
 
-## ChannelRegistry.register
+## ChannelGateway
 
-`register(endpoint: string, definition: ChannelDefinition): Promise<ChannelRegistration>`. Validates the Bot, copies configuration, creates a dedicated client and Manager, checks Kernel execution_ready, then starts the Bot. An already aborted signal rejects. Intermediate failures roll back acquired resources; rollback failures are retained in an AggregateError.
+`new ChannelGateway({ kernel, log?, signal? })` borrows a host-owned KernelClient. An already aborted signal rejects construction. Signal abortion initiates close; always await close to observe its result. The log callback receives diagnostic events; explicitly enabled debug logging contains full inputs including images and credentials. Synchronous exceptions and asynchronous rejections from logging are contained without waiting for log IO; they do not interrupt execution or cleanup.
 
-| ChannelDefinition field | Contract                                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| bot                     | Required ImBotConfig; one Bot per registration; see configuration reference                                   |
-| loadContexts            | Optional per-turn (config, {signal}) returning readonly ContextItem[] or a Promise                            |
-| contextLoading          | Optional timeout_ms / max_in_flight; defaults 5000 / 8                                                        |
-| credentials             | Optional async (config, signal) → string or undefined; defaults to bf_token                                   |
-| authorizeSpace          | Optional synchronous (spaceId) → void; throw to deny; spaceId comes from authenticated identity               |
-| createSessionStore      | Optional synchronous (config) → ImSessionStore; host owns the database, registration owns the returned handle |
-| log                     | Optional (level, message, fields?); redacted by default; the explicit debug switch supplies full requests including images and credentials, as described in the configuration reference |
-| signal                  | Optional revocation of the whole registration, not an invoke argument                                         |
+`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` snapshots configuration, authenticates Bot identity, checks Kernel execution_ready and adds/replaces the binding. It returns no handle. Calls run serially in invocation order. Replacement validates first, cleans up the old binding, then starts the new one; failures roll back newly acquired resources and retain cleanup errors. An old binding is not automatically restored after replacement startup fails. Permanent startup failures expose IM_CONNECTION_NOT_READY with the sanitized connection code in error.cause.message, even after rollback. Other identities remain live. Transient channel startup failures retain the initialized binding in retrying state; successful registration does not guarantee a currently online socket.
 
-## ChannelRegistration
+| GatewayBot field | Contract |
+| --- | --- |
+| apiUrl / bfToken | Platform address / credential; credentials callback can supply the token instead |
+| botId / botName | Optional identity assertion / display name; disabled bindings require botId |
+| enabled | false records a disabled binding without authentication or network startup |
+| materials / loadMaterials | Static named parts / current per-turn named parts |
+| materialLoading | timeout_ms / max_in_flight, defaults 5000 / 8 |
+| credentials | async (config, signal) returning a token; callback config uses internal snake_case fields |
+| authorizeSpace | Synchronous authenticated space authorization; throw to reject |
+| createSessionStore | Synchronous factory; Gateway owns the returned handle, host owns its database |
+| Other channel settings | Existing snake_case options from the configuration reference; agent is passed separately |
 
-| Member   | Meaning                                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------------------------- |
-| endpoint | Execution endpoint used by this registration                                                                     |
-| status   | Readonly array of current Bot diagnostic snapshots, not an event subscription                                    |
-| close()  | Promise<void>; stop admission and close owned resources; repeated calls return the same Promise; failures reject |
+`status` returns diagnostic snapshots. `close(): Promise<void>` permanently stops the instance and cleans up all its bindings within a shared four-second deadline; failures reject and repeated calls return the same Promise. A closed Gateway rejects registration. Construct another instance to run again; the same host client remains reusable. Gateway never globally stops/drains/closes that client or shuts down Kernel. See [Lifecycle and delivery](../guides/lifecycle-and-delivery.md).
 
-Registration does not return an invocation handle for each turn; the channel manages invocations and /stop internally. Applications using the client directly retain handle.invocationId and call interrupt themselves.
+ChannelRegistry, ChannelDefinition and ChannelRegistration are removed. No compatibility overload accepts endpoint/definition or a single {bot, agent} object. CLI JSON still uses snake_case fields and nested bot.agent; the CLI maps them to the public API.
 
 ## Advanced exports
 
 MemoryImSessionStore and ImSessionStore/Binding/Occurrence support [Session management](../guides/sessions.md). ImRuntime, ImChannelManager, ImInvocationInput, build_im_contexts, registerBot, WukongConnection, and imApi are advanced orchestration entries, not a new generic plugin protocol. Direct users must satisfy ownership and admission contracts themselves.
 
 validateImConfig/validateImBots validate local structure, not credentials or Provider readiness. octoCliEnvironment produces tool environment values; it does not install octo-cli. Start with the [shared SDK example](../../examples/registration.mts).
+
+`BusinessMaterial` is `{ name: string, parts: ModelInputPart[] }`; use `bot.materials` for static data and `loadMaterials` for current data. Neither accepts the old ContextItem envelope. See [Business material](../guides/contexts-and-credentials.md) for merge, limits, image integrity and migration.

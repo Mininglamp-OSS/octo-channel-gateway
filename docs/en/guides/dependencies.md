@@ -2,6 +2,9 @@
 
 [简体中文](../../zh-CN/guides/dependencies.md) | [Documentation](../README.md)
 
+
+The minimum Runtime version is **1.1.13**, with the current compatibility range **>=1.1.13 <2.0.0**. Installation examples use `@latest` to select the current npm release; this is an installation preference, not a replacement for the minimum version or a promise of compatibility with future major versions. The client and development Runtime manifests retain `^1.1.13`. Installing a new package does not replace an already running Kernel; restart Runtime through its own service commands.
+
 **Both modes require a Runtime execution service.** CLI operation uses an already running Runtime Kernel. SDK hosts must provide an existing Kernel endpoint or create a service themselves through the full Runtime's public hosting API. Gateway contains no executor and does not install, start, or stop Runtime automatically.
 
 | Dependency                                 | Purpose                                            | Installation responsibility                                          |
@@ -12,7 +15,7 @@
 | Provider CLIs / tools                      | Native model and tool capabilities                 | Installed/configured by the Kernel host                              |
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway

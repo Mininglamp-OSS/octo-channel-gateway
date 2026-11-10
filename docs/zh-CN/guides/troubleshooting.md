@@ -9,12 +9,12 @@
 start/run 在修改服务或启动前台注册前通过公开 client 查询 execution_ready。CLI 从 start/run --runtime-home 参数推导 Kernel 地址（默认 ~/.octo-runtime）；restart 沿用已安装定义，由实际 run 进程检查就绪；连接失败、协议不匹配或未就绪返回 KERNEL_UNAVAILABLE。普通输出和 JSON error.message 都附安装、启动、诊断及 Runtime Home 指引。
 
 ```sh
-npm install -g @mininglamp-oss/octo-runtime@^1.1.13
+npm install -g @mininglamp-oss/octo-runtime@latest
 octo-runtime start
 octo-runtime doctor --json
 ```
 
-使用已发布的 Runtime/client 1.1.13 或受支持的匹配版本；不要安装不支持 IPC v2 的旧版本。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
+Runtime 最低要求为 1.1.13，支持 1.x 系列；仅支持 IPC v2 不足以证明兼容 1.1.13 的 AgentEnv 合同。上述命令安装 npm `@latest`；跨主版本时需核对发行兼容说明。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
 
 ## 常见故障
 

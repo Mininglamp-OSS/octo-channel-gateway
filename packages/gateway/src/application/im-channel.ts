@@ -1,4 +1,5 @@
 import type { JsonObject } from "../support/types.js";
+import { runDiagnostic } from "../support/diagnostics.js";
 import { shutdownDeadline, withinShutdown } from "../support/shutdown.js";
 /**
  * 单 Bot 编排：把授权 IM 消息转换为有界任务，并把公开结果投递回原会话。
@@ -436,30 +437,28 @@ export class ImRuntime {
     runId?: string,
     data: Record<string, unknown> = {},
   ): void {
-    try {
+    runDiagnostic(() =>
       this.dependencies.log?.("warn", "channel.diagnostic", {
         code,
         ...data,
         endpoint_id: imBotIdentity(this.config),
         ...(runId ? { run_id: runId } : {}),
-      });
+      }),
+    );
+    runDiagnostic(() =>
       this.dependencies.onDiagnostic?.(code, {
         endpointId: imBotIdentity(this.config),
         ...(runId ? { runId } : {}),
-      });
-    } catch {
-      /* Diagnostics cannot fail execution. */
-    }
+      }),
+    );
   }
   #log(event: string, data: Record<string, unknown> = {}): void {
-    try {
+    runDiagnostic(() =>
       this.dependencies.log?.("info", event, {
         endpoint_id: imBotIdentity(this.config),
         ...data,
-      });
-    } catch {
-      /* 诊断不改变业务结果。 */
-    }
+      }),
+    );
   }
   #finalizationFailed(code: string, runId?: string): void {
     if (this.#draining) this.#drainErrors.push(new Error(code));
@@ -780,6 +779,7 @@ export class ImRuntime {
             ...message,
             senderId,
             historyRetry: true,
+            frozenAgentItems: structuredClone(saved.agentItems ?? []),
             frozenArtifacts: this.#sessionStore.occurrence(
               key,
               message.messageId,
@@ -1255,13 +1255,10 @@ export class ImRuntime {
           processEpoch: this.#processEpoch,
         });
       }
+      const materials = message.historyRetry ? undefined : await this.dependencies.prepareMaterials?.(
+        this.config as unknown as JsonObject, turnSignal,
+      );
       const fullContext = await message.buildContext(turnSignal, {
-        configuredItems: message.historyRetry
-          ? undefined
-          : await this.dependencies.prepareContexts?.(
-              this.config as unknown as JsonObject,
-              turnSignal,
-            ),
         initialSession,
         ...(gapEnabled
           ? {
@@ -1292,6 +1289,7 @@ export class ImRuntime {
         occurrenceId,
         refreshStableContext,
       );
+      if (materials) prepared.request.materials = materials;
       if (
         gapEnabled &&
         context.items.some(
@@ -1339,6 +1337,8 @@ export class ImRuntime {
             saved.freshFallbackModelInput;
         prepared.request.instruction = saved?.instruction;
         prepared.request.includeInstruction = saved?.includeInstruction;
+        prepared.request.materials = structuredClone(saved?.materials ?? []);
+        prepared.request.agentItems = structuredClone(saved?.agentItems ?? []);
         if (saved?.freshFallbackModelInputParts)
           prepared.request.freshFallbackModelInputParts = structuredClone(
             saved.freshFallbackModelInputParts,
@@ -1377,7 +1377,7 @@ export class ImRuntime {
       if (
         error instanceof Error &&
         (preparationMessage ||
-          /^IM_CONTEXT_(?:LOADING|RESULT)_[A-Z_]+$/.test(error.message))
+          /^IM_MATERIAL_(?:LOADING|RESULT)_[A-Z_]+$/.test(error.message))
       )
         this.#diagnostic(error.message);
       this.#diagnostic("IM_CONTEXT_PREPARATION_FAILED");

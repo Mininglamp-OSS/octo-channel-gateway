@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { attachKernel } from '@mininglamp-oss/octo-runtime-client';
-import { ImRuntime, ChannelRegistry } from '../dist/packages/gateway/src/index.js';
+import { ImRuntime, ChannelGateway } from '../dist/packages/gateway/src/index.js';
 import { GatewayTransport } from '../dist/packages/gateway/src/transport/channel.js';
 
 const endpoint = '/Users/lvsijia/.octo-runtime/executor-kernel.sock';
@@ -23,7 +23,8 @@ try {
   assert.ok(replies.some(text => text.includes('PR17_CLIENT_1_1_12_OK')), JSON.stringify(replies));
   assert.ok(presentations.some(p => p.terminal === 'completed'));
   await runtime.close();
-  registration = await ChannelRegistry.register(endpoint, { bot: { ...bot, enabled: false } });
+  registration = new ChannelGateway({ kernel: client });
+  await registration.register({ botId: bot.bot_id, apiUrl: bot.api_url, enabled: false }, bot.agent);
   const closing = registration.close();
   assert.equal(closing, registration.close());
   await closing;

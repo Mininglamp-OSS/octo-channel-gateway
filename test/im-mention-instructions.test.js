@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { createContextLoader } from "../dist/packages/gateway/src/support/context-loader.js";
+import { createMaterialLoader } from "../dist/packages/gateway/src/support/material-loader.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
 import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
 import { MENTION_GUIDANCE } from "../dist/packages/gateway/src/transport/mentions.js";
@@ -101,27 +101,29 @@ test("Gateway appends defaults after effective host entries without deduplicatio
 
 test("dynamic host instructions replace the host persona before channel defaults are appended once per turn", async () => {
   let current = "new persona";
+  const material = (text) => ({ name: "persona", parts: [{ type: "text", text }] });
   const hostConfig = {
     ...config,
-    context: { schema, items: [control("old persona")] },
+    materials: [material("old persona")],
   };
-  const loader = createContextLoader(
-    () => [control(current)],
+  const loader = createMaterialLoader(
+    () => [material(current)],
     undefined,
     signal,
   );
   try {
     for (const text of ["new persona", "latest persona"]) {
       current = text;
-      const items = await loader.load(hostConfig, signal);
-      const request = invoke({ schema, items });
+      const materials = await loader.load(hostConfig, signal);
+      const request = invoke({ schema, items: [] });
+      request.materials = materials;
       assert.equal(
-        modelItems(gatewayWire(request)).find((item) => item.namespace === "extra.persona").payload.entries[0].text,
-        text,
+        gatewayWire(request).inputs.filter((part) => part.type === "text" && part.text === text).length,
+        1,
       );
-      assert.deepEqual(items, [control(text)]);
+      assert.deepEqual(materials, [material(text)]);
     }
-    assert.deepEqual(hostConfig.context.items, [control("old persona")]);
+    assert.deepEqual(hostConfig.materials, [material("old persona")]);
   } finally {
     await loader.close();
   }

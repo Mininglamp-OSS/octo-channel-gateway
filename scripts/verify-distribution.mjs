@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { resolveNpmCli } from "./npm-cli.mjs";
 
 const output = resolve(import.meta.dirname, "../.tmp/release");
 const archives = (await readdir(output)).filter((name) =>
@@ -18,7 +19,7 @@ try {
   execFileSync(
     process.execPath,
     [
-      process.env.npm_execpath,
+      resolveNpmCli(),
       "install",
       "--ignore-scripts",
       "--no-audit",
@@ -30,7 +31,7 @@ try {
   );
   await writeFile(
     join(consumer, "smoke.mjs"),
-    'import assert from "node:assert/strict"; import { ChannelRegistry } from "@mininglamp-oss/octo-channel-gateway"; assert.equal(typeof ChannelRegistry.register, "function");',
+    'import assert from "node:assert/strict"; import { ChannelGateway } from "@mininglamp-oss/octo-channel-gateway"; assert.equal(typeof ChannelGateway.prototype.register, "function");',
   );
   execFileSync(process.execPath, ["smoke.mjs"], {
     cwd: consumer,

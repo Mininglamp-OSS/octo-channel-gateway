@@ -13,11 +13,13 @@ import type {
   ProviderSession,
   ContextEnvsPayload,
   McpServers,
+  AgentEnv,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { RunPresentation } from "./presentation/run-projector.js";
 import type { ImGapPlan, ImGapTurnToken } from "./application/context-gap.js";
 import type { ImArtifactPolicy } from "./delivery/artifact-policy.js";
 import type { ImStableContextState } from "./application/stable-context.js";
+import type { BusinessMaterial } from "./materials.js";
 
 export interface ImPositionObservation {
   conversationId: string;
@@ -29,6 +31,8 @@ export interface ImPositionObservation {
 }
 
 export interface ImAgentConfig {
+  /** 高级执行扩展；按 AgentEnv.items 原样传入，不作为模型材料渲染。 */
+  items?: AgentEnv["items"];
   /** 新 Provider 会话首轮的输入前缀；普通续聊不重复，恢复稿复用本轮快照。 */
   instruction?: string;
   /** 可选执行配置，按公开协议编译为 agentEnv，不进入模型输入。 */
@@ -46,7 +50,7 @@ export interface ImCommonConfig {
   bot_name?: string;
   enabled?: boolean;
   agent: ImAgentConfig;
-  context?: ContextEnvelope;
+  materials?: BusinessMaterial[];
   approval_mode?: ApprovalMode;
   run_timeout_ms?: number;
   /** Codex 专用的故障恢复预算；不会让其他 Adapter 自动重跑。 */
@@ -104,6 +108,7 @@ export interface ImInboundMessage {
   historyRetry?: boolean;
   /** 同代次卡片重试复用原投递合同，不从更新后的配置重建文件访问策略。 */
   frozenArtifacts?: ImArtifactPolicy;
+  frozenAgentItems?: AgentEnv["items"];
   bindHistoryTurn?(token: ImGapTurnToken): void;
   markRead?(signal: AbortSignal): Promise<void>;
   messageId: string;
