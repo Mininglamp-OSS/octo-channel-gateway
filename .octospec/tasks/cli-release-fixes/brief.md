@@ -51,3 +51,7 @@ source: self
 用户明确要求同时修改 SDK，移除 loadContexts / ContextItem 业务材料入口，并选择 `{ name, parts }` 命名材料：静态 bot.materials；动态 loadMaterials；同名整项替换、保留静态位置，新项按顺序追加。公开配置拒绝旧 bot.context、loadContexts/contextLoading，不做兼容层。材料只进入模型 inputs，包含文本或图片；自动渠道材料注入规则、冻结重试和回调超时/占额/关闭语义不变。执行参数仍由 bot.agent 编译；高级自定义执行项通过 agent.items 进入 AgentEnv.items，不进入业务材料正文。同步更新 README、双语 docs、共享示例、既有测试与手动验证脚本；专项新增案例仍显式本地执行。内部渠道历史/规则准备表示不作为宿主材料 API。
 
 追加设计就绪度 96/100：已确认数据形状、覆盖语义与无兼容层；模型 parts 与执行 items 分开，历史重试复用冻结快照；风险集中在图片 fallback、执行项隔离、旧配置拒绝和受控回调清理，专项逐项验证。原排除项中 SDK/渠道接口限制按这次明确授权更新，其余生命周期与 CI 边界保持。
+
+# 宿主边界规范补充
+
+用户进一步确认一个 Gateway 通过循环 register 多个 Bot ↔ Agent 绑定，register 返回 Promise<void>，仅统一 close；等待退出、CLI online 主循环、Electron 退出事件、PID 和宿主控制 IPC 不进入 SDK。本次将该目标及 ChannelGateway 命名写入架构规则与双语架构文档，明确当前 ChannelRegistry 尚待迁移；不据此提前修改尚未确认具体类型的 Agent 接入参数，不把设计示例伪装成已实现 API。

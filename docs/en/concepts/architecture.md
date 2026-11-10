@@ -18,3 +18,13 @@ register does not register a plugin or channel definition in the Kernel. It comp
 This repository contains no WebUI/WeCom and defines no Extra discovery or universal plugin JSON. The SDK currently also exports some advanced orchestration types, including ImInvocationInput. Use ChannelRegistry for normal integration rather than assembling internal drafts. Their `contexts` field is not the new Runtime invocation contract; see [Inputs and execution environment](inputs-and-agent-env.md).
 
 Implementation: [registry](../../../packages/gateway/src/registry.ts), [public exports](../../../packages/gateway/src/index.ts), [execution input boundary](../../../packages/gateway/src/execution/kernel-input.ts).
+
+## Target facade and host lifecycle
+
+The agreed target name is **ChannelGateway**: one instance owns multiple Bot ↔ Agent bindings and routes messages between them. Registry describes an internal collection rather than this connection/lifecycle facade. The target operations are `await gateway.register({ bot, agent })`, returning `Promise<void>`, and one idempotent `await gateway.close()` for all bindings. There is no per-registration public handle. Bot and Agent are peer endpoints; the concrete Agent parameter type remains part of the API migration design.
+
+This is an architectural target, **not the currently exported API**. The implementation and integration examples above still use ChannelRegistry and registration handles. No ChannelGateway facade or host-control RPC is introduced by this documentation change.
+
+The SDK owns connections, admission, session mapping, Agent calls, delivery and cleanup of resources it creates. Each failed registration rolls back its own resources; the host closes the Gateway if the whole registration batch should stop. Closing stops admission, coordinates pending initialization, drains owned work and releases all owned bindings within a shared deadline. It does not stop a host-owned Agent/Engine or shared Kernel.
+
+The host owns process lifetime. A CLI uses its existing online loop and shutdown handling; Electron uses its own event loop and asynchronous quit coordination. The SDK must not implement `waitForShutdown()`, a process-keeping loop, signal/exit handlers, Electron app control, PID discovery, single-instance enforcement or service management. Network observation/reconnect/heartbeat for its actual connections remains SDK work. Connecting through the public Runtime client's execution IPC is also SDK work; IPC for controlling another Gateway host process is host work.
