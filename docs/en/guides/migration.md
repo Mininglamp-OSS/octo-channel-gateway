@@ -25,7 +25,7 @@ octo-channel-gateway doctor --json
 | Old directories   | Runtime Home, identity, and configuration are not automatically deleted or rewritten                                                   |
 | Ownership         | Runtime no longer hosts Extra/native/WebUI/WeCom/bundled Gateway; this repository does not recreate a general plugin framework         |
 
-extraset replaces the whole configuration rather than patching it; extraget outputs credentials unchanged. Old module installation definitions are not required SDK configuration. The SDK accepts ChannelDefinition objects and functions directly; see [SDK integration](../getting-started/sdk.md).
+extraset replaces the whole configuration rather than patching it; extraget outputs credentials unchanged. Old module installation definitions are not required SDK configuration. The SDK accepts GatewayBot objects and functions directly; see [SDK integration](../getting-started/sdk.md).
 
 Runtime connection settings are command arguments only: `start/run --runtime-home <path>` (default `~/.octo-runtime`). Do not put `runtime_home`, `endpoint`, or `runtime_endpoint` in business configuration. Service definitions retain the launch arguments for restart. SDK endpoint arguments are unchanged.
 
@@ -38,3 +38,5 @@ Both the production client and development Runtime dependencies use ^1.1.13. Gat
 ## Named SDK materials
 
 Replace `bot.context.items` and `loadContexts` with `bot.materials` and `loadMaterials`, each returning `{ name, parts }[]`. Replace SDK `contextLoading` with `materialLoading`, and CLI `context_loading` with `material_loading`. Old fields fail instead of being silently ignored. Move ordinary text into text parts, images into validated image parts, and execution extensions into `agent.items`; `agent.mcp` and `agent.envs` remain available. Dynamic same-name materials replace whole static entries in place; empty results preserve static entries. See the updated [SDK integration](../getting-started/sdk.md) and [material guide](contexts-and-credentials.md).
+
+The SDK now uses new ChannelGateway({ kernel }) and register(bot, agent). Remove ChannelRegistry/ChannelDefinition/ChannelRegistration usage. The host owns Runtime attachment and final client disposal; all Bot handles are cleaned up by gateway.close(). CLI JSON remains unchanged.

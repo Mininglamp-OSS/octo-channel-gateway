@@ -7,8 +7,7 @@ import { createInterface } from "node:readline/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import {
-  ChannelRegistry,
-  type ChannelRegistration,
+  ChannelGateway,
   type ImBotConfig,
 } from "../../../packages/gateway/src/index.js";
 import { validateImBots } from "../../../packages/gateway/src/lifecycle/configuration.js";
@@ -147,7 +146,8 @@ async function run(
     throw new GatewayCommandError("GATEWAY_HOME_OCCUPIED",
       `Home: ${home}\nOwner PID: ${lock.pid ?? "unknown"}\nAnother Gateway run owns this Home, or its lock cannot be verified. Check status --home ${JSON.stringify(home)}; stop the existing run in its terminal before retrying. Do not delete a live service.lock or gateway.sock.`);
   });
-  const registrations: ChannelRegistration[] = [];
+  let kernel: ReturnType<typeof attachKernel> | undefined;
+  let gateway: ChannelGateway | undefined;
   let logger: RuntimeLogging | undefined;
   let closeStatus: (() => Promise<void>) | undefined;
   let stopping = false;
@@ -177,14 +177,14 @@ async function run(
         spaces.some((space) => typeof space !== "string" || !space.trim()))
     )
       throw new Error("IM_AUTHORIZED_SPACES_INVALID");
+    kernel = attachKernel({ endpoint });
+    gateway = new ChannelGateway({ kernel, log, signal: controller.signal });
     if (config.enabled !== false)
       for (const bot of bots) {
         controller.signal.throwIfAborted();
-        registrations.push(
-          await ChannelRegistry.register(endpoint, {
-            bot: bot as ImBotConfig,
-            log,
-            signal: controller.signal,
+        const { api_url, bf_token, bot_id, bot_name, agent, ...settings } = bot as ImBotConfig;
+        await gateway.register({
+            ...settings, apiUrl: api_url, bfToken: bf_token, botId: bot_id, botName: bot_name,
             materialLoading: config.material_loading as
               { timeout_ms?: number; max_in_flight?: number } | undefined,
             authorizeSpace: spaces
@@ -193,15 +193,14 @@ async function run(
                     throw new Error("IM_TENANT_NOT_ACTIVE");
                 }
               : undefined,
-          }),
-        );
+          }, agent);
       }
     controller.signal.throwIfAborted();
     closeStatus = await serveStatus(home, () => ({
       pid: process.pid,
       phase: "ready",
       endpoint,
-      bots: registrations.flatMap((registration) => [...registration.status]),
+      bots: gateway?.status ?? [],
     }));
     log("info", "service.ready", { state: "ready" });
     output(JSON.stringify({ component: "channel-gateway", state: "ready" }));
@@ -216,15 +215,24 @@ async function run(
     dependencies.signal?.removeEventListener("abort", stop);
     try {
       const cleanup = await Promise.allSettled([
-        ...registrations.map((registration) => registration.close()),
+        Promise.resolve().then(() => gateway?.close()),
         Promise.resolve().then(() => closeStatus?.()),
       ]);
-      logger?.channel("channel-gateway")("info", "service.closed", {
-        state: "closed",
-      });
-      await logger?.close();
-      if (cleanup.some((result) => result.status === "rejected"))
-        throw new Error("IM_DISPOSE_FAILED");
+      cleanup.push(...await Promise.allSettled([
+        Promise.resolve().then(() => kernel?.close()),
+      ]));
+      const incomplete = cleanup.some(result => result.status === "rejected");
+      cleanup.push(...await Promise.allSettled([
+        Promise.resolve().then(() => logger?.channel("channel-gateway")(
+          incomplete ? "error" : "info", "service.closed",
+          { state: incomplete ? "cleanup_incomplete" : "closed" },
+        )),
+      ]));
+      cleanup.push(...await Promise.allSettled([
+        Promise.resolve().then(() => logger?.close()),
+      ]));
+      const errors = cleanup.filter(result => result.status === "rejected").map(result => result.reason);
+      if (errors.length) throw new AggregateError(errors, "IM_DISPOSE_FAILED");
     } finally {
       await release();
     }

@@ -2,9 +2,9 @@
 
 [简体中文](../../zh-CN/getting-started/sdk.md) | [Documentation](../README.md)
 
-The SDK entry point is `ChannelRegistry.register(endpoint, definition)`. The endpoint must identify an existing local Kernel whose execution_ready status is true: a socket on POSIX or a named pipe on Windows. The host installs and starts the Kernel and its required Adapter/Provider; Gateway does not start it.
+The SDK entry point is `new ChannelGateway({ kernel })`; `await gateway.register(bot, agent)` adds or replaces bindings. The host supplies a public KernelClient: use attachKernel({ endpoint }) for an existing service, or initialize createKernelService from the full Runtime and pass service.client. The host owns Kernel/Adapter/Provider installation, startup and shutdown.
 
-Examples here describe the current implementation. The planned ChannelGateway borrows a host-supplied KernelClient, keeps repeated register calls for adding/replacing bindings, and provides one close operation. Embedded CLI/Electron hosts must await cleanup. See the [embedding and shutdown contract](../guides/lifecycle-and-delivery.md) for ownership and leak-prevention acceptance criteria; do not mix the target API into these examples.
+Gateway borrows KernelClient. Repeated register calls return Promise<void>, with no separate handle or start operation. Embedded CLI/Electron hosts must await unified close; see the [embedding and shutdown contract](../guides/lifecycle-and-delivery.md).
 
 ## Prepare Runtime first
 
@@ -28,27 +28,29 @@ The [shared example](../../examples/registration.mts) pairs registration with cl
 
 ```ts
 import {
-  ChannelRegistry,
-  type ChannelDefinition,
-  type ChannelRegistration,
+  ChannelGateway,
+  type GatewayBot,
+  type ImAgentConfig,
 } from "@mininglamp-oss/octo-channel-gateway";
+import type { KernelClient } from "@mininglamp-oss/octo-runtime-client";
 
 export async function withChannel<T>(
-  endpoint: string,
-  definition: ChannelDefinition,
-  serve: (registration: ChannelRegistration) => Promise<T>,
+  kernel: KernelClient,
+  bindings: readonly { bot: GatewayBot; agent: ImAgentConfig }[],
+  serve: (gateway: ChannelGateway) => Promise<T>,
 ): Promise<T> {
-  const registration = await ChannelRegistry.register(endpoint, definition);
+  const gateway = new ChannelGateway({ kernel });
   try {
-    return await serve(registration);
+    for (const { bot, agent } of bindings) await gateway.register(bot, agent);
+    return await serve(gateway);
   } finally {
-    await registration.close();
+    await gateway.close();
   }
 }
 ```
 
-Pass a real endpoint, a [ChannelDefinition](../reference/sdk.md), and a `serve` function representing the application's service lifetime. Completion or failure of `serve` awaits close. If both work and cleanup fail, this simple finally example throws the cleanup error; a production host may aggregate both. Registration failure rolls back resources already acquired by the SDK.
+Pass a host-owned KernelClient, multiple [GatewayBot and ImAgentConfig bindings](../reference/sdk.md), and a serve function representing the application's lifetime. All registrations are inside try; failure of any registration or serve awaits whole-Gateway cleanup. If work and cleanup both fail, this simple finally example throws the cleanup error; production hosts may aggregate both. Close leaves the client reusable; the host releases it when appropriate.
 
-One definition configures one Bot. Put execution settings in `bot.agent`, optional static text/image material in `bot.materials: [{ name, parts }]`, and return the same shape from `loadMaterials` for current material. Dynamic same-name entries replace static entries in place; new names append. Credentials come from the host's `credentials` callback or bot.bf_token. The [definition example](../../examples/definition.mts) demonstrates the new callback without a ContextItem envelope; see [Business material](../guides/contexts-and-credentials.md) for image parts and limits.
+Execution settings are the second register argument, agent. Bot uses apiUrl/bfToken and optional botId/botName; authentication confirms identity. Put static material in bot.materials and current material in bot.loadMaterials; dynamic same-name entries replace whole static items. Credentials come from bot.credentials or bfToken. Callback/internal configuration snapshots retain snake_case fields; other channel options follow the configuration reference. CLI JSON retains bot.agent. See the [definition example](../../examples/definition.mts) and [Business material](../guides/contexts-and-credentials.md) for callbacks and image limits.
 
-Keep the registration alive while receiving and delivering messages. Importing the SDK does not connect to the network or read CLI configuration, and the SDK installs no process signal/exit handlers. `definition.signal` revokes the whole registration; await close to observe cleanup failures. See [Lifecycle and delivery](../guides/lifecycle-and-delivery.md).
+Keep the registration alive while receiving and delivering messages. Importing the SDK does not connect to the network or read CLI configuration, and the SDK installs no process signal/exit handlers. `options.signal` revokes the whole registration; await close to observe cleanup failures. See [Lifecycle and delivery](../guides/lifecycle-and-delivery.md).

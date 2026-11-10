@@ -91,12 +91,14 @@ try {
   await writeFile(
     join(directory, "types.mts"),
     `
-    import { ChannelRegistry, type ChannelDefinition, type ChannelRegistration } from "@mininglamp-oss/octo-channel-gateway";
-    const definition: ChannelDefinition = {
-      bot: { bot_id: "types", enabled: false, api_url: "https://example.test/api", agent: { adapter_type: "test" } },
+    import { ChannelGateway, type GatewayBot } from "@mininglamp-oss/octo-channel-gateway";
+    const bot: GatewayBot = {
+      botId: "types", enabled: false, apiUrl: "https://example.test/api",
       loadMaterials(_bot, { signal }) { signal.throwIfAborted(); return []; }
     };
-    const registration: Promise<ChannelRegistration> = ChannelRegistry.register("endpoint", definition);
+    import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
+    const gateway = new ChannelGateway({ kernel: attachKernel({ endpoint: "endpoint" }) });
+    const registration: Promise<void> = gateway.register(bot, { adapter_type: "test" });
     void registration;
   `,
   );
@@ -125,7 +127,7 @@ try {
     import assert from "node:assert/strict";
     import { mkdir } from "node:fs/promises";
     import { resolve } from "node:path";
-    import { ChannelRegistry } from "@mininglamp-oss/octo-channel-gateway";
+    import { ChannelGateway } from "@mininglamp-oss/octo-channel-gateway";
     import { createKernelService, componentEndpoint } from "@mininglamp-oss/octo-runtime/host";
     import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
     const home = resolve("kernel"); await mkdir(home);
@@ -143,7 +145,8 @@ try {
         { namespace: "octo.security", name: "approval_policy", payload: { mode: "full_access" } }
       ] }));
       assert.equal(events.at(-1).type, "run.completed");
-      registration = await ChannelRegistry.register(endpoint, { bot: { bot_id: "package-fixture", enabled: false, api_url: "https://example.test/api", agent: { adapter_type: "package-fixture", workdir: home } } });
+      registration = new ChannelGateway({ kernel: client });
+      await registration.register({ botId: "package-fixture", enabled: false, apiUrl: "https://example.test/api" }, { adapter_type: "package-fixture", workdir: home });
       const closing = registration.close(); assert.equal(closing, registration.close()); await closing;
       assert.equal((await client.status()).execution_ready, true);
     } finally { await registration?.close(); client?.close(); assert.equal((await kernel.close()).complete, true); }

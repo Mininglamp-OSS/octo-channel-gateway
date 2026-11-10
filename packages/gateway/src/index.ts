@@ -4,8 +4,8 @@
  */
 export { ImRuntime } from "./application/im-channel.js";
 export { octoCliEnvironment } from "./execution/tool-environment.js";
-export { ChannelRegistry } from "./registry.js";
-export type { ChannelDefinition, ChannelRegistration } from "./registry.js";
+export { ChannelGateway } from "./gateway.js";
+export type { GatewayBot, ChannelGatewayOptions } from "./gateway.js";
 export type { LoadMaterials } from "./support/material-loader.js";
 export { ImChannelManager } from "./lifecycle/manager.js";
 export { MemoryImSessionStore } from "./application/session-store.js";

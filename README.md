@@ -66,32 +66,33 @@ Bare invocation and subcommand `--help` display usage, examples, and flags. `ver
 
 ## Integrate the SDK
 
-Install `@mininglamp-oss/octo-channel-gateway` in the host application and register a Bot against an existing Kernel endpoint:
+The host creates or attaches to Runtime and supplies a public KernelClient. Register multiple Bots on one Gateway, and await close before releasing host resources:
 
 ```ts
-import { ChannelRegistry } from "@mininglamp-oss/octo-channel-gateway";
+import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
+import { ChannelGateway } from "@mininglamp-oss/octo-channel-gateway";
 
-const registration = await ChannelRegistry.register(endpoint, {
-  bot: {
-    bot_id: botId,
-    bot_name: "My Codex Bot",
-    api_url: "https://im.deepminer.com.cn/api",
-    bf_token: botToken,
-    agent: { adapter_type: "codex", model: "gpt-6.1-sol", effort: "high", workdir }
-  },
-  loadMaterials(_bot, { signal }) {
-    signal.throwIfAborted();
-    return [{ name: "brief", parts: [{ type: "text", text: readCurrentBrief() }] }];
-  }
-});
+const kernel = attachKernel({ endpoint });
+const gateway = new ChannelGateway({ kernel });
 try {
-  await applicationLifetime;
+  for (const binding of bindings) {
+    await gateway.register(
+      { apiUrl: binding.apiUrl, bfToken: binding.bfToken },
+      binding.agent,
+    );
+  }
+  await applicationLifetime; // CLI/Electron owns its event loop and exit handling.
 } finally {
-  await registration.close();
+  try { await gateway.close(); }
+  finally { kernel.close(); }
 }
 ```
 
-Each registration owns its client and Bot resources, not the Kernel. `bot.materials` supplies optional static `{ name, parts }` material. `loadMaterials` reads the same shape each turn; dynamic same-name entries replace static entries in place. Text and image parts go only to model inputs; execution settings stay in `bot.agent` (advanced items in `agent.items`). The old `loadContexts`, `ContextItem` business material and `bot.context` entry points are removed. A host can supply its own session store through `createSessionStore`. Closing drains owned execution and delivery within a shared four-second deadline, reports cleanup failures, and leaves other registrations and the shared Kernel running.
+`register(bot, agent)` returns `Promise<void>` and adds or replaces a binding by normalized platform address and authenticated Bot ID. Token rotation does not create another binding. Validate the replacement, close the old binding, then start the new one; a failed replacement does not automatically restore the old configuration. Other Bots keep running. No separate start or registration handle is needed. After close, create a new ChannelGateway; the same host-owned client remains reusable until the host closes it.
+
+Gateway owns Bot connections, timers, listeners, material callbacks, session-store handles and its own executions. It never closes the borrowed client or globally stops/drains its other users. Close shares a four-second deadline, attempts all resource cleanup and reports failures; timeout is not proof of cleanup. Hosts must await it before releasing Runtime resources. Electron intercepts before-quit and coordinates asynchronous cleanup in the main process; the SDK supplies no waitForShutdown or process handlers.
+
+`bot.materials` supplies optional static `{ name, parts }` data, and `bot.loadMaterials` reads that shape each turn. Dynamic same-name entries replace static entries in place. Text/image parts go to model inputs; the separate `agent` argument supplies execution settings, including private `agent.items`. `bot.createSessionStore` provides owned handles over a host-owned database. The old ChannelRegistry, ChannelDefinition, ChannelRegistration, loadContexts and ContextItem material APIs are removed without compatibility wrappers. CLI configuration remains snake_case with nested bot.agent; the CLI maps it to the SDK API.
 
 Gateway prepares history, channel context, and business material before invoking `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv)`. Interrupt an execution using its `invocationId`; a business `sessionId` or Provider continuation identifier cannot replace it. MCP, environment variables, model/effort, and workspace settings travel in `agentEnv`. See [Inputs and execution environment](docs/en/concepts/inputs-and-agent-env.md) for the current boundary and remaining protocol migrations.
 

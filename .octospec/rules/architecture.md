@@ -18,13 +18,13 @@ supersedes: []
 
 独立渠道仓库，源自 octo-runtime Issue 328。执行只依赖公开 `@mininglamp-oss/octo-runtime-client`，协议从 `/protocol` 导入，不依赖完整 Runtime、私有 Core/Kernel/Host/Adapter SDK 或 `/internal`。
 
-公开入口的目标命名为 `ChannelGateway`：它连接 Bot 与 Agent、转发消息并管理所属连接的生命周期；`Registry` 只适合作为内部注册集合的名称。业务定义、函数、凭据、会话、准入和投递由 Gateway/应用管理，不实现 Extra、通用 JSON/schema、插件发现或 Kernel 渠道注册 RPC。
+公开入口为 `ChannelGateway`：它连接 Bot 与 Agent、转发消息并管理所属连接的生命周期；`Registry` 只适合作为内部注册集合的名称。业务定义、函数、凭据、会话、准入和投递由 Gateway/应用管理，不实现 Extra、通用 JSON/schema、插件发现或 Kernel 渠道注册 RPC。
 
 ## SDK 与宿主范围
 
-目标公开 API 为实例方法 `await gateway.register({ bot, agent }): Promise<void>` 和 `await gateway.close(): Promise<void>`。一个 Gateway 可在循环中注册多组 Bot ↔ Agent 绑定；不向业务方暴露独立 registration/close 句柄。Bot 与 Agent 是平级字段；Bot 提供平台连接与认证信息，Agent 提供 adapter、模型、instruction、MCP 等执行定义。Agent 参数的具体类型在接口迁移任务中确定，不把尚未明确的字段假定为既定合同。
+公开 API 为实例方法 `await gateway.register(bot, agent): Promise<void>` 和 `await gateway.close(): Promise<void>`。一个 Gateway 可在循环中注册多组 Bot ↔ Agent 绑定；不向业务方暴露独立 registration/close 句柄。Bot 与 Agent 是两个参数；Bot 提供平台连接与认证信息，Agent 提供 adapter、模型、instruction、MCP 等执行定义。Agent 参数使用 ImAgentConfig；Bot 使用 GatewayBot，内部与 CLI 配置继续采用 ImBotConfig。
 
-宿主负责 Runtime 接入，向目标 `new ChannelGateway({ kernel })` 注入公开 `KernelClient`。`attachKernel()` 返回 client；自建模式使用完整 Runtime 的 `createKernelService()`，初始化后传入 service.client。SDK 只依赖公开 client 类型，不创建 Kernel，也不接管注入 client 的所有权。Agent 是每个绑定的执行定义，不再承担 Runtime endpoint 选择。Gateway 拥有 Manager 和自建渠道资源，不拥有共享 client、Kernel、宿主 Engine/Agent 或数据库。
+宿主负责 Runtime 接入，向 `new ChannelGateway({ kernel })` 注入公开 `KernelClient`。`attachKernel()` 返回 client；自建模式使用完整 Runtime 的 `createKernelService()`，初始化后传入 service.client。SDK 只依赖公开 client 类型，不创建 Kernel，也不接管注入 client 的所有权。Agent 是每个绑定的执行定义，不再承担 Runtime endpoint 选择。Gateway 拥有 Manager 和自建渠道资源，不拥有共享 client、Kernel、宿主 Engine/Agent 或数据库。
 
 ### register：动态添加与去重覆盖
 
@@ -54,7 +54,7 @@ SDK 不提供或调用 `waitForShutdown()`，不启动只为保持进程存活�
 
 ## 迁移状态
 
-以上是用户确认的目标边界。当前代码仍导出 `ChannelRegistry.register(endpoint, definition)` 并返回注册句柄，尚未迁移成实例级 `ChannelGateway`。架构文档不得把目标示例标成当前可运行 API；此次规范补充本身不新增 wait/online/PID/控制 IPC 功能。已实现的材料接口与执行调用合同继续适用，直到接口迁移同步更新代码、CLI、SDK 示例和验证。
+ChannelGateway 为当前公开接口，已移除 ChannelRegistry、ChannelDefinition、ChannelRegistration，不设兼容层。CLI 显式 attachKernel，先 await gateway.close 再关闭自己的 client；SDK 接入示例同步反映此所有权。
 
 保留迁移前准入、身份/代次、重试预算、投递、上下文和会话语义。取消 ACK 不等于终态，终态不等于投递成功，观察中断不自动重放。
 

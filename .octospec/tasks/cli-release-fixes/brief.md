@@ -57,3 +57,9 @@ source: self
 用户进一步确认一个 Gateway 通过循环 register 多个 Bot ↔ Agent 绑定，register 返回 Promise<void>，仅统一 close；等待退出、CLI online 主循环、Electron 退出事件、PID 和宿主控制 IPC 不进入 SDK。本次将该目标及 ChannelGateway 命名写入架构规则与双语架构文档，明确当前 ChannelRegistry 尚待迁移；不据此提前修改尚未确认具体类型的 Agent 接入参数，不把设计示例伪装成已实现 API。
 
 用户继续明确宿主负责 Runtime 接入，并要求文档约束嵌入资源清理、保留 register 且去重覆盖。目标构造改为借用公开 KernelClient，覆盖之前“Gateway 自建 client”的目标所有权；当前实现不在此次文档补充中修改。沿用平台地址与稳定 Bot ID 的身份，认证后串行替换：校验、清理旧绑定、启动新绑定；不承诺自动恢复旧配置。close 是终止边界，清理全部自建资源和自身执行，不操作共享 client 全局生命周期；失败继续清理并汇总，超时不伪装成功。新增/覆盖、并发注册关闭、晚到资源、清理失败和共享 client 隔离作为后续迁移的本地验收项，不扩大 CI。
+
+# ChannelGateway 实施确认
+
+用户明确开始实施上述合同，并将最终签名定为 `new ChannelGateway({ kernel })`、`await gateway.register(bot, agent): Promise<void>`、`await gateway.close()`；移除 ChannelRegistry/ChannelDefinition/ChannelRegistration，不设兼容入口。CLI 显式 attachKernel 并持有 client，finally 中先关闭 Gateway 再释放 client；SDK 不关闭借用 client。Bot 接入用 apiUrl/bfToken，botId 可选且须与认证身份匹配；禁用绑定须显式 botId。材料、凭据及存储工厂随 Bot 绑定注册，日志及宿主 signal 在 Gateway 构造时提供；Agent 继续使用现有业务执行定义。
+
+实施沿用内部 Manager、调度、重试和投递合同，为每绑定分配受控材料池及执行身份集合，串行认证/去重覆盖，清理失败不遗失资源。新增专项显式本地运行，迁移既有测试、验证脚本、包外消费者、README 和双语 docs，不扩大 CI。验收包括共享 client 继续执行、其他使用者不被取消、失败回滚、并发关闭、覆盖与全部资源清理。实施准备评分 96/100；此评分不替代运行结果，验证单独记录。

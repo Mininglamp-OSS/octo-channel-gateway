@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { setImmediate as settle } from "node:timers/promises";
 import { assertModelInputParts, providerInputParts } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { ChannelRegistry, ImRuntime, validateImConfig } from "../dist/packages/gateway/src/index.js";
+import { ChannelGateway, ImRuntime, validateImConfig } from "../dist/packages/gateway/src/index.js";
 import { assertMaterials } from "../dist/packages/gateway/src/materials.js";
 import { createMaterialLoader, mergeConfiguredMaterials } from "../dist/packages/gateway/src/support/material-loader.js";
 import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
@@ -56,7 +56,7 @@ test("materials reject old envelopes, execution fields, invalid images, duplicat
 test("removed public fields fail explicitly before registration and CLI configuration", async () => {
   assert.throws(() => validateImConfig({ ...bot(), context: { schema, items: [] } }), /REMOVED_USE_MATERIALS/);
   for (const old of [{ loadContexts() { return []; } }, { contextLoading: {} }])
-    await assert.rejects(ChannelRegistry.register("not-a-kernel", { bot: bot(), ...old }), /API_REMOVED/);
+    await assert.rejects(new ChannelGateway({ kernel: {} }).register({ apiUrl: "https://example.test/api", ...old }, bot().agent), /API_REMOVED/);
   assert.throws(() => validateRuntimeHomeConfig({ context_loading: {} }), /REMOVED_USE_MATERIAL_LOADING/);
 });
 

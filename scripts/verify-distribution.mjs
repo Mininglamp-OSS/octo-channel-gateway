@@ -30,7 +30,7 @@ try {
   );
   await writeFile(
     join(consumer, "smoke.mjs"),
-    'import assert from "node:assert/strict"; import { ChannelRegistry } from "@mininglamp-oss/octo-channel-gateway"; assert.equal(typeof ChannelRegistry.register, "function");',
+    'import assert from "node:assert/strict"; import { ChannelGateway } from "@mininglamp-oss/octo-channel-gateway"; assert.equal(typeof ChannelGateway.prototype.register, "function");',
   );
   execFileSync(process.execPath, ["smoke.mjs"], {
     cwd: consumer,

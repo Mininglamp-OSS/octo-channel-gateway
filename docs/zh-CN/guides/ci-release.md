@@ -33,6 +33,6 @@ npm run pack:release
 npm run test:package
 ```
 
-原来的三归档候选验证仍由 scripts/verify-package.mjs 提供。CI 使用 scripts/verify-distribution.mjs 在独立消费者目录安装本地归档及 npm 依赖，导入 ChannelRegistry 并运行 CLI help，不启动系统服务。
+原来的三归档候选验证仍由 scripts/verify-package.mjs 提供。CI 使用 scripts/verify-distribution.mjs 在独立消费者目录安装本地归档及 npm 依赖，导入 ChannelGateway 并运行 CLI help，不启动系统服务。
 
 CLI 归属和发布故障注入专项显式执行 `npm run build && node --test scripts/verify-cli-release.mjs`。使用隔离进程/状态夹具和模拟发布 API，不改真实服务、npm 或 GitHub；不加入默认测试 glob 或 CI Gate。Windows 原生管理器和生产 npm/GitHub 写入仍需对应环境验证。

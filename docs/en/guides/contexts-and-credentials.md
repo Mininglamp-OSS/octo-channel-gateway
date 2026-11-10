@@ -5,7 +5,10 @@
 `loadMaterials(config, {signal})` reads current business material each turn and may return an array or a Promise. The callback reference is fixed at registration; config is an independent Bot snapshot. The host owns data sources, authorization, and consistency. This example reads the token and business brief separately:
 
 ```ts
-import type { ChannelDefinition } from "@mininglamp-oss/octo-channel-gateway";
+import type {
+  GatewayBot,
+  ImAgentConfig,
+} from "@mininglamp-oss/octo-channel-gateway";
 
 export function createDefinition(options: {
   botId: string;
@@ -13,26 +16,21 @@ export function createDefinition(options: {
   workdir: string;
   readToken: (signal: AbortSignal) => Promise<string>;
   readBrief: (signal: AbortSignal) => Promise<string>;
-}): ChannelDefinition {
+}): { bot: GatewayBot; agent: ImAgentConfig } {
   return {
     bot: {
-      bot_id: options.botId,
-      api_url: options.apiUrl,
-      agent: { adapter_type: "codex", workdir: options.workdir },
+      botId: options.botId,
+      apiUrl: options.apiUrl,
       approval_mode: "ask",
+      credentials: (_bot, signal) => options.readToken(signal),
+      materialLoading: { timeout_ms: 5000, max_in_flight: 8 },
+      async loadMaterials(_bot, { signal }) {
+        const text = await options.readBrief(signal);
+        signal.throwIfAborted();
+        return [{ name: "brief", parts: [{ type: "text", text }] }];
+      },
     },
-    credentials: (_bot, signal) => options.readToken(signal),
-    materialLoading: { timeout_ms: 5000, max_in_flight: 8 },
-    async loadMaterials(_bot, { signal }) {
-      const text = await options.readBrief(signal);
-      signal.throwIfAborted();
-      return [
-        {
-          name: "brief",
-          parts: [{ type: "text", text }],
-        },
-      ];
-    },
+    agent: { adapter_type: "codex", workdir: options.workdir },
   };
 }
 ```

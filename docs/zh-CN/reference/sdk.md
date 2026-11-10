@@ -2,32 +2,29 @@
 
 [English](../../en/reference/sdk.md) | [文档目录](../README.md)
 
-主入口从 `@mininglamp-oss/octo-channel-gateway` 导入。协议类型从公开 client 的 `/protocol` 导入，不依赖 Runtime 私有包。完整类型以[导出](../../../packages/gateway/src/index.ts)和[注册合同](../../../packages/gateway/src/registry.ts)为准。
+从 `@mininglamp-oss/octo-channel-gateway` 导入入口和类型，从公开 Runtime client 导入 KernelClient。详见[导出](../../../packages/gateway/src/index.ts)与[实现](../../../packages/gateway/src/gateway.ts)。
 
-## ChannelRegistry.register
+## ChannelGateway
 
-`register(endpoint: string, definition: ChannelDefinition): Promise<ChannelRegistration>`。校验 Bot，复制配置、创建独立 client 与 Manager，检查 Kernel execution_ready 后启动 Bot。已 abort 的 signal 会拒绝；任何中途失败都回滚取得的资源，回滚失败以 AggregateError 保留。
+`new ChannelGateway({ kernel, log?, signal? })` 借用宿主持有的 KernelClient。已撤销的 signal 拒绝构造；后续 abort 发起关闭，但仍须 await close 观察结果。log 接收诊断事件；显式启用 debug 时包含图片和凭据等完整输入。
 
-| ChannelDefinition 字段 | 合同                                                                 |
-| ---------------------- | -------------------------------------------------------------------- |
-| bot                    | 必填 ImBotConfig，一个注册一个 Bot，见配置参考                       |
-| loadMaterials           | 可选，每轮 (config, {signal}) 返回 readonly BusinessMaterial[] 或 Promise |
-| materialLoading         | 可选 timeout_ms / max_in_flight；默认 5000 / 8                       |
-| credentials            | 可选 async (config, signal) → string 或 undefined；省略时读 bf_token |
-| authorizeSpace         | 可选同步 (spaceId) → void；不允许时抛错，spaceId 来自认证结果        |
-| createSessionStore     | 可选同步 (config) → ImSessionStore；宿主拥有数据库，注册拥有返回句柄 |
-| log                    | 可选 (level, message, fields?)；默认脱敏；显式调试开关会收到含图片和凭据的完整请求，见配置参考 |
-| signal                 | 可选，撤销整个注册生命周期，不是 invoke 参数                         |
+`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` 复制配置、认证 Bot 身份、检查 Kernel execution_ready，再新增或覆盖绑定，不返回句柄。调用按进入顺序串行。覆盖先校验，再清理旧绑定，最后启动新绑定；失败回滚新资源并保留清理错误。替代启动失败不自动恢复旧绑定，其他身份继续运行。
 
-## ChannelRegistration
+| GatewayBot 字段 | 合同 |
+| --- | --- |
+| apiUrl / bfToken | 平台地址/凭据；也可由 credentials 回调提供 token |
+| botId / botName | 可选身份断言/展示名称；禁用绑定必须提供 botId |
+| enabled | false 记录禁用绑定，不认证、不启动网络连接 |
+| materials / loadMaterials | 静态命名 parts / 每轮动态命名 parts |
+| materialLoading | timeout_ms / max_in_flight，默认 5000 / 8 |
+| credentials | async (config, signal) 返回 token；回调配置仍使用内部 snake_case 字段 |
+| authorizeSpace | 同步授权认证所得空间，抛错拒绝 |
+| createSessionStore | 同步工厂；Gateway 拥有返回的句柄，宿主拥有数据库 |
+| 其他渠道配置 | 沿用配置参考中的 snake_case 选项；agent 独立作为第二个参数 |
 
-| 成员     | 含义                                                                |
-| -------- | ------------------------------------------------------------------- |
-| endpoint | 本次注册连接的执行端点                                              |
-| status   | 只读 Bot 状态快照数组，供诊断；不是事件订阅                         |
-| close()  | Promise<void>；停接纳并关闭所属资源，重复返回同一 Promise，失败拒绝 |
+status 返回诊断快照。`close(): Promise<void>` 永久停止实例，在共享四秒截止内清理所有绑定；失败拒绝，重复调用返回同一 Promise。关闭后拒绝注册，重新运行须新建实例，可继续复用同一宿主 client。Gateway 不对借用 client 执行全局停止/排空/关闭，也不关闭 Kernel。见[生命周期与投递](../guides/lifecycle-and-delivery.md)。
 
-SDK 不直接返回某轮 invocation handle；渠道内部管理调用与 /stop。直接使用 client 的应用自行保管 handle.invocationId 并调用 interrupt。
+ChannelRegistry、ChannelDefinition、ChannelRegistration 已移除；不兼容 endpoint/definition 或单个 {bot, agent} 参数。CLI JSON 仍使用 snake_case 和嵌套 bot.agent，由 CLI 映射成公开 API。
 
 ## 高级导出
 

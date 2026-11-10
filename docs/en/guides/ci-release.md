@@ -33,6 +33,6 @@ npm run pack:release
 npm run test:package
 ```
 
-The existing three-archive candidate verifier remains available under scripts/verify-package.mjs. CI uses scripts/verify-distribution.mjs for a fresh consumer that installs the archive from disk and its dependencies from npm, imports ChannelRegistry, and executes CLI help without starting services.
+The existing three-archive candidate verifier remains available under scripts/verify-package.mjs. CI uses scripts/verify-distribution.mjs for a fresh consumer that installs the archive from disk and its dependencies from npm, imports ChannelGateway, and executes CLI help without starting services.
 
 Run the CLI ownership and release fault-injection checks explicitly with `npm run build && node --test scripts/verify-cli-release.mjs`. They use isolated process/status fixtures and mocked publishing APIs; they do not mutate live services, npm or GitHub. This specialist suite is not added to the default test glob or CI Gate. Real Windows manager behavior and production npm/GitHub writes require environment-specific verification.

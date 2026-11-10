@@ -1,18 +1,20 @@
 import {
-  ChannelRegistry,
-  type ChannelDefinition,
-  type ChannelRegistration,
+  ChannelGateway,
+  type GatewayBot,
+  type ImAgentConfig,
 } from "@mininglamp-oss/octo-channel-gateway";
+import type { KernelClient } from "@mininglamp-oss/octo-runtime-client";
 
 export async function withChannel<T>(
-  endpoint: string,
-  definition: ChannelDefinition,
-  serve: (registration: ChannelRegistration) => Promise<T>,
+  kernel: KernelClient,
+  bindings: readonly { bot: GatewayBot; agent: ImAgentConfig }[],
+  serve: (gateway: ChannelGateway) => Promise<T>,
 ): Promise<T> {
-  const registration = await ChannelRegistry.register(endpoint, definition);
+  const gateway = new ChannelGateway({ kernel });
   try {
-    return await serve(registration);
+    for (const { bot, agent } of bindings) await gateway.register(bot, agent);
+    return await serve(gateway);
   } finally {
-    await registration.close();
+    await gateway.close();
   }
 }

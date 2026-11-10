@@ -25,7 +25,7 @@ octo-channel-gateway doctor --json
 | 原目录   | 不自动删除或改写 Runtime Home、身份与配置                                                               |
 | 功能归属 | Runtime 不再承载 Extra/native/WebUI/WeCom/内置 Gateway；本仓不补建通用插件框架                          |
 
-extraset 是完整替换，不是 patch；extraget 原样输出凭据。不要把旧模块安装定义当成新 SDK 必填格式。SDK 直接使用 ChannelDefinition 对象和函数，见 [SDK 接入](../getting-started/sdk.md)。
+extraset 是完整替换，不是 patch；extraget 原样输出凭据。不要把旧模块安装定义当成新 SDK 必填格式。SDK 直接使用 GatewayBot 对象和函数，见 [SDK 接入](../getting-started/sdk.md)。
 
 Runtime 连接只使用命令参数 `start/run --runtime-home <path>`，默认 `~/.octo-runtime`。不要在业务配置中放入 `runtime_home`、`endpoint` 或 `runtime_endpoint`；重启所需启动参数由原生服务定义保存。SDK 的 endpoint 参数保持原义。
 
@@ -38,3 +38,5 @@ Bot 执行配置使用 `agent.adapter_type`，model、effort、workdir 同属 `a
 ## SDK 命名业务材料
 
 将 `bot.context.items`、`loadContexts` 改为 `bot.materials`、`loadMaterials`，使用 `{ name, parts }[]`。SDK 的 `contextLoading` 改为 `materialLoading`，CLI 的 `context_loading` 改为 `material_loading`。旧字段直接报错，不静默忽略。普通文本改为 text part，图片改为经过完整性校验的 image part；执行扩展改放 `agent.items`，仍可使用 `agent.mcp`、`agent.envs`。动态同名项整体替换静态项并保留位置，空数组保留静态项。参见新的 [SDK 接入](../getting-started/sdk.md)和[业务材料指引](contexts-and-credentials.md)。
+
+SDK 现在使用 new ChannelGateway({ kernel }) 和 register(bot, agent)。移除 ChannelRegistry/ChannelDefinition/ChannelRegistration 用法；宿主负责 Runtime 接入和最终 client 释放，Gateway 统一 close 清理全部 Bot 资源。CLI JSON 不变。
