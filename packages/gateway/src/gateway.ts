@@ -217,7 +217,8 @@ export class ChannelGateway {
         try {
           const result = await manager.upsert(config);
           this.#assertOpen();
-          if (config.enabled !== false && result.state !== "online")
+        // 初始化已交给渠道管理时，暂态断线继续既有重连，不升级成整个宿主退出。
+        if (config.enabled !== false && result.state === "failed")
             throw new Error("IM_CONNECTION_NOT_READY");
         } catch (error) {
           try {

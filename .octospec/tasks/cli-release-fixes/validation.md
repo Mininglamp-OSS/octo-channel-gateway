@@ -43,3 +43,14 @@ Spec 审查发现 P1：后端启动命令抛错绕过启动竞争后的归属检
 # 嵌入生命周期规范补充验证（2026-11-10）
 
 仅更新架构规则、brief 与中英文架构/SDK 入门/生命周期文档。核对已安装 client 1.1.13 的公开 KernelClient 导出及 v1.1.13 KernelService.client；参照现有 Manager 的稳定身份与串行替换行为拟定目标 register 合同。docs:check 通过：17 对页面、202 个本地链接、共享示例类型检查和 2 项现有用例；Octospec lint 通过（43 单元、4 规则、266 链接），git diff --check 通过。本次没有修改代码、测试或 workflow；文档检查不代表目标 ChannelGateway、共享 client 隔离或无泄漏合同已经实现，相关专项仍须在后续接口迁移时验证。
+
+# ChannelGateway 实施验证（2026-11-10）
+
+用户授权后已实施 register(bot, agent)、宿主 KernelClient 注入、按认证身份覆盖与统一 close；删除 Registry/Definition/Registration，SDK 无兼容层。CLI 明确 attachKernel，关闭 Gateway 后释放自己的 client；单步失败不跳过后续清理。README、双语 docs、共享示例、既有 Registry 测试及包外验证脚本均迁移。
+
+- 清空 dist 后构建与类型检查通过；既有默认回归仍为 588 项（587 通过、1 跳过），CI workflow/job/matrix/默认测试入口未改动。
+- Gateway 生命周期专项共 13 项通过，覆盖认证/覆盖/串行顺序/回滚/旧清理失败/关闭竞争/共享 client 复用/不合作回调/迟到凭据/旧 API 拒绝/首连暂态重连。新增已上线后反复断网、快速重试及关闭后旧回调不能重连的专项已单独运行通过。新增案例仅 scripts/verify-gateway-lifecycle.mjs 显式本地运行。
+- 原 CLI/发布专项 24、材料专项 5、Runtime 1.1.13 专项 9 项通过。审查修复后重跑既有 CLI/Registry 测试 15 项通过。
+- docs:check 通过：17 对页面、204 个本地链接、共享示例类型与 2 项示例测试；Octospec 和 git diff --check 通过。
+- pack:release/test:package 通过；verify-package.mjs 使用本地 Gateway 包与公开 Runtime/client 1.1.13 归档，在独立消费者验证类型、CLI、真实 Kernel 调用和 Kernel 保留。没有写入用户全局安装或真实 IM 服务。
+- 双轴审查：Spec 无有效发现；Standards 复现首连 retrying 被当失败导致宿主退出的 P1，修复为保留既有重连，并实际等待原 5 秒退避验证恢复 online。没有扩大 CI。Electron 实机退出、真实 IM/Provider 集成及强杀恢复未在本地验证。

@@ -8,7 +8,7 @@
 
 `new ChannelGateway({ kernel, log?, signal? })` 借用宿主持有的 KernelClient。已撤销的 signal 拒绝构造；后续 abort 发起关闭，但仍须 await close 观察结果。log 接收诊断事件；显式启用 debug 时包含图片和凭据等完整输入。
 
-`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` 复制配置、认证 Bot 身份、检查 Kernel execution_ready，再新增或覆盖绑定，不返回句柄。调用按进入顺序串行。覆盖先校验，再清理旧绑定，最后启动新绑定；失败回滚新资源并保留清理错误。替代启动失败不自动恢复旧绑定，其他身份继续运行。
+`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` 复制配置、认证 Bot 身份、检查 Kernel execution_ready，再新增或覆盖绑定，不返回句柄。调用按进入顺序串行。覆盖先校验，再清理旧绑定，最后启动新绑定；失败回滚新资源并保留清理错误。替代启动失败不自动恢复旧绑定，其他身份继续运行。 渠道初次连接的暂态失败保留已初始化绑定并进入 retrying；register 成功不等于 socket 当前在线。
 
 | GatewayBot 字段 | 合同 |
 | --- | --- |

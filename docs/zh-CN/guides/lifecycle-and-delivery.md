@@ -2,7 +2,7 @@
 
 [English](../../en/guides/lifecycle-and-delivery.md) | [文档目录](../README.md)
 
-注册成功只表示本次装配与连接初始化完成。gateway.status 是 Manager 的当前 Bot 诊断快照，不是全部任务历史；只读接口不保证每个字段永远不变。
+注册成功表示绑定已初始化并交由渠道管理。暂态连接失败可保持 retrying，继续既有重连；须查看 status 区分 online 与 retrying。认证预检失败直接拒绝并保留旧绑定；永久启动失败回滚新绑定。gateway.status 是 Manager 的当前 Bot 诊断快照，不是全部任务历史；只读接口不保证每个字段永远不变。
 
 ## 关闭
 
@@ -23,6 +23,10 @@
 Electron 应在主进程持有 Gateway。在正常 before-quit 中同步 preventDefault，启动一次宿主清理并等待；成功后放行再次 app.quit。Electron 不会自动等待事件监听器返回的 Promise，单纯关闭窗口也不代表应用退出。该退出协调属于宿主，不放进 SDK，也不需要 SDK 的 waitForShutdown。CLI 同样在自己的退出/失败路径等待 close。强杀、崩溃和系统中断不能保证回调执行，须由宿主与 Runtime 恢复机制处理；见 [Electron before-quit](https://www.electronjs.org/docs/latest/api/app#event-before-quit)。
 
 验证须覆盖重复注册与 token 轮换、并发覆盖、初始化/回滚失败、close 与 register 竞争、幂等 close、取消不合作及共享 client 隔离。应检查具体资源和执行身份是否收尾，不能用进程成功退出代替无泄漏验证；专项显式本地执行，不扩大 CI。
+
+## 断网恢复
+
+注册后暂态断连自动重连，不需要再次 register。已上线连接断开后立即尝试，随后最多十次一秒快速重试，再沿用 5/10/15 秒封顶退避；Retry-After 优先。覆盖和 close 会取消旧绑定的重连活动，旧回调不能重建连接。永久认证/权限错误需要宿主处理，例如更新凭据后再次 register。认证预检失败会拒绝本次注册并保留已有绑定。
 
 ## 执行与投递
 

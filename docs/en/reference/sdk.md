@@ -8,7 +8,7 @@ Import the facade and types from `@mininglamp-oss/octo-channel-gateway`; import 
 
 `new ChannelGateway({ kernel, log?, signal? })` borrows a host-owned KernelClient. An already aborted signal rejects construction. Signal abortion initiates close; always await close to observe its result. The log callback receives diagnostic events; explicitly enabled debug logging contains full inputs including images and credentials.
 
-`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` snapshots configuration, authenticates Bot identity, checks Kernel execution_ready and adds/replaces the binding. It returns no handle. Calls run serially in invocation order. Replacement validates first, cleans up the old binding, then starts the new one; failures roll back newly acquired resources and retain cleanup errors. An old binding is not automatically restored after replacement startup fails. Other identities remain live.
+`register(bot: GatewayBot, agent: ImAgentConfig): Promise<void>` snapshots configuration, authenticates Bot identity, checks Kernel execution_ready and adds/replaces the binding. It returns no handle. Calls run serially in invocation order. Replacement validates first, cleans up the old binding, then starts the new one; failures roll back newly acquired resources and retain cleanup errors. An old binding is not automatically restored after replacement startup fails. Other identities remain live. Transient channel startup failures retain the initialized binding in retrying state; successful registration does not guarantee a currently online socket.
 
 | GatewayBot field | Contract |
 | --- | --- |

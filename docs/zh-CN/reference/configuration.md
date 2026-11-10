@@ -109,7 +109,7 @@ MCP 和环境变量属于可选执行配置，仅在 Bot 有需要时填写；CL
 
 SDK 和 CLI 使用同样的 Bot 对象。`loadMaterials` 只返回模型材料，不承载 MCP、环境变量或 Adapter 私有配置。高级宿主可通过 `agent.items` 提供 namespace/name/payload 执行项，按协议合并语义覆盖 Agent 默认值（MCP 按 server 名、环境变量按键）；私有项原样透传，不按命名空间猜测为模型材料。同轮重试冻结这些项；空 items 不清除默认值。随后 Gateway 注入当前 `OCTO_BOT_TOKEN`、`OCTO_TOKEN` 和 `OCTO_API_BASE_URL`，自定义项不能覆盖工具身份（Windows 名称不区分大小写）。token、MCP headers 和环境变量值只应进入执行配置，不应放入 materials。
 
-业务只需提供 bot.agent，Gateway 将 source、Adapter、模型、审批、MCP/envs 和预算编译为仅含 schema/items 的 AgentEnv；没有旧 AgentConfig 投影。OpenClaw 的 provider_agent_id 编译为私有 adapter.openclaw/options 的 agentId。workspace 仅传 path，不接受 mode；显式目录须已存在且可读写访问，未指定时由 Gateway 准备 ~/octo-runtime/channels/<bot_id>。OpenClaw 不需要本地工作目录。
+CLI 配置提供 bot.agent；SDK 通过 register 第二个参数提供同一业务执行定义，Gateway 将 source、Adapter、模型、审批、MCP/envs 和预算编译为仅含 schema/items 的 AgentEnv；没有旧 AgentConfig 投影。OpenClaw 的 provider_agent_id 编译为私有 adapter.openclaw/options 的 agentId。workspace 仅传 path，不接受 mode；显式目录须已存在且可读写访问，未指定时由 Gateway 准备 ~/octo-runtime/channels/<bot_id>。OpenClaw 不需要本地工作目录。
 
 ## 完整请求调试日志
 

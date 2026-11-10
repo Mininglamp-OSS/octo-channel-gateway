@@ -33,7 +33,7 @@ Bot 执行配置使用 `agent.adapter_type`，model、effort、workdir 同属 `a
 
 ## Runtime/client 1.1.13
 
-生产 client 和开发 Runtime 依赖均为 ^1.1.13。保留 Gateway 自己的 bot.agent/ImAgentConfig；上游删除的 AgentConfig 不再生成。旧 octo.control/instructions 配置须改为 agent.instruction 或普通业务材料；workspace.mode 须移除，仅保留已准备目录的 path。Context 格式改为注释边界和逐项 context 标签，选取规则保持。私有执行 item 原样到 Adapter，OpenClaw agentId 位于 adapter.openclaw/options。没有旧协议兼容层，详见[输入与执行环境](../concepts/inputs-and-agent-env.md)和[配置参考](../reference/configuration.md)。
+生产 client 和开发 Runtime 依赖均为 ^1.1.13。保留 Gateway 自己的 ImAgentConfig（CLI bot.agent，SDK register 第二个参数）；上游删除的 AgentConfig 不再生成。旧 octo.control/instructions 配置须改为 agent.instruction 或普通业务材料；workspace.mode 须移除，仅保留已准备目录的 path。Context 格式改为注释边界和逐项 context 标签，选取规则保持。私有执行 item 原样到 Adapter，OpenClaw agentId 位于 adapter.openclaw/options。没有旧协议兼容层，详见[输入与执行环境](../concepts/inputs-and-agent-env.md)和[配置参考](../reference/configuration.md)。
 
 ## SDK 命名业务材料
 

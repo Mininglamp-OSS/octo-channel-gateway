@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ChannelGateway, MemoryImSessionStore } from "../dist/packages/gateway/src/index.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImConnectionError } from "../dist/packages/gateway/src/transport/connection-error.js";
 import { kernelFixture, kernelInput } from "../test/kernel-fixture.js";
 import { waitFor } from "../test/runtime-fixture.js";
 
@@ -52,6 +53,46 @@ test("same-identity concurrent registration follows call order", async t => {
   await Promise.all([gateway.register(bot("one", { botName: "first" }), agent), gateway.register(bot("one", { botName: "second" }), agent)]);
   assert.equal(active.size, 1);
   assert.equal(gateway.status[0].bot_name, "second");
+});
+
+test("transient initial connection failure keeps reconnect and other bindings alive", async t => {
+  const { gateway, active } = await setup(t);
+  await gateway.register(bot("one"), agent);
+  t.mock.method(GatewayTransport.prototype, "start", async function () {
+    if (this.config.bot_id === "two") throw new ImConnectionError("IM_WS_NETWORK_ERROR", true);
+    active.add(this);
+  });
+  await gateway.register(bot("two"), agent);
+  assert.equal(gateway.status.length, 2);
+  assert.ok(gateway.status.some(item => item.state === "online"));
+  assert.ok(gateway.status.some(item => item.state === "retrying"));
+  assert.equal(active.size, 1);
+  await gateway.close();
+  assert.equal(active.size, 0);
+});
+
+test("registered binding recovers repeated disconnects without register and ignores stale callbacks after close", async t => {
+  const { gateway, active } = await setup(t);
+  await gateway.register(bot(), agent);
+  let attempts = 0;
+  t.mock.method(GatewayTransport.prototype, "start", async function () {
+    attempts++;
+    if (attempts <= 2) throw new ImConnectionError("IM_WS_NETWORK_ERROR", true);
+    active.add(this);
+  });
+  [...active][0].callbacks.onDisconnect("IM_WS_NETWORK_ERROR", true);
+  await waitFor(() => gateway.status[0]?.state === "online" && attempts >= 3, 6000);
+  assert.equal(active.size, 1);
+  const recovered = [...active][0];
+  recovered.callbacks.onDisconnect("IM_WS_NETWORK_ERROR", true);
+  await waitFor(() => gateway.status[0]?.state === "online" && attempts >= 4);
+  assert.equal(active.size, 1);
+  await gateway.close();
+  const before = attempts;
+  recovered.callbacks.onDisconnect("IM_WS_NETWORK_ERROR", true);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(attempts, before);
+  assert.equal(active.size, 0);
 });
 
 test("replacement start failure releases acquired handles and does not restore old binding", async t => {

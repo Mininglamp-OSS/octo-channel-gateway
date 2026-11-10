@@ -19,4 +19,4 @@ The host supplies the separate agent argument for execution and optional `bot.ma
 
 The old `loadContexts` callback and `bot.context` envelope are rejected. The channel still has an internal rules/history draft, but applications do not construct ContextItem objects or choose material namespaces. Channel-owned injection and omission rules stay unchanged. Runtime receives `inputs.parts` and a separate `agentEnv` containing only `schema/items`.
 
-Use `client.interrupt(invocationId, reason?)` to interrupt; invoke has no signal argument. Registration signals and loadMaterials signals govern local resources/IO, not this public execution argument. See [Identifiers](identifiers.md); Runtime Adapters map interruption to native controls.
+Use `client.interrupt(invocationId, reason?)` to interrupt; invoke has no signal argument. Gateway constructor signals and loadMaterials signals govern local resources/IO, not this public execution argument. See [Identifiers](identifiers.md); Runtime Adapters map interruption to native controls.

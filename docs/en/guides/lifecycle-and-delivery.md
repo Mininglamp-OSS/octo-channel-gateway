@@ -2,7 +2,7 @@
 
 [简体中文](../../zh-CN/guides/lifecycle-and-delivery.md) | [Documentation](../README.md)
 
-Successful registration means composition and connection initialization completed. gateway.status is the Manager's current Bot diagnostic snapshot, not a full task history. The readonly interface does not make every diagnostic field a permanently stable schema.
+Successful registration means the binding is initialized and managed. A transient connection failure can leave it retrying under the existing reconnect policy; inspect status to distinguish online from retrying. Authentication preflight failures reject without replacing the old binding; permanent startup failures roll back the new binding. gateway.status is the Manager's current Bot diagnostic snapshot, not a full task history. The readonly interface does not make every diagnostic field a permanently stable schema.
 
 ## Closing
 
@@ -23,6 +23,10 @@ This contract applies to the ChannelGateway instance API. See [Architecture and 
 Electron should own Gateway in its main process. During normal before-quit, synchronously preventDefault and start host cleanup once; await success before allowing a second app.quit. Electron does not automatically await a listener's Promise, and closing a window does not necessarily exit the application. This coordination belongs to the host, not the SDK; no SDK waitForShutdown is needed. CLI hosts likewise await close on exit and failure paths. Forced termination, crashes and system interruption cannot guarantee callback execution and require host/Runtime recovery mechanisms. See [Electron before-quit](https://www.electronjs.org/docs/latest/api/app#event-before-quit).
 
 Verification must cover repeated registration and token rotation, concurrent replacement, initialization/rollback failures, register/close races, idempotent close, uncooperative cancellation and shared-client isolation. Inspect actual resources and invocation identities; process exit alone does not prove leak-free cleanup. Run focused checks explicitly locally without expanding CI.
+
+## Connection recovery
+
+After registration, transient disconnects reconnect automatically without another register call. Established connections try immediately, then up to ten one-second retries before the existing 5/10/15-second capped backoff; Retry-After takes precedence. Replacement and close cancel the old binding's reconnect activity, and stale callbacks cannot recreate it. Permanent authentication/authorization failures require host intervention, such as registering corrected credentials. A failed authentication preflight rejects the registration and preserves an existing binding.
 
 ## Execution and delivery
 

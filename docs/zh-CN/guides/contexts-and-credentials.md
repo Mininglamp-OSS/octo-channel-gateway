@@ -45,7 +45,7 @@ export function createDefinition(options: {
 
 agent.instruction 是可选字符串，新 Provider 会话首轮作为独立文本 part 放在材料及本轮文字/图片之前。正常续聊和渠道周期刷新不重复；reset 后重新注入，fresh fallback 使用本轮冻结 instruction。空白值省略，非字符串或超出配置/请求预算明确失败。配置变更在下一次新会话生效，同轮重试保持快照。
 
-credentials(config, signal) 返回宿主管理的当前 token；SDK 不扫描账号目录，也不建立刷新服务。没有回调时读取 bot.bf_token。不要把 token 放入 loadMaterials、模型输入或诊断对象。Gateway 在执行前将工具凭据并入 agentEnv/envs；它仍是敏感执行配置，不是凭据保险库。Windows 按不区分大小写的环境变量名覆盖可信值，POSIX 按大小写区分。
+credentials(config, signal) 返回宿主管理的当前 token；SDK 不扫描账号目录，也不建立刷新服务。没有回调时读取 SDK bot.bfToken（CLI 配置仍为 bf_token）。不要把 token 放入 loadMaterials、模型输入或诊断对象。Gateway 在执行前将工具凭据并入 agentEnv/envs；它仍是敏感执行配置，不是凭据保险库。Windows 按不区分大小写的环境变量名覆盖可信值，POSIX 按大小写区分。
 
 本仓只提供工具身份与材料，不负责安装独立 octo-cli 或业务 MCP。工具安装、可执行路径与 Provider 能力由宿主提供。源合同：[回调与合并](../../../packages/gateway/src/support/material-loader.ts)、[凭据端口](../../../packages/gateway/src/ports.ts)。
 

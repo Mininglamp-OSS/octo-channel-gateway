@@ -19,4 +19,4 @@ agentEnv 仅含 `schema: octo.context-envelope/v3` 与 items 的 namespace/name/
 
 旧 `loadContexts` 回调与 `bot.context` 信封直接拒绝。渠道内部仍有规则/历史准备稿，但应用无需构造 ContextItem 或选择材料 namespace。渠道自动材料的注入和省略规则保持。Runtime 收到 `inputs.parts` 和独立的仅含 `schema/items` 的 `agentEnv`。
 
-中断使用 `client.interrupt(invocationId, reason?)`；不在 invoke 传入 signal。注册 signal 和 loadMaterials 的 signal 是本地资源/IO 生命周期，不是这个公开执行参数。身份区别见[标识参考](identifiers.md)，原生取消由 Runtime Adapter 映射。
+中断使用 `client.interrupt(invocationId, reason?)`；不在 invoke 传入 signal。Gateway 构造参数 signal 和 loadMaterials 的 signal 是本地资源/IO 生命周期，不是这个公开执行参数。身份区别见[标识参考](identifiers.md)，原生取消由 Runtime Adapter 映射。

@@ -33,7 +33,7 @@ Bot execution configuration uses `agent.adapter_type` with model, effort and wor
 
 ## Runtime/client 1.1.13
 
-Both the production client and development Runtime dependencies use ^1.1.13. Gateway retains its own bot.agent/ImAgentConfig and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).
+Both the production client and development Runtime dependencies use ^1.1.13. Gateway retains its own ImAgentConfig (CLI bot.agent; SDK register second argument) and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).
 
 ## Named SDK materials
 
