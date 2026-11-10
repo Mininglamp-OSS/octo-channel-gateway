@@ -433,12 +433,44 @@ export async function runCli(
     return await withConfigLock(home, async () => {
       const before = await snapshot();
       if (["install", "start", "restart"].includes(action)) assertLaunchAllowed(before);
+      const safeCode = (value: unknown) => {
+        const code = value instanceof Error && "code" in value ? value.code
+          : value instanceof Error ? value.message : undefined;
+        return typeof code === "string" && /^[A-Z][A-Z0-9_]{1,95}$/.test(code) ? code : "GATEWAY_SERVICE_COMMAND_FAILED";
+      };
+      const stopAttempt = async () => {
+        try {
+          await backend.stop(spec);
+          return "The attempted managed service was stopped.";
+        } catch (error) {
+          return `Managed service cleanup failed (${safeCode(error)}); inspect the native manager to stop its retries.`;
+        }
+      };
+      // 保留已确认的原实例；新启动无法关联 PID 也必须清理原生任务，不能留下无人认领的重试。
+      const isOriginalProcess = (current: Awaited<ReturnType<typeof snapshot>>) =>
+        before.ownership.manager_pid !== undefined && current.ownership.manager_pid === before.ownership.manager_pid;
+      let launchAttempted = false;
+      const cleanupUnconfirmed = async (current?: Awaited<ReturnType<typeof snapshot>>) => {
+        if (current ? isOriginalProcess(current) : before.ownership.manager_pid !== undefined)
+          return current ? "The original managed process was retained."
+            : "Ownership and cleanup could not be confirmed; the previously identified managed process was retained. Inspect the native manager before retrying.";
+        return await stopAttempt();
+      };
+      const readLaunchSnapshot = async () => {
+        try { return await snapshot(); }
+        catch (error) {
+          const cleanup = launchAttempted ? await cleanupUnconfirmed() : "No managed launch was requested.";
+          throw new GatewayCommandError("GATEWAY_UNAVAILABLE",
+            `Native ${action} status could not be read (${safeCode(error)}). ${cleanup}`);
+        }
+      };
       try {
         if (action === "install") {
           const auto = parsed.options.autostart;
           if (auto !== "true" && auto !== "false")
             throw new Error("INVALID_ARGUMENTS");
           spec = { ...spec, enabled: auto === "true" };
+          launchAttempted = ["running", "starting"].includes(before.service.state);
           await backend.install(spec);
         } else if (action === "start") {
           // 每次 start 的命令行都是期望定义；先同步参数，保证已安装服务不会沿用旧 Runtime。
@@ -447,55 +479,47 @@ export async function runCli(
             ...spec,
             enabled: installed.state === "not_installed" ? true : installed.enabled,
           };
+          launchAttempted = true;
           await backend.install(spec);
           await backend.start(spec);
         } else if (action === "restart") {
           // 后端重启已安装定义，不能用当前命令默认值覆盖持久化 argv。
+          launchAttempted = true;
           await backend.restart(spec);
         } else if (action === "stop") await backend.stop(spec);
         else if (action === "uninstall") await backend.uninstall(spec);
         else throw new Error("INVALID_ARGUMENTS");
       } catch (error) {
         // 原生 start/restart 可在抢锁失败后直接返回非零；仍须核对归属并停止托管重试。
-        if (["install", "start", "restart"].includes(action)) {
+        if (launchAttempted) {
           const failed = await snapshot().catch(() => undefined);
-          if (failed?.ownership.state === "unmanaged") {
-            const safeCode = (value: unknown) => {
-              const code = value instanceof Error && "code" in value ? value.code
-                : value instanceof Error ? value.message : undefined;
-              return typeof code === "string" && /^[A-Z][A-Z0-9_]{1,95}$/.test(code) ? code : "GATEWAY_SERVICE_COMMAND_FAILED";
-            };
-            let cleanup = "The attempted managed service was stopped.";
-            try { await backend.stop(spec); }
-            catch (stopError) { cleanup = `Managed service cleanup failed (${safeCode(stopError)}); inspect the native manager to stop its retries.`; }
-            throw new GatewayCommandError("GATEWAY_HOME_OCCUPIED",
-              `${ownershipMessage(failed)}\nNative ${action} failed (${safeCode(error)}). ${cleanup}`);
-          }
+          // 原生命令可在受理启动后失败；即使 lock/IPC 尚未建立或观测失败，也不能遗漏清理。
+          if (failed && (failed.ownership.ready || isOriginalProcess(failed))) throw error;
+          const cleanup = await cleanupUnconfirmed(failed);
+          throw new GatewayCommandError(failed?.ownership.state === "unmanaged" ? "GATEWAY_HOME_OCCUPIED" : "GATEWAY_UNAVAILABLE",
+            `${failed ? ownershipMessage(failed) : "Gateway ownership could not be read."}\nNative ${action} failed (${safeCode(error)}). ${cleanup}`);
         }
         throw error;
       }
       if (action === "install") {
-        const installed = await snapshot();
-        if (installed.ownership.state === "unmanaged") {
-          await backend.stop(spec);
-          assertLaunchAllowed(installed);
+        const installed = await readLaunchSnapshot();
+        if (installed.ownership.state === "unmanaged" || installed.ownership.state === "unknown") {
+          const cleanup = await cleanupUnconfirmed(installed);
+          throw new GatewayCommandError("GATEWAY_HOME_OCCUPIED", `${ownershipMessage(installed)}\n${cleanup}`);
         }
       }
       if (action === "start" || action === "restart") {
         const end = Date.now() + (dependencies.readyTimeoutMs ?? 30_000);
         while (true) {
-          const current = await snapshot();
+          const current = await readLaunchSnapshot();
           const replaced = action !== "restart" || before.ownership.manager_pid === undefined ||
             current.ownership.manager_pid !== before.ownership.manager_pid;
           if (current.ownership.ready && replaced) break;
           if (Date.now() >= end) {
-            // 允许 manager/lock/IPC 的短暂交接；截止时确认无关占用才停止本次托管启动。
-            if (current.ownership.state === "unmanaged") {
-              await backend.stop(spec);
-              assertLaunchAllowed(current);
-            }
-            throw new GatewayCommandError("GATEWAY_UNAVAILABLE",
-              `The manager accepted ${action}, but readiness of the intended ${action === "restart" ? "replacement " : ""}process was not confirmed.\n${ownershipMessage(current)}`);
+            // 短暂交接可以等待；截止后原生任务仍存在但身份未知时也停止本次启动。
+            const cleanup = await cleanupUnconfirmed(current);
+            throw new GatewayCommandError(current.ownership.state === "unmanaged" ? "GATEWAY_HOME_OCCUPIED" : "GATEWAY_UNAVAILABLE",
+              `The manager accepted ${action}, but readiness of the intended ${action === "restart" ? "replacement " : ""}process was not confirmed.\n${ownershipMessage(current)}\n${cleanup}`);
           }
           await delay(100);
         }

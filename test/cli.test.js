@@ -12,6 +12,7 @@ import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
 import { kernelFixture as createKernelFixture } from "./kernel-fixture.js";
 import { waitFor } from "./runtime-fixture.js";
 import { parseCliCommand } from "../dist/apps/cli/src/command-tree.js";
+import { processStartIdentity } from "../dist/apps/cli/src/process-identity.js";
 
 const kernelFixture = (t) =>
   createKernelFixture(t, { useDefaultEndpoint: true });
@@ -486,7 +487,7 @@ test("start installs only Gateway, waits for status, and restart reuses the endp
     if (child) { const exited = once(child, "exit"); child.kill(); await exited; }
     child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
     await once(child, "spawn");
-    await writeFile(join(home, "service.lock"), JSON.stringify({ pid: child.pid }));
+    await writeFile(join(home, "service.lock"), JSON.stringify({ pid: child.pid, startIdentity: await processStartIdentity(child.pid) }));
   };
   const backend = {
     kind: "fixture",

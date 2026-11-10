@@ -40,6 +40,19 @@ interface WindowsTaskQuery {
   principal_logon_type?: string;
   trigger_user_id?: string;
   trigger_user_matches?: boolean | null;
+  running_instances?: number;
+  action_processes?: WindowsActionProcess[];
+}
+
+interface WindowsActionProcess {
+  pid: number;
+  parent_pid: number;
+  engine_pid: number;
+  created_at: string;
+  engine_created_at: string;
+  execute: string;
+  command_line: string;
+  user_matches: boolean;
 }
 
 /**
@@ -219,6 +232,7 @@ export class WindowsUserTaskBackend implements ServiceBackend {
       manager: this.kind,
       state: identityUnknown ? "unknown" : windowsTaskState(task.state),
       enabled: task.enabled === true,
+      pid: identityUnknown ? undefined : windowsActionPid(task),
       lastExitCode: task.last_exit_code,
       definitionPath,
       drift: [
@@ -639,7 +653,7 @@ function windowsTaskQueryScript(taskName: string, userId: string): string {
   const quotedTask = powershellSingleQuote(task);
   // Scheduler 可把 DOMAIN\\user 规范化为短账号或 SID；比较系统身份，不能把同一账号报成 drift。
   const identity = `function Get-AccountSid([string]$value){if($value -match '^S-1-'){return $value};return ([System.Security.Principal.NTAccount]$value).Translate([System.Security.Principal.SecurityIdentifier]).Value};function Test-AccountIdentity([string]$value){try{return (Get-AccountSid $value) -eq (Get-AccountSid '${powershellSingleQuote(userId)}')}catch{return $null}};`;
-  return `$ErrorActionPreference='Stop';${identity}$task=Get-ScheduledTask -TaskPath '\\' -TaskName '${quotedTask}';$info=Get-ScheduledTaskInfo -InputObject $task;$action=@($task.Actions)[0];$trigger=@($task.Triggers)[0];[ordered]@{state=[string]$task.State;enabled=([string]$task.State -ne 'Disabled');last_exit_code=[long]$info.LastTaskResult;execute=[string]$action.Execute;arguments=[string]$action.Arguments;working_directory=[string]$action.WorkingDirectory;principal_user_id=[string]$task.Principal.UserId;principal_user_matches=(Test-AccountIdentity ([string]$task.Principal.UserId));principal_logon_type=[string]$task.Principal.LogonType;trigger_user_id=[string]$trigger.UserId;trigger_user_matches=(Test-AccountIdentity ([string]$trigger.UserId))}|ConvertTo-Json -Compress`;
+  return `$ErrorActionPreference='Stop';${identity}$task=Get-ScheduledTask -TaskPath '\\' -TaskName '${quotedTask}';$info=Get-ScheduledTaskInfo -InputObject $task;$action=@($task.Actions)[0];$trigger=@($task.Triggers)[0];${windowsActionQueryScript(quotedTask)};[ordered]@{running_instances=$instanceCount;action_processes=@($actionProcesses);state=[string]$task.State;enabled=([string]$task.State -ne 'Disabled');last_exit_code=[long]$info.LastTaskResult;execute=[string]$action.Execute;arguments=[string]$action.Arguments;working_directory=[string]$action.WorkingDirectory;principal_user_id=[string]$task.Principal.UserId;principal_user_matches=(Test-AccountIdentity ([string]$task.Principal.UserId));principal_logon_type=[string]$task.Principal.LogonType;trigger_user_id=[string]$trigger.UserId;trigger_user_matches=(Test-AccountIdentity ([string]$trigger.UserId))}|ConvertTo-Json -Depth 4 -Compress`;
 }
 
 function powershellArguments(script: string): readonly string[] {
@@ -650,6 +664,63 @@ function powershellArguments(script: string): readonly string[] {
     "-Command",
     `[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);${script}`,
   ];
+}
+
+/**
+ * EnginePID 是调度引擎，不一定是 Exec 进程。只查询该任务唯一实例的引擎及直接子进程；
+ * 身份查询失败仅省略 PID，不能使 /End 清理也因查询权限不足而不可用。
+ */
+function windowsActionQueryScript(quotedTask: string): string {
+  return `
+$instanceCount=0;$actionProcesses=@();
+try {
+  $scheduler=New-Object -ComObject Schedule.Service;$scheduler.Connect();
+  $instances=$scheduler.GetFolder('\\').GetTask('${quotedTask}').GetInstances(0);
+  $instanceCount=$instances.Count;
+  if($instanceCount -eq 1 -and @($task.Actions).Count -eq 1) {
+    $engineId=[long]$instances.Item(1).EnginePID;
+    if($engineId -gt 0) {
+      $processes=@(Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $engineId OR ParentProcessId = $engineId");
+      $engine=@($processes | Where-Object { $_.ProcessId -eq $engineId });
+      if($engine.Count -eq 1 -and $engine[0].CreationDate) {
+        $actionProcesses=@(foreach($process in $processes) {
+          if($process.ExecutablePath -ine $action.Execute) { continue }
+          $owner=Invoke-CimMethod -InputObject $process -MethodName GetOwnerSid;
+          if($process.CreationDate) {
+            [ordered]@{pid=[long]$process.ProcessId;parent_pid=[long]$process.ParentProcessId;
+              engine_pid=$engineId;created_at=$process.CreationDate.ToUniversalTime().ToString('o');
+              engine_created_at=$engine[0].CreationDate.ToUniversalTime().ToString('o');
+              execute=[string]$process.ExecutablePath;command_line=[string]$process.CommandLine;
+              user_matches=($owner.ReturnValue -eq 0 -and (Test-AccountIdentity ([string]$owner.Sid)) -eq $true)}
+          }
+        });
+      }
+    }
+  }
+} catch { $actionProcesses=@() }
+`.trim();
+}
+
+/** 不从 lock/IPC 猜 PID；原生实例、进程树、账号与完整 Exec 参数必须唯一匹配。 */
+function windowsActionPid(task: WindowsTaskQuery): number | undefined {
+  if (windowsTaskState(task.state) !== "running" || task.running_instances !== 1 ||
+      !Array.isArray(task.action_processes) || !task.execute) return undefined;
+  const command = task.execute;
+  const suffix = task.arguments ? ` ${task.arguments}` : "";
+  const prefixes = [`"${command}"`, ...(!/\s/u.test(command) ? [command] : [])];
+  const candidates = task.action_processes.filter((process) => {
+    if (!process || !Number.isSafeInteger(process.pid) || process.pid <= 0 ||
+        !Number.isSafeInteger(process.engine_pid) || process.engine_pid <= 0 ||
+        process.user_matches !== true || !equalWindowsPath(process.execute, command) ||
+        typeof process.command_line !== "string") return false;
+    if (process.pid !== process.engine_pid && process.parent_pid !== process.engine_pid) return false;
+    const created = Date.parse(process.created_at), engineCreated = Date.parse(process.engine_created_at);
+    if (!Number.isFinite(created) || !Number.isFinite(engineCreated) || created < engineCreated) return false;
+    return prefixes.some((prefix) =>
+      process.command_line.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase() &&
+      process.command_line.slice(prefix.length) === suffix);
+  });
+  return candidates.length === 1 ? candidates[0]!.pid : undefined;
 }
 
 function powershellSingleQuote(value: string): string {

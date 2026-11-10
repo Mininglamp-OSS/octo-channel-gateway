@@ -58,3 +58,17 @@ Spec 审查发现 P1：后端启动命令抛错绕过启动竞争后的归属检
 # 同类问题修复后验证（2026-11-10）
 
 最终默认回归 587 通过/1 跳过（总数仍 588）；显式 Gateway 生命周期专项 14/14、Runtime 1.1.13 专项 9/9 通过。类型检查、构建、双语文档与两个共享示例、Octospec、git diff --check 通过。新增strict Node子进程验证日志故障（包括独立imApi）不导致退出，覆盖同步/异步/thenable/then getter和挂起日志；永久失败案例确认回滚后cause仍可诊断。三名专项reviewer对原复现及同类路径独立复核通过，详情见审查记录。验证采用受控网络响应，不将其当作真实IM/Provider或Electron实机验证。
+
+
+# PR 33 外部意见修复后验证（2026-11-10）
+
+以 `25c6462` 为本轮增量基线，fetch 后 main 仍为 `beb8049`。本节更新早期关于 Windows 缺少 PID、锁算法未变化和 pnpm 打包验证不足的记录。
+
+- 构建、typecheck 通过；最终既有 `pnpm run test:ci` 仍是 588 项（587 通过、1 跳过），无默认用例增量。
+- 显式专项：Windows 进程关联与清理 27/27、既有 CLI/发布 24/24、PID 启动标记 6/6、发布入口 3/3、服务串行化 2/2，共 62 项通过。覆盖启动失败后尚无锁、查询异常、就绪查询失败、原实例保留和已 ready 新实例不误停。
+- 发布入口专项真实执行 npm 12.2.1 与声明的 pnpm 11.25.0：相同暂存版本归档解包后全部文件字节一致，源码版本仍为 0.0.0。非 main 手动校验通过子进程证明在 git fetch 前明确失败；main 与 push tag 校验允许继续。
+- npm 与 pnpm 的 pack:release/test:package 均通过公开 registry 的隔离消费者安装；最终 pnpm 重新打包并安装验证 0.0.0 归档成功。没有全局安装或修改用户真实 Home。
+- 双语 docs、共享示例、Octospec、相对 main 的 whitespace 检查通过。去掉旧 material-loader 文件末尾多余空行。
+- 相对 main 的 workflow diff 仅 npm-publish.yml：保留已有 validate/verify/publish、tag push/manual 触发、四项验证矩阵和 Gate 依赖；本轮只移除 validate 的静默跳过，改由既有校验脚本拒绝非 main 手动 ref。既有 publish 的 35 分钟覆盖 registry 最多等待 20 分钟，validate 仍为 5 分钟。package.json 和默认测试入口未变。
+
+限制：Windows Task Scheduler/COM/CIM 和 Linux 进程标记未在原生系统执行；Windows 测试使用受控 native runner 结果，macOS 启动标记实测但只到秒级；旧记录与查询失败仍可能需要人工核对。无法读取新状态且之前有已知原 PID 时，不贸然停止原实例，明确报告清理未确认。未真实 dispatch 发布工作流、写 npm 或创建 GitHub Release。GitHub 当前修复提交的检查结果另行确认，不能用旧 head 的绿色检查代替。

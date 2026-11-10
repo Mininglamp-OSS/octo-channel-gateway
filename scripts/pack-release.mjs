@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { releaseVersion } from "./validate-release.mjs";
 import { npmPackResult } from "./npm-pack-result.mjs";
+import { resolveNpmCli } from "./npm-cli.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
@@ -26,7 +27,7 @@ try {
     execFileSync(
       process.execPath,
       [
-        process.env.npm_execpath,
+        resolveNpmCli(),
         "pack",
         "--json",
         "--ignore-scripts",

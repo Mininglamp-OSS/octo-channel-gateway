@@ -49,3 +49,24 @@ CI 改动仍局限既有 publish 实现和手动恢复参数，未扩大 jobs/�
 - 独立复核：Gateway 原 strict Node 复现由 exit1 变为 exit0；三个 imApi 的六组合均 exit0 且保留原回退，fetchBotGroups 网络异常仍正常拒绝。Quality 复核保留具体 WS 错误码，并验证模拟凭据/响应文本不会透出。日志同步throw/async拒绝/thenable/then getter/永不resolve均验证不阻塞或改变清理。
 
 专项结果：重连 0；超时/所有权 P1×1 同类修复已解决；Quality P2×1 已解决。剩余有效阻断发现 0。未增加默认测试或 GitHub CI 范围。
+
+
+# PR 33 外部审查意见逐类复核（2026-11-10）
+
+此前 SDK 局部审查通过不等于外部 CLI/发布意见全部解决。本轮以 `25c6462` 为修复前基线，分别安排 Windows、PID 锁、发布工具、原生并发专项；实施后由未实现对应代码的 agent 交叉复审。
+
+- Windows：有效 P1。缺失 manager PID 使正常 start/restart 无法完成三方就绪关联；unknown 超时又留下任务。增加 Task Scheduler 当前实例与 Exec 进程唯一关联；未确认启动清理不再只处理 unmanaged。原生命令使用受控结果测试，不能等同实机通过。
+- PID 复用：缺陷确实存在，但源于 main 已有逻辑，条件为异常退出留锁、PID 被无关存活进程复用。本轮按 P2 边缘恢复问题记录，不使用“永久”或正常路径 P1 描述。新增系统启动标记；死亡/明确不等才回收，旧记录/查询失败/macOS 秒级同值保守拒绝。不增加 IPC 锁服务。
+- pnpm 打包：已真实复现声明入口失败、npm 入口成功。共享精简 npm CLI 定位后，两种入口都调用相同 npm 参数合同；包外安装入口同类误用一并修复。
+- 手动发布：非 main workflow ref 原先使整个依赖链静默跳过；保留 main-only 约定，在原 validate 路径显式失败。正常 tag push 与 main+tag 输入不改变。没有新增 CI 专项。
+- 并发：直接调用内部后端可复现多步操作竞争，但 CLI 早已有跨进程 `withConfigLock` 覆盖动作、就绪和清理；未找到当前公开 SDK 暴露路径。故不作为新增 CLI P1 修补；补充内部单写者文档和隔离验证，见 [并发复核](concurrency-review.md)。
+
+## Standards 轴
+
+独立 reviewer 在 PID/发布增量未发现确认问题。核对启动标记保守回收、重复 npm 入口收敛、双语文档和 CI 范围；未将尚未实机验证的 Windows 分支推断为失败。
+
+## Spec 轴
+
+交叉复审发现一类 P2：原生命令已启动进程后报错，若尚无 lock/IPC（ownership=none），或随后状态查询抛错，仍遗漏清理。已统一启动后的观测失败处理：无原实例时清理本次启动；已有原 PID 而新状态不可读时保留并明确报告清理未确认；已经确认 ready 的新实例不误停。显式专项扩展覆盖这些失败路径和原实例保留，不修改默认测试总数。
+
+修复后 Spec reviewer 独立重跑原始三条复现：无锁/IPC、原生命令报错后的查询异常、readiness 查询异常，均返回失败、停止次数 1、本次进程未残留；Windows 显式专项 27/27 通过。本轮 Standards 0 个确认问题；Spec 曾发现 1 类有效 P2，修复并复核后 0 个未解决发现。该结论不替代 GitHub 外部批准。

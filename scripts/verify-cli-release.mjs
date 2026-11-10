@@ -8,6 +8,7 @@ import { spawn, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { inspectOwnership } from "../dist/apps/cli/src/ownership.js";
 import { acquireProcessLock, inspectProcessLock } from "../dist/apps/cli/src/lock.js";
+import { processStartIdentity } from "../dist/apps/cli/src/process-identity.js";
 import { serveStatus, readStatus } from "../dist/apps/cli/src/control.js";
 import { runCli } from "../dist/apps/cli/src/main.js";
 import { publishRelease, waitForRegistry } from "./release-state.mjs";
@@ -32,7 +33,7 @@ async function childFixture(t) {
 }
 const manager = (pid, state = "running") => ({ manager: "launchd-user", state, enabled: true, drift: [], ...(pid ? { pid } : {}) });
 async function liveOwner(t, home, pid = process.pid) {
-  await writeFile(join(home, "service.lock"), JSON.stringify({ pid }));
+  await writeFile(join(home, "service.lock"), JSON.stringify({ pid, startIdentity: await processStartIdentity(pid) }));
   const close = await serveStatus(home, () => ({ pid, phase: "ready", bots: [] }));
   t.after(close);
 }
@@ -100,11 +101,11 @@ test("restart cannot accept the old ready process as a replacement", async (t) =
 test("readiness waits through PID handover and accepts only the replacement owner", async (t) => {
   const home = await homeFixture(t), child = await childFixture(t);
   let pid = process.pid, restarted = false, reads = 0;
-  await writeFile(join(home, "service.lock"), JSON.stringify({ pid }));
+  await writeFile(join(home, "service.lock"), JSON.stringify({ pid, startIdentity: await processStartIdentity(pid) }));
   t.after(await serveStatus(home, () => ({ pid, phase: "ready" })));
   const backend = {
     async inspect() { return manager(restarted && ++reads > 2 ? child.pid : process.pid); },
-    async restart() { restarted = true; pid = child.pid; await writeFile(join(home, "service.lock"), JSON.stringify({ pid })); },
+    async restart() { restarted = true; pid = child.pid; await writeFile(join(home, "service.lock"), JSON.stringify({ pid, startIdentity: await processStartIdentity(pid) })); },
     async stop() { assert.fail("transient PID handover stopped the service"); },
   };
   assert.equal(await runCli(["restart", "--home", home], { backend, output() {}, errorOutput: assert.fail, readyTimeoutMs: 2000 }), 0);

@@ -8,6 +8,8 @@ The source version stays 0.0.0. A stable annotated vX.Y.Z tag reachable from mai
 
 Before the first release, configure a narrowly scoped NPM_TOKEN repository secret with publish permission for this package and the required npm 2FA bypass capability. The token is available only to the publish step; PR tests never receive it. Manual npm Publish defaults to dry-run: select main, supply an existing annotated tag, and keep dry_run enabled. For a real publication, disable dry_run explicitly or push the release tag. The existing publish job has contents: write for GitHub Releases; the other jobs and CI matrix retain their scope.
 
+The manual workflow ref (the **Use workflow from** selector) must be `main`; the separate `tag` input selects the release source. Selecting another branch or a tag as the workflow ref fails validation explicitly. The release tag must still be annotated and reachable from main.
+
 Publication finishes only after these checks, in order:
 
 1. Check the archive's package name, tag-derived version, clean source commit and SHA-512. Check the exact npm version: a matching archive can resume; different bytes fail rather than overwrite an immutable version. Registry authentication or preflight network errors stop publication.
@@ -34,5 +36,7 @@ npm run test:package
 ```
 
 The existing three-archive candidate verifier remains available under scripts/verify-package.mjs. CI uses scripts/verify-distribution.mjs for a fresh consumer that installs the archive from disk and its dependencies from npm, imports ChannelGateway, and executes CLI help without starting services.
+
+Both `npm run pack:release` and `pnpm run pack:release` use npm's pack implementation and JSON format; npm must be installed alongside Node.js or available on PATH. The same requirement applies to `test:package`. After building, run `node --test scripts/verify-release-entrypoints.mjs` explicitly to check both packaging entrypoints and manual workflow ref rejection. This verification is local and does not add a CI job or gate.
 
 Run the CLI ownership and release fault-injection checks explicitly with `npm run build && node --test scripts/verify-cli-release.mjs`. They use isolated process/status fixtures and mocked publishing APIs; they do not mutate live services, npm or GitHub. This specialist suite is not added to the default test glob or CI Gate. Real Windows manager behavior and production npm/GitHub writes require environment-specific verification.

@@ -33,9 +33,9 @@ CLI 示例使用 `https://im.deepminer.com.cn/api`、Codex 模型 `gpt-6.1-sol`�
 
 默认 `~/.octo-channel-gateway`：config.json 是 CLI 自身配置，logs 保存渠道日志，service.lock 与状态端点只用于该 Home 的服务协作。不要手工删除未知活动锁或复用 Runtime Home 作为配置目录。配置写入使用临时文件原子替换；POSIX 文件模式为 0600。
 
-`install`、`start`、`restart` 在修改原生服务前检查 Home 归属。已有前台 `run` 占用时返回 `GATEWAY_HOME_OCCUPIED`，提示 Home、所属 PID 和恢复步骤。先在该前台终端按 Ctrl+C 停止，再启动托管服务。CLI 不自动终止前台进程，也不删除其活动锁或 socket。重复 `run` 同样提示 Home 已占用；只有正常获取锁的路径会回收已确认进程死亡的锁。
+`install`、`start`、`restart` 在修改原生服务前检查 Home 归属。已有前台 `run` 占用时返回 `GATEWAY_HOME_OCCUPIED`，提示 Home、所属 PID 和恢复步骤。先在该前台终端按 Ctrl+C 停止，再启动托管服务。CLI 不自动终止前台进程，也不删除其活动锁或 socket。重复 `run` 同样提示 Home 已占用；只有正常获取锁的路径会在确认所属进程已退出，或该 PID 的进程启动标记明确不同时回收锁。旧记录缺少标记或查询失败时仍保守拒绝，请核对占用进程后再恢复。macOS 启动标记只有秒级精度，标记相同不代表绝无 PID 复用。
 
-`status`、`doctor` 关联管理器、锁和 IPC 的 PID。JSON 增加 `ownership.state`（`managed`、`unmanaged`、`none`、`unknown`）、`manager_pid`、`lock_pid`、`runtime_pid`、`lock_state` 和 `ready`；不可用的 PID 省略。托管就绪要求管理器 running、存活锁匹配、IPC 进程匹配且报告 `phase: ready`；重启还要求管理器 PID 已替换。交接期间或管理器不提供 PID（包括当前 Windows 任务后端）时无法证明就绪：即使管理器已接受操作，start/restart 在截止后仍返回 `GATEWAY_UNAVAILABLE`，请结合 `status`、`doctor` 和原生管理器确认后重试。启动期间发现持续无关占用时，在就绪截止后停止本次尝试启动的托管服务，前台占用者不受影响。
+`status`、`doctor` 关联管理器、锁和 IPC 的 PID。JSON 增加 `ownership.state`（`managed`、`unmanaged`、`none`、`unknown`）、`manager_pid`、`lock_pid`、`runtime_pid`、`lock_state` 和 `ready`；不可用的 PID 省略。托管就绪要求管理器 running、存活锁匹配、IPC 进程匹配且报告 `phase: ready`；重启还要求管理器 PID 已替换。Windows 任务后端通过原生任务当前实例的进程树、账号、可执行文件与参数，识别唯一的 Exec 进程。交接期间、身份查询失败或进程匹配不唯一时无法证明就绪：即使管理器已接受操作，start/restart 仍在截止后报错。CLI 会停止本次未确认就绪的托管启动，但保留已确认且未被替换的原实例；清理失败会明确报告。请结合 `status`、`doctor` 和原生管理器确认后重试，无关前台占用者不受影响。
 
 IPC 可连接不代表最新保存的 Bot 配置已加载：`ownership.config_loaded` 为 `not_verified`。前台进程需回到对应终端重启；`restart` 只控制原生服务。`stop`、`uninstall` 后若还有非托管或无法确认的实例，文本提示并在 JSON 返回 `GATEWAY_INSTANCE_REMAINS` warning。
 

@@ -8,6 +8,8 @@ PR 与 main 推送执行 pnpm 冻结安装、类型、构建、双语文档、Oc
 
 首次发布前配置仓库 secret NPM_TOKEN，权限限制到本包发布并具备 npm 要求的 2FA bypass 能力。token 只在发布步骤可用，PR 测试不接收。手动 npm Publish 默认 dry-run：选择 main，填写已有 annotated tag，保留 dry_run。正式发布时显式关闭 dry_run，或推送发行 tag。既有 publish job 使用 contents: write 创建 GitHub Release，其他 job 和 CI 矩阵保持原范围。
 
+手动执行的 workflow ref（**Use workflow from** 选择框）必须是 `main`；独立的 `tag` 输入才用于选择发行源码。若 workflow ref 选成其他分支或 tag，校验会明确失败。发行 tag 仍须是 main 可达的 annotated tag。
+
 发布按顺序完成以下确认后，才算成功：
 
 1. 校验归档包名、tag 对应版本、干净源码提交和 SHA-512；查询 npm 精确版本。同摘要可继续恢复，不同字节立即失败，不覆盖不可变版本。预检查阶段的认证或网络故障阻止上传。
@@ -34,5 +36,7 @@ npm run test:package
 ```
 
 原来的三归档候选验证仍由 scripts/verify-package.mjs 提供。CI 使用 scripts/verify-distribution.mjs 在独立消费者目录安装本地归档及 npm 依赖，导入 ChannelGateway 并运行 CLI help，不启动系统服务。
+
+`npm run pack:release` 和 `pnpm run pack:release` 都使用 npm 的 pack 实现与 JSON 格式；npm 须随 Node.js 安装或在 PATH 中可用。`test:package` 也有同样要求。构建后显式运行 `node --test scripts/verify-release-entrypoints.mjs`，验证两个打包入口及手动 workflow ref 拒绝规则。该验证仅在本地运行，不增加 CI job 或门禁。
 
 CLI 归属和发布故障注入专项显式执行 `npm run build && node --test scripts/verify-cli-release.mjs`。使用隔离进程/状态夹具和模拟发布 API，不改真实服务、npm 或 GitHub；不加入默认测试 glob 或 CI Gate。Windows 原生管理器和生产 npm/GitHub 写入仍需对应环境验证。
