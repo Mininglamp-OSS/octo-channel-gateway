@@ -4,6 +4,7 @@
  */
 // Adapted from Mininglamp-OSS/openclaw-channel-octo/src/api-fetch.ts.
 import type { ChannelType } from "./types.js";
+import { runDiagnostic } from "../../support/diagnostics.js";
 import {
   DEFAULT_TIMEOUT_MS,
   postJson,
@@ -29,7 +30,7 @@ export async function fetchBotGroups(params: {
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
   if (!resp.ok) {
-    params.log?.error?.(`octo: fetchBotGroups failed: ${resp.status}`);
+    runDiagnostic(() => params.log?.error?.(`octo: fetchBotGroups failed: ${resp.status}`));
     return [];
   }
   const data = (await resp.json()) as Array<{ group_no: string; name: string }>;
@@ -225,9 +226,9 @@ export async function fetchUserInfo(params: {
       return null;
     }
     if (!resp.ok) {
-      params.log?.error?.(
+      runDiagnostic(() => params.log?.error?.(
         `octo: fetchUserInfo(${params.uid}) failed: ${resp.status}`,
-      );
+      ));
       return null;
     }
     const data = (await resp.json()) as {
@@ -244,9 +245,9 @@ export async function fetchUserInfo(params: {
     }
     return null;
   } catch (err) {
-    params.log?.error?.(
+    runDiagnostic(() => params.log?.error?.(
       `octo: fetchUserInfo(${params.uid}) error: ${String(err)}`,
-    );
+    ));
     return null;
   }
 }

@@ -38,3 +38,14 @@ CI 改动仍局限既有 publish 实现和手动恢复参数，未扩大 jobs/�
 无有效发现。核对了注册快照、认证身份覆盖、串行更新、清理回滚、关闭竞争、共享 client 复用、CLI attach、旧 API 删除和文档迁移。对疑似 invocationId 复用的风险使用真实 Kernel 复核，同 ID/不同 runId 被拒绝为 EXECUTION_IDENTITY_CONFLICT，不作为有效 finding。
 
 本轮计数：Standards P1×1 已解决，Spec 0。外部 code-review/审批仍由 GitHub 决定，本地审查不代替合并门槛。
+
+# 同类问题专项质量审查
+
+用户明确要求按已发现问题类别并行专项审查，分别委派重连恢复、超时/资源所有权、API/代码质量三个子 agent，覆盖 f645bc8 及后续修复。
+
+- 重连专项：未发现新增有效缺陷。六项验证覆盖初次 retrying、已上线反复断网、覆盖后旧五秒定时器、旧回调、认证预检失败保留已有绑定及兄弟、永久拒绝不继续重连。真实 Gateway/Kernel 配合受控 transport；没有连接外部 IM。
+- 超时/所有权专项发现 P1：ImRuntime 普通 info/warn 和 onDiagnostic 仅捕同步错误，异步日志拒绝能在 close 成功后令 Node 退出。追查同类到 imApi.fetchBotGroups/fetchUserInfo/getMentionPref，六种同步/异步失败组合均破坏回退或令进程退出。统一接入 runDiagnostic，执行 debug 也复用同一边界；不等待日志 IO，不改变 HTTP/权限/回退行为。
+- Quality 专项发现 P2：永久连接失败回滚后丢失具体故障码。已在 IM_CONNECTION_NOT_READY.cause 中保留只含安全 IM_* 的 Error；不匹配的原始文本归一为 IM_CONNECTION_FAILED。
+- 独立复核：Gateway 原 strict Node 复现由 exit1 变为 exit0；三个 imApi 的六组合均 exit0 且保留原回退，fetchBotGroups 网络异常仍正常拒绝。Quality 复核保留具体 WS 错误码，并验证模拟凭据/响应文本不会透出。日志同步throw/async拒绝/thenable/then getter/永不resolve均验证不阻塞或改变清理。
+
+专项结果：重连 0；超时/所有权 P1×1 同类修复已解决；Quality P2×1 已解决。剩余有效阻断发现 0。未增加默认测试或 GitHub CI 范围。

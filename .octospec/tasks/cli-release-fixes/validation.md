@@ -54,3 +54,7 @@ Spec 审查发现 P1：后端启动命令抛错绕过启动竞争后的归属检
 - docs:check 通过：17 对页面、204 个本地链接、共享示例类型与 2 项示例测试；Octospec 和 git diff --check 通过。
 - pack:release/test:package 通过；verify-package.mjs 使用本地 Gateway 包与公开 Runtime/client 1.1.13 归档，在独立消费者验证类型、CLI、真实 Kernel 调用和 Kernel 保留。没有写入用户全局安装或真实 IM 服务。
 - 双轴审查：Spec 无有效发现；Standards 复现首连 retrying 被当失败导致宿主退出的 P1，修复为保留既有重连，并实际等待原 5 秒退避验证恢复 online。没有扩大 CI。Electron 实机退出、真实 IM/Provider 集成及强杀恢复未在本地验证。
+
+# 同类问题修复后验证（2026-11-10）
+
+最终默认回归 587 通过/1 跳过（总数仍 588）；显式 Gateway 生命周期专项 14/14、Runtime 1.1.13 专项 9/9 通过。类型检查、构建、双语文档与两个共享示例、Octospec、git diff --check 通过。新增strict Node子进程验证日志故障（包括独立imApi）不导致退出，覆盖同步/异步/thenable/then getter和挂起日志；永久失败案例确认回滚后cause仍可诊断。三名专项reviewer对原复现及同类路径独立复核通过，详情见审查记录。验证采用受控网络响应，不将其当作真实IM/Provider或Electron实机验证。

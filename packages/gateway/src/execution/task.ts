@@ -1,4 +1,5 @@
 import { prepareKernelInput } from "./kernel-input.js";
+import { runDiagnostic } from "../support/diagnostics.js";
 import { noopRuntimeLog, type RuntimeLog } from "../support/runtime-log.js";
 import type { ImModuleDependencies } from "../ports.js";
 import type { ImInvocationInput } from "./dispatcher.js";
@@ -307,16 +308,9 @@ export class ImTask {
         try {
           const prepared = prepareKernelInput(request, this.environment.executionEnvOverrides);
           if (process.env.OCO_CHANNEL_GATEWAY_DEUBG === "1") {
-            try {
-              const result: unknown = this.log("debug", "agent_run.client_input", structuredClone({
+            runDiagnostic(() => this.log("debug", "agent_run.client_input", structuredClone({
                 inputs: prepared.inputs, agentEnv: prepared.agentEnv,
-              }));
-              // void 日志端口也允许 async 回调；观察拒绝但不等待，避免日志阻塞执行。
-              if (result && typeof (result as PromiseLike<unknown>).then === "function")
-                void Promise.resolve(result).catch(() => undefined);
-            } catch {
-              /* 日志失败不能改变本次调用或图片内容。 */
-            }
+              })));
           }
           const run = this.kernel.invoke(prepared.inputs, request.sessionId, request.providerSession, prepared.agentEnv);
           const interrupt = () => { void this.cancelExecution("IM owner aborted").catch(() => this.modelWait.unconfirmed()); };

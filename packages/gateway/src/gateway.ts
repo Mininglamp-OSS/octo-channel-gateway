@@ -217,9 +217,17 @@ export class ChannelGateway {
         try {
           const result = await manager.upsert(config);
           this.#assertOpen();
-        // 初始化已交给渠道管理时，暂态断线继续既有重连，不升级成整个宿主退出。
-        if (config.enabled !== false && result.state === "failed")
-            throw new Error("IM_CONNECTION_NOT_READY");
+          // 初始化已交给渠道管理时，暂态断线继续既有重连，不升级成整个宿主退出。
+          if (config.enabled !== false && result.state === "failed") {
+            const code =
+              typeof result.error === "string" &&
+              /^IM_[A-Z0-9_]+$/.test(result.error)
+                ? result.error
+                : "IM_CONNECTION_FAILED";
+            throw new Error("IM_CONNECTION_NOT_READY", {
+              cause: new Error(code),
+            });
+          }
         } catch (error) {
           try {
             await this.#closeBinding(binding);

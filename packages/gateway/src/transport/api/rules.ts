@@ -4,6 +4,7 @@
  */
 // Adapted from Mininglamp-OSS/openclaw-channel-octo/src/api-fetch.ts.
 import { DEFAULT_TIMEOUT_MS } from "./client.js";
+import { runDiagnostic } from "../../support/diagnostics.js";
 import { OctoApiError } from "./errors.js";
 import { trimTrailingSlashes } from "./url.js";
 
@@ -78,8 +79,7 @@ export async function getMentionPref(params: {
       // responses (5xx, etc.).
       const expected = resp.status === 404 || resp.status === 401;
       const msg = `octo: getMentionPref(${params.groupNo}) failed: ${resp.status}`;
-      if (expected) params.log?.info?.(msg);
-      else params.log?.error?.(msg);
+      runDiagnostic(() => expected ? params.log?.info?.(msg) : params.log?.error?.(msg));
       return {
         no_mention: false,
         group_allow_no_mention: true,
@@ -109,9 +109,9 @@ export async function getMentionPref(params: {
       effective,
     };
   } catch (err) {
-    params.log?.error?.(
+    runDiagnostic(() => params.log?.error?.(
       `octo: getMentionPref(${params.groupNo}) error: ${err instanceof Error ? err.name : "unknown"}`,
-    );
+    ));
     return {
       no_mention: false,
       group_allow_no_mention: true,

@@ -1,4 +1,5 @@
 import type { JsonObject } from "../support/types.js";
+import { runDiagnostic } from "../support/diagnostics.js";
 import { shutdownDeadline, withinShutdown } from "../support/shutdown.js";
 /**
  * 单 Bot 编排：把授权 IM 消息转换为有界任务，并把公开结果投递回原会话。
@@ -436,30 +437,28 @@ export class ImRuntime {
     runId?: string,
     data: Record<string, unknown> = {},
   ): void {
-    try {
+    runDiagnostic(() =>
       this.dependencies.log?.("warn", "channel.diagnostic", {
         code,
         ...data,
         endpoint_id: imBotIdentity(this.config),
         ...(runId ? { run_id: runId } : {}),
-      });
+      }),
+    );
+    runDiagnostic(() =>
       this.dependencies.onDiagnostic?.(code, {
         endpointId: imBotIdentity(this.config),
         ...(runId ? { runId } : {}),
-      });
-    } catch {
-      /* Diagnostics cannot fail execution. */
-    }
+      }),
+    );
   }
   #log(event: string, data: Record<string, unknown> = {}): void {
-    try {
+    runDiagnostic(() =>
       this.dependencies.log?.("info", event, {
         endpoint_id: imBotIdentity(this.config),
         ...data,
-      });
-    } catch {
-      /* 诊断不改变业务结果。 */
-    }
+      }),
+    );
   }
   #finalizationFailed(code: string, runId?: string): void {
     if (this.#draining) this.#drainErrors.push(new Error(code));

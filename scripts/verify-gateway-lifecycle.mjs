@@ -5,6 +5,8 @@ import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel
 import { ImConnectionError } from "../dist/packages/gateway/src/transport/connection-error.js";
 import { kernelFixture, kernelInput } from "../test/kernel-fixture.js";
 import { waitFor } from "../test/runtime-fixture.js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const agent = { adapter_type: "test", workdir: process.cwd() };
 const bot = (id = "one", extra = {}) => ({ apiUrl: "https://example.test/api", bfToken: `bf_${id}`, ...extra });
@@ -105,7 +107,11 @@ test("replacement start failure releases acquired handles and does not restore o
     const close = store.close.bind(store);
     store.close = async () => { storesClosed++; await close(); };
     return store;
-  } }), agent), /CONNECTION_NOT_READY/);
+  } }), agent), error => {
+    assert.equal(error.message, "IM_CONNECTION_NOT_READY");
+    assert.equal(error.cause?.message, "IM_AUTH_IDENTITY_INVALID");
+    return true;
+  });
   assert.equal(storesClosed, 1);
   assert.equal(active.size, 0);
   assert.equal(gateway.status.length, 0);
@@ -222,4 +228,59 @@ test("unavailable Kernel preserves old binding and invalid legacy APIs reject", 
   const publicApi = await import("../dist/packages/gateway/src/index.js");
   assert.equal("ChannelRegistry" in publicApi, false);
   assert.equal("ChannelRegistration" in publicApi, false);
+});
+
+test("all logging and diagnostic callbacks contain sync and async failures under strict Node rejection handling", async t => {
+  const fixture = await kernelFixture(t);
+  const source = `
+    import assert from "node:assert/strict";
+    import { attachKernel } from ${JSON.stringify(import.meta.resolve("@mininglamp-oss/octo-runtime-client"))};
+    import { ChannelGateway, ImRuntime, imApi } from ${JSON.stringify(new URL("../dist/packages/gateway/src/index.js", import.meta.url).href)};
+    import { GatewayTransport } from ${JSON.stringify(new URL("../dist/packages/gateway/src/transport/channel.js", import.meta.url).href)};
+    const kernel = attachKernel({ endpoint: ${JSON.stringify(fixture.endpoint)} });
+    const events = new Set();
+    let callbacks;
+    GatewayTransport.prototype.start = async function () { callbacks = this.callbacks; };
+    GatewayTransport.prototype.close = async function () {};
+    const failures = [
+      () => { throw Error("sync diagnostic failure"); },
+      async () => { throw Error("async diagnostic failure"); },
+      () => ({ then(_resolve, reject) { reject(Error("thenable diagnostic failure")); } }),
+      () => Object.defineProperty({}, "then", { get() { throw Error("then getter failure"); } }),
+      () => new Promise(() => {}),
+    ];
+    try {
+      for (const fail of failures) {
+        const log = (level, event) => { events.add(level + ":" + event); return fail(); };
+        const gateway = new ChannelGateway({ kernel, log });
+        await gateway.register({ apiUrl: "https://example.test/api", botId: "disabled", enabled: false }, { adapter_type: "test" });
+        await gateway.close();
+        let diagnosed = false;
+        const runtime = new ImRuntime({ bot_id: "diagnostic", api_url: "https://example.test/api", agent: { adapter_type: "test" } }, {
+          kernel, log, onDiagnostic() { diagnosed = true; return fail(); },
+        });
+        await runtime.start();
+        callbacks.onDiagnostic("IM_TEST_DIAGNOSTIC");
+        assert.equal(diagnosed, true);
+        callbacks.onDisconnect("IM_WS_NETWORK_ERROR", true);
+        await new Promise(resolve => setTimeout(resolve, 10));
+        await runtime.close();
+        const apiOptions = { apiUrl: "https://example.test/api", botToken: "bf_test", uid: "user", groupNo: "group", log: { info: fail, error: fail } };
+        globalThis.fetch = async () => new Response("{}", { status: 500 });
+        assert.deepEqual(await imApi.fetchBotGroups(apiOptions), []);
+        assert.equal(await imApi.fetchUserInfo(apiOptions), null);
+        assert.equal((await imApi.getMentionPref(apiOptions)).effective, false);
+        globalThis.fetch = async () => new Response("{}", { status: 401 });
+        assert.equal((await imApi.getMentionPref(apiOptions)).effective, false);
+        globalThis.fetch = async () => { throw new Error("network failed"); };
+        await assert.rejects(imApi.fetchBotGroups(apiOptions), /network failed/);
+        assert.equal(await imApi.fetchUserInfo(apiOptions), null);
+        assert.equal((await imApi.getMentionPref(apiOptions)).effective, false);
+      }
+      for (const key of ["info:channel.stopped", "info:channel.connected", "info:channel.retry_scheduled", "warn:channel.diagnostic"]) assert.ok(events.has(key), key);
+      await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal((await kernel.status()).execution_ready, true);
+    } finally { kernel.close(); }
+  `;
+  await promisify(execFile)(process.execPath, ["--unhandled-rejections=strict", "--input-type=module", "-e", source], { timeout: 10_000 });
 });
