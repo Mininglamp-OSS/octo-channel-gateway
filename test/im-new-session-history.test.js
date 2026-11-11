@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test, { after } from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
 import {
-  build_im_contexts,
+  buildImContexts,
   ImRuntime,
 } from "../dist/packages/gateway/src/index.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
@@ -59,7 +59,7 @@ test("history fetches the closest twenty older messages in the exact topic and e
       })),
     });
   });
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     incoming,
     "bf_fixture",
@@ -90,7 +90,7 @@ test("history fetches the closest twenty older messages in the exact topic and e
     ],
   );
   assert.equal(calls, 1, "historical image references are not downloaded");
-  await build_im_contexts(
+  await buildImContexts(
     config,
     incoming,
     "bf_fixture",
@@ -137,7 +137,7 @@ test("history failure, malformed result, missing sequence and budget overflow co
     () => Response.json({ messages: "bad" }),
   ]) {
     t.mock.method(globalThis, "fetch", async () => response());
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       incoming,
       "bf_fixture",
@@ -174,7 +174,7 @@ test("history failure, malformed result, missing sequence and budget overflow co
       ],
     },
   };
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     full,
     incoming,
     "bf_fixture",
@@ -189,7 +189,7 @@ test("history failure, malformed result, missing sequence and budget overflow co
   const abort = new AbortController();
   abort.abort();
   await assert.rejects(
-    build_im_contexts(config, incoming, "bf_fixture", abort.signal, {
+    buildImContexts(config, incoming, "bf_fixture", abort.signal, {
       initialSession: true,
     }),
   );

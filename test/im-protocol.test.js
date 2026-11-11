@@ -16,7 +16,7 @@ import { ImSendError } from "../dist/packages/gateway/src/delivery/send-error.js
 import { createImInvocation as createChannelInput } from "../dist/packages/gateway/src/execution/dispatcher.js";
 import {
   ImChannelManager,
-  build_im_contexts,
+  buildImContexts,
 } from "../dist/packages/gateway/src/index.js";
 import {
   ImRunProjector,
@@ -643,7 +643,7 @@ test("Group/topic rules become ordered v3 items; history excludes the trigger an
     payload: { type: 1, content: "request" },
   };
   const read = () =>
-    build_im_contexts(
+    buildImContexts(
       bot,
       message,
       "bf_fixture",
@@ -703,7 +703,7 @@ test("Group/topic rules become ordered v3 items; history excludes the trigger an
 
 test("Empty Context remains empty and per-run snapshots do not mutate the caller", async () => {
   const bot = config();
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     bot,
     { channelType: 1 },
     "bf_fixture",

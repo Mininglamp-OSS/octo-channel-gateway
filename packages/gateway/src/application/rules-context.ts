@@ -1,9 +1,8 @@
 import type {
-  ContextEnvelope,
   ContextItem,
-  ProviderSession,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImInvocationInput } from "../execution/dispatcher.js";
+import { modelContextPresentation } from "../execution/model-input.js";
 
 interface RuleStamp {
   version: number | null;
@@ -41,69 +40,14 @@ export function modelRulesContext(item: ContextItem): ContextItem {
   return {
     namespace: item.namespace,
     name: item.name,
-    guidance: rulesGuidance(item),
-    data_format: "text",
     payload: {
+      guidance: rulesGuidance(item),
+      data_format: "text",
       text:
         typeof item.payload.text === "string" && item.payload.text.trim()
           ? item.payload.text
           : "NO RULES",
     },
-  };
-}
-
-/** 仅选择 Gateway 自动读取的规则；宿主显式提交的 Context 不参与省略。 */
-export function selectRulesContext(
-  context: ContextEnvelope,
-  cursor: ImRulesContext | undefined,
-  provider: ProviderSession | undefined,
-  refresh = false,
-): {
-  context: ContextEnvelope;
-  versions?: ImRulesVersions;
-  omitted: ContextItem[];
-} {
-  const rules = context.items.filter(
-    (item) =>
-      item.namespace === "extra.im" &&
-      ["group-rules", "topic-rules"].includes(item.name) &&
-      item.payload.automatic === true,
-  );
-  const stamp = (item: ContextItem): RuleStamp => ({
-    version:
-      typeof item.payload.version === "number" ? item.payload.version : null,
-    status: item.payload.status as RuleStamp["status"],
-  });
-  const group = rules.find((item) => item.name === "group-rules");
-  if (!group) return { context, omitted: [] };
-  const topic = rules.find((item) => item.name === "topic-rules");
-  const versions = {
-    group: stamp(group),
-    ...(topic ? { topic: stamp(topic) } : {}),
-  };
-  const supplied = cursor?.supplied;
-  const same = (
-    left: RuleStamp | undefined,
-    right: RuleStamp | undefined,
-  ): boolean =>
-    left?.version === right?.version && left?.status === right?.status;
-  if (
-    refresh ||
-    !provider?.sessionId ||
-    provider.resumable === false ||
-    !supplied ||
-    supplied.providerSessionId !== provider.sessionId ||
-    !same(supplied.group, versions.group) ||
-    !same(supplied.topic, versions.topic)
-  )
-    return { context, versions, omitted: [] };
-  return {
-    context: {
-      ...context,
-      items: context.items.filter((item) => !rules.includes(item)),
-    },
-    versions,
-    omitted: rules,
   };
 }
 
@@ -117,15 +61,14 @@ export function addRulesRecovery(
     "Current channel context for session recovery:",
     ...rules
       .map(modelRulesContext)
-      .map((item) =>
-        [
+      .map((item) => {
+        const { guidance, text } = modelContextPresentation(item);
+        return [
           `${item.namespace}/${item.name}`,
-          ...(item.guidance ? [item.guidance] : []),
-          item.data_format === "text"
-            ? String(item.payload.text)
-            : JSON.stringify(item.payload, null, 2),
-        ].join("\n"),
-      ),
+          ...(guidance ? [guidance] : []),
+          text,
+        ].join("\n");
+      }),
   ].join("\n\n");
   input.freshFallbackModelInputParts = [
     { type: "text", text },

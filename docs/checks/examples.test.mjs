@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validateImConfig } from "@mininglamp-oss/octo-channel-gateway";
-import { assertModelInputParts } from "@mininglamp-oss/octo-runtime-client/protocol";
 import { withChannel } from "../examples/registration.mts";
 import { createDefinition } from "../examples/definition.mts";
 import { kernelFixture } from "../../test/kernel-fixture.js";
@@ -41,27 +40,22 @@ test("documented host callbacks keep credentials separate and observe cancellati
     botId: "docs",
     apiUrl: "https://example.test/api",
     workdir: process.cwd(),
-    readToken: async () => "documentation-only-credential",
-    readBrief: async (signal) => {
+    readToken: async (signal) => {
       signal.throwIfAborted();
-      return "Application material";
+      return "documentation-only-credential";
     },
   });
   const config = { api_url: definition.bot.apiUrl, bot_id: definition.bot.botId, agent: definition.agent };
   validateImConfig(config);
   const controller = new AbortController();
-  const items = await definition.bot.loadMaterials(config, {
-    signal: controller.signal,
-  });
-  assertModelInputParts(items.flatMap((item) => item.parts));
   const credential = await definition.bot.credentials(
     config,
     controller.signal,
   );
-  assert.ok(!JSON.stringify(items).includes(credential));
+  assert.equal(credential, "documentation-only-credential");
   controller.abort(new Error("host cancelled"));
   await assert.rejects(
-    definition.bot.loadMaterials(config, { signal: controller.signal }),
+    async () => definition.bot.credentials(config, controller.signal),
     /host cancelled/,
   );
 });

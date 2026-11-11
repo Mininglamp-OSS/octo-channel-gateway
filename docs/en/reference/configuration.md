@@ -15,6 +15,7 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
       "enabled": false,
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "model": "your-model-id",
         "effort": "high",
         "workdir": "/absolute/workspace"
@@ -22,8 +23,7 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
       "approval_mode": "ask",
       "groups_enabled": false
     }
-  ],
-  "material_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
+  ]
 }
 ```
 
@@ -33,7 +33,6 @@ The CLI config.json belongs only to Gateway; it is not a Runtime plugin manifest
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | bots                 | Up to 64 Bots; API address plus bot_id must be unique                                                                  |
 | enabled              | false prevents all Bot registrations                                                                                   |
-| material_loading      | timeout_ms defaults to 5000 (1..30000), max_in_flight to 8 (1..32); the CLI does not load callback functions from JSON |
 | authorized_space_ids | Optional authenticated-space allowlist; explicit [] denies all spaces                                                  |
 
 Configuration file/input size is limited to 1 MiB, and each Bot configuration to 256 KiB. extraset replaces configuration; use restart after changes. Arbitrary business data does not imply Runtime understands it.
@@ -47,13 +46,11 @@ Configuration file/input size is limited to 1 MiB, and each Bot configuration to
 | agent.adapter_type                  | Adapter selection; explicit configuration and a matching Kernel Provider installation are recommended                     |
 | agent.workdir                       | Optional absolute local path; not accepted by OpenClaw                                                                    |
 | agent.model / effort                | Provider model/reasoning selection; actual support is Adapter-specific                                                    |
-| agent.instruction | Optional ordinary prompt; first part of a fresh Provider session, omitted on continuation and frozen for reset/fresh fallback |
+| agent.instruction | All CLI Adapters including OpenClaw: optional string, empty/whitespace means no injection; pre_dispatch prepends extra.cli/instruction XML at logical turn 1. SDK hosts implement their own Hook |
 | agent.provider_agent_id             | OpenClaw only, selects an existing Agent; this channel defaults to main                                                   |
 | approval_mode                         | Defaults to full_access; explicitly choose ask for approvals; the default is not an isolation sandbox                     |
 | run_timeout_ms                        | Optional integer 100..86400000, execution time budget                                                                     |
-| materials | Optional `{ name, parts }[]` static business material; dynamic SDK material overrides by name |
 | agent.items | Optional advanced execution items, forwarded into AgentEnv.items without entering model text |
-| stable_context_refresh_interval_turns | Positive integer, default 30; first turn and reset restart counting                                                       |
 | codex_retry                           | Codex-specific recovery switch and count/time/backoff budgets, not a generic Provider replay switch                       |
 
 ## Optional MCP and environment variables
@@ -79,6 +76,7 @@ The following [complete optional example](../../examples/gateway-execution.json)
       "enabled": false,
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "workdir": "/absolute/project",
         "model": "gpt-6.1-sol",
         "effort": "high",
@@ -107,15 +105,15 @@ The following [complete optional example](../../examples/gateway-execution.json)
 
 `mcpServers` maps server names to definitions. A `stdio` definition uses `type`, `command`, optional `args`, `env`, and `cwd`. A `streamable_http` definition uses `type`, `url`, and optional `headers`. Server definitions may also specify `required`, `startupTimeoutMs`, and `toolTimeoutMs`; support must be checked against the selected Adapter/Provider. `envs.env_variables` is a list of string key/value entries, not an arbitrary object of protocol keys. A stdio server's `env` configures that MCP process, while `envs` configures the Agent execution environment.
 
-The SDK and CLI use the same Bot object. `loadMaterials` returns only model material; it cannot supply MCP, environment values or private Adapter configuration. Advanced hosts may supply `agent.items` as namespace/name/payload execution entries. These override compiled Agent defaults using protocol merge semantics (MCP by server name, environment variables by key); private items pass through without model rendering, including private namespaces resembling material names. An empty items array does not erase defaults. Same-turn retries retain frozen items. Gateway then injects its current `OCTO_BOT_TOKEN`, `OCTO_TOKEN` and `OCTO_API_BASE_URL`, which custom values cannot replace (case-insensitive on Windows). Keep tokens, MCP headers and environment values in execution settings, never materials.
+The CLI maps its Bot configuration to the SDK registration arguments. Advanced hosts may supply `agent.items` as namespace/name/payload execution entries. These override compiled Agent defaults using protocol merge semantics (MCP by server name, environment variables by key); private items pass through without model rendering, including private namespaces resembling material names. An empty items array does not erase defaults. Same-turn retries retain frozen items. Gateway then injects its current `OCTO_BOT_TOKEN`, `OCTO_TOKEN` and `OCTO_API_BASE_URL`, which custom values cannot replace (case-insensitive on Windows). Keep tokens, MCP headers and environment values in execution settings, never model inputs.
 
 CLI configuration supplies bot.agent; SDK callers pass the same business execution definition as the second register argument. Gateway compiles source, Adapter, model, approval, MCP/envs and limits into an AgentEnv containing only schema/items, with no old AgentConfig projection. OpenClaw provider_agent_id maps to agentId in the private adapter.openclaw/options item. Workspace contains only path; mode is rejected. An explicit directory must already exist and permit read/write/access. Otherwise Gateway prepares ~/octo-runtime/channels/<bot_id>. OpenClaw needs no local workspace.
 
 ## Complete request debug logging
 
-The process environment variable `OCO_CHANNEL_GATEWAY_DEUBG=1` (spelled exactly as shown) enables the `agent_run.client_input` debug event before each client call. It records complete inputs and agentEnv, including fallback parts, image mimeType/data/byteSize/sha256 and tool credentials. Base64 remains complete, without placeholders or truncation. CLI writes to the existing channels/channel-gateway-YYYYMMDDTHH.log file; SDK consumers receive it through the optional log callback, remaining silent without a callback. Other variable values do not emit this event. It never enters status mirrors.
+The process environment variable `OCTO_CHANNEL_GATEWAY_DEBUG=1` (spelled exactly as shown) enables the `agent_run.client_input` debug event before each client call. It records complete inputs and agentEnv, including fallback parts, image mimeType/data/byteSize/sha256 and tool credentials. Base64 remains complete, without placeholders or truncation. The CLI pre_invoke Hook emits this event to the existing channels/channel-gateway-YYYYMMDDTHH.log file. The SDK does not read this environment variable or emit full inputs automatically; embedded hosts install a logging Hook explicitly. Other variable values do not emit this event. It never enters status mirrors.
 
-Set the variable in the actual Gateway process environment. For foreground use, run `OCO_CHANNEL_GATEWAY_DEUBG=1 octo-channel-gateway run`. For a service manager, configure the service environment; temporary shell variables are not automatically written into an installed service definition.
+Set the variable in the actual Gateway process environment. For foreground use, run `OCTO_CHANNEL_GATEWAY_DEBUG=1 octo-channel-gateway run`. For a service manager, configure the service environment; temporary shell variables are not automatically written into an installed service definition.
 
 This explicit mode writes prompts, images, private configuration and credentials to logs. Existing hourly 100 MiB capacity and retention rules apply. Debug records are dropped whole when eight records are pending, preserving complete JSON; logging failures do not affect execution. Remove the variable after diagnosis.
 
@@ -132,3 +130,7 @@ Authoritative definitions: [configuration types](../../../packages/gateway/src/c
 `bot_name` is a display label; empty or omitted uses bot_id. Replace `your-model-id` with a model supported by the selected Provider. `effort: high` demonstrates explicit selection and does not set a global default. Public execution configuration is `agent`; its `adapter_type` selects the integration implementation. The former outer `adapter` field is unsupported.
 
 Runtime connection settings do not belong in this business configuration. `extraset` rejects `runtime_home`, `endpoint`, and `runtime_endpoint`; use `start/run --runtime-home <path>`.
+
+[Complete extraset examples for all 13 Adapters](../guides/adapter-extraset.md).
+
+The [Hooks guide](../guides/hooks.md) separates CLI instruction/debug behavior from policies implemented by Electron and other application hosts.

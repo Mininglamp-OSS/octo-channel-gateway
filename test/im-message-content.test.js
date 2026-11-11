@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build_im_contexts } from "../dist/packages/gateway/src/index.js";
+import { buildImContexts } from "../dist/packages/gateway/src/index.js";
 import { messageContent } from "../dist/packages/gateway/src/transport/message-content.js";
 import { acceptsImMessage } from "../dist/packages/gateway/src/transport/normalize.js";
 const config = {
@@ -154,7 +154,7 @@ test("F02 new-message materials use Context v3 and never fetch or expand history
     throw Error("unexpected fetch");
   });
   for (const payload of [rich, forward]) {
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       { ...message(payload), channelType: 1 },
       "bf_fixture",
@@ -175,7 +175,7 @@ test("F02 new-message materials use Context v3 and never fetch or expand history
   }
   assert.equal(
     (
-      await build_im_contexts(
+      await buildImContexts(
         config,
         { ...message({ type: 1, content: "ordinary" }), channelType: 1 },
         "bf_fixture",

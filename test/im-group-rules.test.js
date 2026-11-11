@@ -8,7 +8,7 @@ import { setImmediate as settle } from "node:timers/promises";
 import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
 import {
   ImRuntime,
-  build_im_contexts,
+  buildImContexts,
 } from "../dist/packages/gateway/src/index.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
 import { imagePart } from "../dist/packages/gateway/src/transport/image-input.js";
@@ -101,7 +101,7 @@ async function fixture(context, behavior, legacyStore = false) {
       async buildContext(signal, options) {
         return {
           schema: "octo.context-envelope/v3",
-          items: await build_im_contexts(
+          items: await buildImContexts(
             config,
             {
               channelId: conversationId,

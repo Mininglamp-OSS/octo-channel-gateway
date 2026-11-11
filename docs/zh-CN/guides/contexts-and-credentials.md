@@ -1,8 +1,14 @@
-# 业务材料与凭据
+# 渠道事件信息与凭据
 
 [English](../../en/guides/contexts-and-credentials.md) | [文档目录](../README.md)
 
-`loadMaterials(config, {signal})` 每轮读取当前业务材料，可以同步返回数组或返回 Promise。回调引用在注册时固定，config 是独立 Bot 配置快照；数据源、授权和一致性归宿主。示例把 token 与业务 brief 分开读取：
+业务方在处理本次消息事件时决定附带哪些感知信息，没有就不附带。复用现有 channel 消息通道：高级渠道实现通过本条 ImInboundMessage 的 buildContext 提供本次事件项，Gateway 将其中的模型上下文渲染为独立 XML 文本 part，放入 inputs；用户原问题仍是单独的文本 part，图片仍是图片 part。内置 IM channel 按现有规则提供发送者、群/话题、mention、引用等信息。register 仅绑定 Bot 与 Agent，不注册材料加载回调，也不配置每轮注入列表。
+
+普通业务上下文使用已有 extra.* 模型项，extra.im 由内置渠道保留；执行配置放在 agent.items，不混进感知文本。自动规则/历史的注入与省略策略保持；同轮重试及 fresh fallback 使用冻结输入，不重新采集事件信息。新消息只携带该消息选择的上下文。
+
+CLI 为 agent.instruction 安装 pre_dispatch Hook：仅在逻辑轮次 1（包括 reset 后）前置 extra.cli/instruction XML 文本 part。SDK 宿主须显式安装自己的 Hooks，仅配置 instruction 不会自动注入。同轮重试复用已准备输入，后续 fresh fallback 不自动重新加载之前的指令。
+
+下面的宿主示例只读取凭据。botId 必填，认证校验 token 对应身份与它一致，不使用认证结果补齐缺失身份：
 
 ```ts
 import type {
@@ -15,19 +21,15 @@ export function createDefinition(options: {
   apiUrl: string;
   workdir: string;
   readToken: (signal: AbortSignal) => Promise<string>;
-  readBrief: (signal: AbortSignal) => Promise<string>;
 }): { bot: GatewayBot; agent: ImAgentConfig } {
   return {
     bot: {
       botId: options.botId,
       apiUrl: options.apiUrl,
       approval_mode: "ask",
-      credentials: (_bot, signal) => options.readToken(signal),
-      materialLoading: { timeout_ms: 5000, max_in_flight: 8 },
-      async loadMaterials(_bot, { signal }) {
-        const text = await options.readBrief(signal);
+      credentials: (_bot, signal) => {
         signal.throwIfAborted();
-        return [{ name: "brief", parts: [{ type: "text", text }] }];
+        return options.readToken(signal);
       },
     },
     agent: { adapter_type: "codex", workdir: options.workdir },
@@ -35,18 +37,38 @@ export function createDefinition(options: {
 }
 ```
 
-同步函数不会因为返回 Promise 就自动变成非阻塞 IO。将 signal 传给底层读取，并在迟到结果返回时检查取消。默认等待 5000 ms、最多 8 个未结束回调；timeout_ms 范围 1..30000，max_in_flight 范围 1..32。超时只停止等待，实际操作完成前仍占容量；满额立即失败，不建立无限队列。
+credentials(config, signal) 接收内部 Bot 配置副本和取消信号，返回宿主管理的 token。没有回调时使用 bot.bfToken；CLI JSON 继续使用 bf_token。将 signal 传递给读取操作；凭据进入工具执行环境，不放进 XML 或用户问题。SDK 不管理宿主数据库或凭据刷新服务。
 
-静态 `bot.materials` 和动态 `loadMaterials` 都使用 `BusinessMaterial[]`，每项只有 `name` 与 `parts`。名称为 1–128 个 ASCII 字母、数字、下划线、点或连字符，首字符必须为字母或数字。各来源分别校验，同来源重名报错；动态同名材料整体替换静态项并保留其位置，新名称依返回顺序追加；动态空数组保留静态材料。结果在使用前复制。
+[渠道消息合同](../../../packages/gateway/src/contracts.ts)、[上下文渲染](../../../packages/gateway/src/execution/model-input.ts)、[凭据接口](../../../packages/gateway/src/ports.ts)。MCP/envs 的示例见[配置参考](../reference/configuration.md)。
 
-`parts` 直接使用普通文本（`{ type: "text", text }`）或完整图片 part（`type: "image"`、`mimeType`、base64 `data`、`byteSize`、`sha256`、可选 `id`）。图片按字节与摘要校验，在 fresh fallback 和重试中保持为图片 part。单来源及合并后最多 32 个名称、序列化 JSON 8 MiB；组合后的完整输入还须满足协议 parts/图片限制。静态材料同时受每 Bot 配置 256 KiB 预算限制。名称只产生普通注释边界，不授予 system/developer 权限。材料不能覆盖渠道自身的规则/历史，也不进入执行配置。
+这里的 buildContext 是现有 channel 内部的消息构建合同，不是 register 可传入的回调，业务输入扩展使用下面说明的 pre_dispatch Hook。
 
-旧 `bot.context`、`loadContexts`、`contextLoading` 与 `ContextItem` 业务材料合同已移除，不提供兼容转换。SDK 使用 `materialLoading`，CLI JSON 使用 `material_loading`。普通文本迁移到 `{ name, parts }`；MCP/环境配置放到 `agent.mcp`/`agent.envs`；高级执行扩展放到 `agent.items`。业务材料没有 namespace/data_format/payload 信封。渠道自动生成的规则/历史仍沿用原注入策略和内部渲染。
 
-agent.instruction 是可选字符串，新 Provider 会话首轮作为独立文本 part 放在材料及本轮文字/图片之前。正常续聊和渠道周期刷新不重复；reset 后重新注入，fresh fallback 使用本轮冻结 instruction。空白值省略，非字符串或超出配置/请求预算明确失败。配置变更在下一次新会话生效，同轮重试保持快照。
+业务 prepend 策略通过显式[应用层 Hooks](../reference/sdk.md) 实现，见[类型检查示例](../../examples/hooks.mts)。CLI 自行安装 instruction 和 debug 两个基础 Hook。
 
-credentials(config, signal) 返回宿主管理的当前 token；SDK 不扫描账号目录，也不建立刷新服务。没有回调时读取 SDK bot.bfToken（CLI 配置仍为 bf_token）。不要把 token 放入 loadMaterials、模型输入或诊断对象。Gateway 在执行前将工具凭据并入 agentEnv/envs；它仍是敏感执行配置，不是凭据保险库。Windows 按不区分大小写的环境变量名覆盖可信值，POSIX 按大小写区分。
+[Hooks 专题](hooks.md) 区分了 CLI 的 instruction/debug 行为与 Electron 等应用宿主自行实现的业务策略。
 
-本仓只提供工具身份与材料，不负责安装独立 octo-cli 或业务 MCP。工具安装、可执行路径与 Provider 能力由宿主提供。源合同：[回调与合并](../../../packages/gateway/src/support/material-loader.ts)、[凭据端口](../../../packages/gateway/src/ports.ts)。
 
-可选 MCP/环境变量 payload、完整可用示例、覆盖规则，以及`agent.mcp`/`agent.envs` 到执行项的映射，见[配置参考](../reference/configuration.md)。CLI 默认示例保持精简。
+## 内置 IM 上下文分块
+
+实现入口是 [im-context/index.ts](../../../packages/gateway/src/transport/im-context/index.ts) 的 buildImContexts。入口按固定顺序串行组装，直接列出以下候选块；没有适用信息的块不产出内容。当前消息事实先准备以预留预算，但按既有协议最后追加。未新增块级并发调度器。
+
+| 上下文 | 注入内容与判断 | 实现 |
+| --- | --- | --- |
+| message-trigger | 当前消息、会话、发送者、接收Bot、实际@对象；身份补查失败保留未知值 | [trigger.ts](../../../packages/gateway/src/transport/im-context/trigger.ts) |
+| reply | 本条消息引用的文字，没有引用则省略 | [reply.ts](../../../packages/gateway/src/transport/im-context/reply.ts) |
+| resources | 附件、文档或网盘地址；不预读资源正文 | [resources.ts](../../../packages/gateway/src/transport/im-context/resources.ts) |
+| message-content | 富文本或合并转发；普通文字不额外生成 | [message-content.ts](../../../packages/gateway/src/transport/im-context/message-content.ts) |
+| group-rules / topic-rules | 私聊不请求；群/子区读取权威规则，再按版本、状态及Provider绑定决定是否省略 | [rules.ts](../../../packages/gateway/src/transport/im-context/rules.ts) |
+| history | 按已有计划补充有界历史，保留排序、去重、输出交接排除及恢复材料 | [history.ts](../../../packages/gateway/src/transport/im-context/history.ts) |
+| history-gap | 说明历史缺失/省略；预算不足按原规则压缩或省略 | [history-gap.ts](../../../packages/gateway/src/transport/im-context/history-gap.ts) |
+
+以上是消息采集块。会话所需的mention、历史使用和文件交付等稳定说明，继续由[stable-context.ts](../../../packages/gateway/src/application/stable-context.ts)和[dispatcher.ts](../../../packages/gateway/src/execution/dispatcher.ts)按原首轮/恢复边界装配；此次没有改变它们的注入策略。
+
+GROUP.md不是仅首轮注入：下一条通过准入的消息会读取权威版本。相同Provider会话已收到相同版本时省略；更新、清空、删除或新Provider会话需要相应内容。rules.ts同时保存读取与版本筛选逻辑；应用执行流程调用筛选，并在原有确认边界更新会话游标，构建块不提前标记“已发送”。
+
+[ImContextBuildScope](../../../packages/gateway/src/transport/im-context/scope.ts) 是本轮内部只读快照，与公开Hook ctx不同。它提供channelId/channelType、isGroup、turnIndex、消息、历史计划、来源信息、取消信号和readers。消息/计划及读取结果深只读，signal保持可取消；块返回新内容，不修改scope或会话状态。readers在闭包绑定当前渠道、Bot及凭据，历史块只传窗口参数。
+
+同一构建内，相同读取复用结果和在途请求；身份按UID去重，重叠批次只补查新增UID，未知/失败结果本轮也复用。不同历史窗口分别请求。除既有10分钟有界身份缓存外，不新增跨轮缓存；规则和历史下一轮重新读取。不存在跨Bot的本轮请求共享，也不把读取凭据放入模型文本。
+
+显式本地验证：`node --test scripts/verify-im-context-scope.mjs` 检查只读、读取去重、隔离和取消；`node scripts/verify-im-context-equivalence.mjs` 对照重构前真实pre_invoke快照。后者只归一化随机UUID与工作目录，核对固定14场景下正文、顺序、图片、AgentEnv及恢复内容；它不证明所有实时网络时序等价。均不加入默认测试或CI。

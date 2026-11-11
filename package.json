@@ -42,14 +42,14 @@
     "test:package": "node scripts/verify-distribution.mjs"
   },
   "dependencies": {
-    "@mininglamp-oss/octo-runtime-client": "^1.1.13",
+    "@mininglamp-oss/octo-runtime-client": "^1.1.14",
     "commander": "^15.0.0",
     "iconv-lite": "0.7.3",
     "mdast-util-from-markdown": "^2.1.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {
-    "@mininglamp-oss/octo-runtime": "^1.1.13",
+    "@mininglamp-oss/octo-runtime": "^1.1.14",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
     "ajv": "^8.20.0",

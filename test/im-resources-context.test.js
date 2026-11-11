@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build_im_contexts } from "../dist/packages/gateway/src/index.js";
+import { buildImContexts } from "../dist/packages/gateway/src/index.js";
 import { acceptsImMessage } from "../dist/packages/gateway/src/transport/normalize.js";
 const config = {
   bot_id: "bot",
@@ -37,7 +37,7 @@ test("F04: resources preserve source and address without fetching or provider at
         "See https://example.invalid/drive/s/share and https://example.invalid/docs/d",
     },
   ]) {
-    const [item] = await build_im_contexts(
+    const [item] = await buildImContexts(
       config,
       { ...incoming(payload), channelType: 1 },
       "bf_fixture",
@@ -45,7 +45,7 @@ test("F04: resources preserve source and address without fetching or provider at
     );
     assert.equal(item.name, "resources");
     assert.equal(item.namespace, "extra.im");
-    assert.match(item.guidance, /是否读取/);
+    assert.match(item.payload.guidance, /是否读取/);
     assert.ok(item.payload.text.includes(payload.url ?? "drive-link"));
     assert.equal(
       acceptsImMessage(
@@ -58,14 +58,14 @@ test("F04: resources preserve source and address without fetching or provider at
   }
 });
 test("F04: missing addresses remain explicit, arbitrary objects and unsupported message types stay excluded", async () => {
-  const [item] = await build_im_contexts(
+  const [item] = await buildImContexts(
     config,
     { ...incoming({ type: 8, name: "missing" }), channelType: 1 },
     "bf_fixture",
     new AbortController().signal,
   );
   assert.equal(item.payload.status, "missing_address");
-  const empty = await build_im_contexts(
+  const empty = await buildImContexts(
     config,
     {
       ...incoming({ type: 1, content: "https://other.invalid/a.pdf" }),

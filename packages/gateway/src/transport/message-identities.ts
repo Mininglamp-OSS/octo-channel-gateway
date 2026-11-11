@@ -15,11 +15,11 @@ export class MessageIdentityCache {
     { value: MessageIdentity; expiresAt: number }
   >();
 
-  #key(config: ScopedOctoBotConfig, uid: string): string {
+  #key(config: Pick<ScopedOctoBotConfig, "api_url" | "bot_id" | "spaceId">, uid: string): string {
     return JSON.stringify([config.api_url, config.bot_id, config.spaceId, uid]);
   }
 
-  get(config: ScopedOctoBotConfig, uid: string): MessageIdentity | undefined {
+  get(config: Pick<ScopedOctoBotConfig, "api_url" | "bot_id" | "spaceId">, uid: string): MessageIdentity | undefined {
     const key = this.#key(config, uid);
     const entry = this.#entries.get(key);
     if (!entry) return undefined;
@@ -30,7 +30,7 @@ export class MessageIdentityCache {
     return { ...entry.value };
   }
 
-  set(config: ScopedOctoBotConfig, value: MessageIdentity): void {
+  set(config: Pick<ScopedOctoBotConfig, "api_url" | "bot_id" | "spaceId">, value: MessageIdentity): void {
     if (value.name === null && value.type === "unknown") return;
     const key = this.#key(config, value.uid);
     this.#entries.delete(key);
@@ -49,7 +49,7 @@ export function unknownIdentity(uid: string): MessageIdentity {
 
 /** 只补查缓存未命中项；失败保留已命中身份，取消仍传播，不重试或换接口。 */
 export async function resolveMessageIdentities(
-  config: ScopedOctoBotConfig,
+  config: Pick<ScopedOctoBotConfig, "api_url" | "bot_id" | "spaceId">,
   requested: string[],
   token: string,
   signal: AbortSignal,

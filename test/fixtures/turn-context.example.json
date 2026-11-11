@@ -4,8 +4,8 @@
     {
       "namespace": "extra.im",
       "name": "message-trigger",
-      "guidance": "Current message: conversation=channel ID/type, sender=actor, recipient=this Bot, sentAt=system-zone time, mentions=actual @ targets; null=unknown.",
       "payload": {
+        "guidance": "Current message: conversation=channel ID/type, sender=actor, recipient=this Bot, sentAt=system-zone time, mentions=actual @ targets; null=unknown.",
         "messageId": "message-id",
         "sentAt": "2026-10-29T08:00:00.000+08:00",
         "conversation": {

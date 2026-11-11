@@ -134,9 +134,9 @@ export function historyGapContext(
   const item: ContextItem = {
     namespace: "extra.im",
     name: "history-gap",
-    guidance:
-      "This data describes the range, availability, and omissions of channel history for the current turn.",
     payload: {
+      guidance:
+        "This data describes the range, availability, and omissions of channel history for the current turn.",
       source,
       automatic: true,
       mode: plan.mode,
@@ -178,9 +178,9 @@ export function compactHistoryGap(item: ContextItem): ContextItem | undefined {
   const compact: ContextItem = {
     namespace: item.namespace,
     name: item.name,
-    guidance:
-      "This data describes the range, availability, and omissions of channel history for the current turn.",
     payload: {
+      guidance:
+        "This data describes the range, availability, and omissions of channel history for the current turn.",
       source: item.payload.source,
       automatic: true,
       mode: item.payload.mode,

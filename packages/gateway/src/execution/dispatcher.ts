@@ -2,6 +2,7 @@
  * 执行请求构造：把本轮 Context、可信发送者和执行配置封装为 InvokeRequest。
  * IM 默认值、业务材料渲染与 prompt 封装均归 Gateway。
  */
+import type { GatewayHookResult } from "../hooks.js";
 import { randomUUID } from "node:crypto";
 import { accessSync, constants, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -26,7 +27,6 @@ import type { ImArtifactPolicy } from "../delivery/artifact-policy.js";
 import { stableChannelContexts } from "../application/stable-context.js";
 import { modelRulesContext } from "../application/rules-context.js";
 import { modelHistoryContexts } from "../application/history-context.js";
-import type { BusinessMaterial } from "../materials.js";
 
 /** Gateway 内部准备稿，业务 Context 在跨 client 边界前转成模型 parts。 */
 export type ImInvocationInput = Omit<InvokeInput, "agentEnv"> & {
@@ -35,9 +35,9 @@ export type ImInvocationInput = Omit<InvokeInput, "agentEnv"> & {
   invocationId: string;
   sessionId: string;
   protocol_mode: "canonical";
-  instruction?: string;
-  includeInstruction?: boolean;
-  materials?: BusinessMaterial[];
+  /** 已准备并冻结的 Hook 输出，仅在 Gateway 内部保存。 */
+  preparedInput?: GatewayHookResult;
+  hooksInvoked?: boolean;
   agentItems?: AgentEnv["items"];
 };
 export function createImInvocation(
@@ -155,15 +155,14 @@ export function createImInvocation(
     ],
   };
   // Gateway 先冻结内部业务快照，调用前分离执行环境与模型材料。
-  // 宿主已先解析静态/动态 Context；渠道说明作为普通材料在刷新轮追加。
+  // 本轮渠道事实已准备；渠道必要说明作为普通文本材料按既有边界追加。
   let submitted = context;
   // 同代次卡片重试已从 occurrence 取得组合后的冻结快照，不能再次追加或按文本去重。
   if (!message.historyRetry && refreshStableContext) {
     const channelInstructions = {
       namespace: "extra.im",
       name: "mention-guidance",
-      data_format: "text" as const,
-      payload: { text: MENTION_GUIDANCE },
+      payload: { data_format: "text" as const, text: MENTION_GUIDANCE },
     };
     submitted = {
       schema: context.schema,
@@ -313,11 +312,8 @@ export function createImInvocation(
     providerEpoch: session.generation,
     inputs: [{ type: "text", text: prompt }],
     contexts: snapshot,
-    ...(!message.historyRetry ? { materials: structuredClone(config.materials ?? []), agentItems: structuredClone(agentItems) } : {}),
-    ...(config.agent.instruction?.trim() ? {
-      instruction: config.agent.instruction,
-      includeInstruction: !session.providerSession?.sessionId || session.providerSession.resumable === false,
-    } : {}),
+    ...(!message.historyRetry ? { agentItems: structuredClone(agentItems) } : {}),
+
     ...(session.providerSession
       ? { providerSession: session.providerSession }
       : {}),

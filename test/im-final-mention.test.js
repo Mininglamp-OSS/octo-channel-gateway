@@ -115,7 +115,7 @@ test("per-turn trigger example separates the actor from stable mention rules", a
     ),
   );
   assert.equal(example.items[0].name, "message-trigger");
-  assert.equal(example.items[0].guidance.split("\n").length, 1);
+  assert.equal(example.items[0].payload.guidance.split("\n").length, 1);
   assert.equal(example.items[0].payload.sender.uid, "sender-uid");
   assert.deepEqual(
     example.items[0].payload.mentions.targets.map((target) => target.uid),

@@ -14,7 +14,8 @@ Octo Channel Gateway connects platform messages to an existing Runtime Kernel an
 
 | Task                                                        | Page                                                                    |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Load material, instructions, and tool credentials each turn | [Business material and credentials](guides/contexts-and-credentials.md) |
+| Extend inputs, execution settings, and logging from the host | [Application Hooks](guides/hooks.md) |
+| Supply per-message context and tool credentials | [Channel event context and credentials](guides/contexts-and-credentials.md) |
 | Resume sessions, handle reset/new/stop, supply a store      | [Session management](guides/sessions.md)                                |
 | Close registrations and handle replies and attachments      | [Lifecycle and delivery](guides/lifecycle-and-delivery.md)              |
 | Diagnose connection, configuration, execution, and cleanup  | [Troubleshooting](guides/troubleshooting.md)                            |
@@ -32,3 +33,5 @@ Octo Channel Gateway connects platform messages to an existing Runtime Kernel an
 The layout follows Runtime's paired language paths and shared examples. Content describes this repository's current implementation. See [Maintenance and validation](maintenance.md) for versions, evidence, and update rules.
 
 [CI and npm publishing](guides/ci-release.md)
+
+[Complete extraset examples for all 13 Adapters](guides/adapter-extraset.md).

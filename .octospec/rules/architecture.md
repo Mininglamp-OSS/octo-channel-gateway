@@ -22,13 +22,13 @@ supersedes: []
 
 ## SDK 与宿主范围
 
-公开 API 为实例方法 `await gateway.register(bot, agent): Promise<void>` 和 `await gateway.close(): Promise<void>`。一个 Gateway 可在循环中注册多组 Bot ↔ Agent 绑定；不向业务方暴露独立 registration/close 句柄。Bot 与 Agent 是两个参数；Bot 提供平台连接与认证信息，Agent 提供 adapter、模型、instruction、MCP 等执行定义。Agent 参数使用 ImAgentConfig；Bot 使用 GatewayBot，内部与 CLI 配置继续采用 ImBotConfig。
+公开 API 为实例方法 `await gateway.register(bot, agent, hooks?): Promise<void>` 和 `await gateway.close(): Promise<void>`。一个 Gateway 可在循环中注册多组 Bot ↔ Agent 绑定；不向业务方暴露独立 registration/close 句柄。Bot 与 Agent 是两个参数；Bot 提供平台连接与认证信息，Agent 提供 adapter、模型、instruction、MCP 等执行定义。Agent 参数使用 ImAgentConfig；Bot 使用 GatewayBot，内部与 CLI 配置继续采用 ImBotConfig。
 
 宿主负责 Runtime 接入，向 `new ChannelGateway({ kernel })` 注入公开 `KernelClient`。`attachKernel()` 返回 client；自建模式使用完整 Runtime 的 `createKernelService()`，初始化后传入 service.client。SDK 只依赖公开 client 类型，不创建 Kernel，也不接管注入 client 的所有权。Agent 是每个绑定的执行定义，不再承担 Runtime endpoint 选择。Gateway 拥有 Manager 和自建渠道资源，不拥有共享 client、Kernel、宿主 Engine/Agent 或数据库。
 
 ### register：动态添加与去重覆盖
 
-`register()` 必须保留为统一入口，可在 Gateway 运行中多次调用；成功即本次绑定初始化完成并开始工作，无需额外 start，也无需先关闭整个 Gateway。IM 去重键沿用渠道类型、规范化平台 API 地址、经认证确认的 Bot ID；不使用 bfToken、Bot 名称或 Agent 配置作为身份。只提供 apiUrl/bfToken 时，须先认证取得稳定 Bot ID；token 轮换不能生成重复绑定。
+`register()` 必须保留为统一入口，可在 Gateway 运行中多次调用；成功即本次绑定初始化完成并开始工作，无需额外 start，也无需先关闭整个 Gateway。IM 去重键沿用渠道类型、规范化平台 API 地址、经认证确认的 Bot ID；不使用 bfToken、Bot 名称或 Agent 配置作为身份。botId 必须由宿主显式传入，认证仅校验 token 身份一致，不得补齐缺失身份；token 轮换不能生成重复绑定。
 
 不同身份新增，同一身份覆盖完整绑定配置。同一身份的操作串行，按调用顺序处理，不允许迟到初始化覆盖后一次操作；实现可以采用已有 Manager 的全局串行队列。覆盖先校验配置和认证身份，再停止旧绑定接纳并完成旧资源清理，之后启动新绑定；不得双连接同时接纳。相同配置重复注册也不得累积连接、监听器或定时器，不要求对包含函数的配置做深比较。
 
@@ -38,7 +38,7 @@ supersedes: []
 
 `close()` 由宿主调用，是整个 Gateway 的终止操作。它统一停止全部绑定的新消息/执行接纳，在共享截止内取消并消费所属执行、收尾投递和回调，最后释放自建连接。开始关闭后拒绝新注册，取消排队注册并协调进行中的初始化/覆盖；异步创建晚到的资源仍须纳入清理，不能在关闭后重新加入。关闭后的实例不可重启，重新运行须创建新实例。重复 close 复用相同 Promise 与结果。
 
-宿主只需 await gateway.close，不应枚举内部注册或释放内部资源。成功必须表示所属 Bot socket、重连/心跳定时器、事件监听、执行观察任务、材料回调、会话存储工厂句柄与投递任务均已结束或释放，不再后台重连/投递。SDK 独立跟踪自身 invocation，只取消并收尾这些执行；禁止调用借用 client 的全局 invocations.stopAdmission()/drain()/close()，禁止影响其他使用者。
+宿主只需 await gateway.close，不应枚举内部注册或释放内部资源。成功必须表示所属 Bot socket、重连/心跳定时器、事件监听、执行观察任务、会话存储工厂句柄与投递任务均已结束或释放，不再后台重连/投递。SDK 独立跟踪自身 invocation，只取消并收尾这些执行；禁止调用借用 client 的全局 invocations.stopAdmission()/drain()/close()，禁止影响其他使用者。
 
 任一清理失败仍须继续尝试其余资源，最后聚合错误及未完成项。超时只表示等待结束，不表示已释放；不配合取消的宿主回调须报告未完成，不能以静默超时伪造成功。失败不遗失资源身份或启动新的后台重试。宿主在 Gateway 清理后释放自己拥有的 client / Kernel Service / Engine；前一项失败也必须继续尝试后续清理，并保留全部失败结果。借用外部 Kernel 时不得关闭该服务。
 
@@ -58,8 +58,17 @@ ChannelGateway 为当前公开接口，已移除 ChannelRegistry、ChannelDefini
 
 保留迁移前准入、身份/代次、重试预算、投递、上下文和会话语义。取消 ACK 不等于终态，终态不等于投递成功，观察中断不自动重放。
 
-工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，默认不记录凭据。用户明确启用 `OCO_CHANNEL_GATEWAY_DEUBG=1` 时，允许完整 client 输入仅进入渠道 debug 日志（含图片和凭据），不得进入状态镜像。知识 Markdown 须有 type/title/description/tags。CI 按 ci-release 任务覆盖测试、文档、依赖和打包；真实外部服务专项仍显式运行，不扩大既有 CI 范围。
+工程记录使用中文，docs 开发者文档中英文同步；公开入口和复杂清理逻辑维护中文注释，默认不记录凭据。CLI pre_invoke Hook 在用户明确启用 `OCTO_CHANNEL_GATEWAY_DEBUG=1` 时，允许完整 client 输入仅进入渠道 debug 日志（含图片和凭据），不得进入状态镜像。知识 Markdown 须有 type/title/description/tags。CI 按 ci-release 任务覆盖测试、文档、依赖和打包；真实外部服务专项仍显式运行，不扩大既有 CI 范围。
 
 ## agentEnv 合同
 
-公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务提供 Agent 执行定义（当前实现路径为 `bot.agent`），Gateway 编译为仅 schema/items 的 AgentEnv；执行项不透明透传，凭据不进入正文。`agent.instruction` 为新 Provider 会话首轮和 fresh fallback 的普通文本前缀。业务材料使用已实现的 `{ name, parts }` 合同，文本/图片进入 inputs，执行扩展独立进入 AgentEnv。渠道自动材料的注入/省略规则保持。使用 1.1.13 起的公开 client 与 IPC v2；不保留旧 request/contexts/signal、instructions 或配置投影兼容层。
+公开执行调用固定为 `invoke(inputs, sessionId, providerSession, agentEnv)`，取消为 `interrupt(invocationId, reason?)`。业务提供 Agent 执行定义（当前实现路径为 `bot.agent`），Gateway 编译为仅 schema/items 的 AgentEnv；执行项不透明透传，凭据不进入正文。`agent.instruction` 由 CLI pre_dispatch Hook 在逻辑轮次 1 前置为 extra.cli/instruction XML；SDK 不自动注入，不提供业务刷新周期。本次感知信息由业务方沿 channel 消息构建通道提供并渲染为独立 XML 文本 inputs，没有则不附带；原问题与图片保持原有 parts。禁止注册级 materials/loadMaterials 列表、拉取或合并层；执行扩展独立进入 AgentEnv。渠道必要材料与恢复边界保持；固定周期刷新移出 SDK。使用 1.1.14 起的公开 client 与 IPC v2；不保留旧 request/contexts/signal、instructions 或配置投影兼容层。
+
+
+extra.im 仅为 Gateway 业务侧复用 namespace/name/payload 的本地组织约定，不是 Runtime 内建协议。1.1.14 item 顶层仅三字段；渠道排版信息在 payload 中，由 Gateway 转成普通 inputs 文本，执行 item 不经此渲染。
+
+## 应用层 Hooks
+
+第三个参数为可选数组，每项 {type, hook}；仅 pre_dispatch / pre_invoke，统一 async(ctx, inputs, agentEnv) 返回 {inputs, agentEnv}。按同点位数组顺序完整替换，无 name/初始化点位/隐式合并。未知点位 warning 后忽略。ctx 为只读身份、会话与 turn.index 快照，同链共享；路由由 Gateway 会话存储维护。业务决定首轮、每 20 轮或其他 prepend 策略，SDK 不内置周期、loader 或指令缓存。
+
+pre_dispatch 输出冻结供同轮重试，pre_invoke 冻结重试不允许修改请求。非法返回和加工故障阻止发送；日志故障由宿主 Hook 隔离。close 跟踪并取消 Hook，超时/拒绝取消报告清理不完整。SDK 不读取 debug 环境变量，CLI 安装完整日志 Hook；不支持旧开关拼写。

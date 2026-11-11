@@ -10,6 +10,8 @@ source: self
 
 # 目标与确认
 
+> 历史记录说明（2026-11-11）：本文记录 PR 33 当时的实现，不能作为当前材料接口或 Bot 身份规则继续实施。`loadMaterials`、静态 `materials` 及其加载/合并设计已由用户明确要求删除；`botId` 改为必填，认证仅校验一致性。以[注册协议简化](../gateway-registration-protocol/brief.md)和当前架构规则为准。下文“实施确认”中 `botId 可选` 是当时实现方根据示例作出的推导，不应表述为用户逐项明确确认；保留历史正文用于追溯，不再沿用该约定。
+
 用户 2026-11-10 明确要求新建一个 worktree，同时处理发布体验两项及 #30；该指令确认本次实施范围。基线 main beb8049，分支 fix/cli-ownership-and-release。
 
 # 承重合同

@@ -94,7 +94,6 @@ try {
     import { ChannelGateway, type GatewayBot } from "@mininglamp-oss/octo-channel-gateway";
     const bot: GatewayBot = {
       botId: "types", enabled: false, apiUrl: "https://example.test/api",
-      loadMaterials(_bot, { signal }) { signal.throwIfAborted(); return []; }
     };
     import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
     const gateway = new ChannelGateway({ kernel: attachKernel({ endpoint: "endpoint" }) });

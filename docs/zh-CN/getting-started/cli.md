@@ -2,7 +2,7 @@
 
 [English](../../en/getting-started/cli.md) | [文档目录](../README.md)
 
-需要 Node.js 24 或 26、已就绪的本机 Runtime Kernel（最低 1.1.13，支持 1.x 系列）、平台 Bot 与有效凭据，以及 Kernel 对应的 Provider 安装。Runtime 与 Gateway 分别维护服务和 Home。Runtime/client 1.1.13 已在 npm 发布，版本与归档验证见[依赖与发行](../guides/dependencies.md)。
+需要 Node.js 24 或 26、已就绪的本机 Runtime Kernel（最低 1.1.14，支持 1.x 系列）、平台 Bot 与有效凭据，以及 Kernel 对应的 Provider 安装。Runtime 与 Gateway 分别维护服务和 Home。Runtime/client 1.1.14 已在 npm 发布，版本与归档验证见[依赖与发行](../guides/dependencies.md)。
 
 CLI 运行时使用公开 client 的 attachKernel 连接已有 Kernel；预检、注册和 doctor 都不会创建 Kernel、Adapter 或 Engine。Gateway start/run 只管理自己的渠道进程，停止 Gateway 不关闭共享 Runtime。
 
@@ -70,6 +70,7 @@ node dist/apps/cli/src/index.js extraset <<'JSON'
       "bf_token": "your-bot-token",
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "model": "your-model-id",
         "effort": "high",
         "workdir": "/absolute/workspace"
@@ -81,3 +82,5 @@ JSON
 ```
 
 使用前替换示例路径、Bot ID、凭据和模型 ID。`bot_name` 用于区分 Bot，空值或省略时显示 bot_id。`agent` 是执行配置，`adapter_type` 选择 Provider 接入实现。`model` 是待填写占位值，`effort: high` 是样例值，不是全局默认值。业务配置不包含 Runtime Home；由 start/run --runtime-home 指定，不传参数默认 ~/.octo-runtime。extraset 整体替换配置，restart 后生效；配置和日志仍在 ~/.octo-channel-gateway。
+
+`agent.instruction` 为可选配置，所有 CLI Adapter（包括 OpenClaw）均支持。留空不追加内容；CLI Hook 仅在指令 trim 非空且逻辑轮次为 1 时前置。**SDK 接入请自行实现并注册 Hook，该字段不会启用 SDK 自动注入。** 参见[各 Adapter 示例](../guides/adapter-extraset.md)和 [Hooks 专题](../guides/hooks.md)。

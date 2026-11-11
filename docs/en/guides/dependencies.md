@@ -3,14 +3,14 @@
 [简体中文](../../zh-CN/guides/dependencies.md) | [Documentation](../README.md)
 
 
-The minimum Runtime version is **1.1.13**, with the current compatibility range **>=1.1.13 <2.0.0**. Installation examples use `@latest` to select the current npm release; this is an installation preference, not a replacement for the minimum version or a promise of compatibility with future major versions. The client and development Runtime manifests retain `^1.1.13`. Installing a new package does not replace an already running Kernel; restart Runtime through its own service commands.
+The minimum Runtime version is **1.1.14**, with the current compatibility range **>=1.1.14 <2.0.0**. Installation examples use `@latest` to select the current npm release; this is an installation preference, not a replacement for the minimum version or a promise of compatibility with future major versions. The client and development Runtime manifests retain `^1.1.14`. Installing a new package does not replace an already running Kernel; restart Runtime through its own service commands.
 
 **Both modes require a Runtime execution service.** CLI operation uses an already running Runtime Kernel. SDK hosts must provide an existing Kernel endpoint or create a service themselves through the full Runtime's public hosting API. Gateway contains no executor and does not install, start, or stop Runtime automatically.
 
 | Dependency                                 | Purpose                                            | Installation responsibility                                          |
 | ------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------- |
-| @mininglamp-oss/octo-runtime-client ^1.1.13 | Production execution connection and protocol types | npm resolves and installs it with Gateway                            |
-| @mininglamp-oss/octo-runtime ^1.1.13           | Kernel, Adapters, execution service                | CLI user or SDK host explicitly installs and starts it               |
+| @mininglamp-oss/octo-runtime-client ^1.1.14 | Production execution connection and protocol types | npm resolves and installs it with Gateway                            |
+| @mininglamp-oss/octo-runtime ^1.1.14           | Kernel, Adapters, execution service                | CLI user or SDK host explicitly installs and starts it               |
 | Full Runtime devDependency                 | Repository tests and package interoperability      | Development only; not distributed as a Gateway production dependency |
 | Provider CLIs / tools                      | Native model and tool capabilities                 | Installed/configured by the Kernel host                              |
 
@@ -21,11 +21,11 @@ octo-runtime doctor --json
 npm install -g @mininglamp-oss/octo-channel-gateway
 ```
 
-Runtime/client 1.1.13 is published on npm. Use official registry metadata and archive integrity for frozen installation; hashes from earlier local candidates are not interchangeable with release hashes. Gateway source remains version 0.0.0 until release packaging stamps a tag version.
+Runtime/client 1.1.14 is published on npm. Use official registry metadata and archive integrity for frozen installation; hashes from earlier local candidates are not interchangeable with release hashes. Gateway source remains version 0.0.0 until release packaging stamps a tag version.
 
 ## Updating
 
-npm installs production dependencies with Gateway but does not upgrade them in the background. Reinstallation or an explicit update resolves allowed versions; ^1.1.13 does not cross into 2.x. Updating dependencies does not upgrade an already running Kernel process. Coordinate Runtime/client/Gateway versions and restart their separate services as needed. SDK applications that import client or Runtime directly must declare those direct dependencies instead of relying on incidental package hoisting.
+npm installs production dependencies with Gateway but does not upgrade them in the background. Reinstallation or an explicit update resolves allowed versions; ^1.1.14 does not cross into 2.x. Updating dependencies does not upgrade an already running Kernel process. Coordinate Runtime/client/Gateway versions and restart their separate services as needed. SDK applications that import client or Runtime directly must declare those direct dependencies instead of relying on incidental package hoisting.
 
 ## Local release verification
 
@@ -34,11 +34,11 @@ node scripts/lock-runtime-candidates.mjs /path/runtime.tgz /path/client.tgz
 node scripts/verify-package.mjs /path/gateway.tgz /path/runtime.tgz /path/client.tgz
 ```
 
-The lock script reads metadata and hashes from real 1.1.13 archives, updates the targeted packages, and verifies integrity. Download URLs point to the official npm registry; the script does not publish. Registry installation requires the matching archives to be published first. Package verification installs three explicit archives in a separate temporary directory without importing private Runtime checkout modules.
+The lock script reads metadata and hashes from real 1.1.14 archives, updates the targeted packages, and verifies integrity. Download URLs point to the official npm registry; the script does not publish. Registry installation requires the matching archives to be published first. Package verification installs three explicit archives in a separate temporary directory without importing private Runtime checkout modules.
 
 ## Full Runtime development dependency audit
 
-The full Runtime remains a development-only integration-test dependency; its manifest and lock are upgraded to `^1.1.13`. The earlier `^2.0.0` observation in issue #23 does not describe this baseline. Production execution in `apps/` and `packages/` uses only the public client and `/protocol`; CLI uses attachKernel. The copied cross-service code is built locally and introduces no private Runtime package dependency.
+The full Runtime remains a development-only integration-test dependency; its manifest and lock are upgraded to `^1.1.14`. The earlier `^2.0.0` observation in issue #23 does not describe this baseline. Production execution in `apps/` and `packages/` uses only the public client and `/protocol`; CLI uses attachKernel. The copied cross-service code is built locally and introduces no private Runtime package dependency.
 
 | Usage inspected | Why it exists | Decision and possible alternative |
 | --- | --- | --- |
@@ -51,4 +51,6 @@ The full Runtime remains a development-only integration-test dependency; its man
 
 `test-support/runtime-module.mjs` intentionally bypasses package export boundaries through dependency resolution rooted in the installed full Runtime. This is a known test-only coupling, not evidence that these modules are public APIs. Production code must not import this helper. Keeping the development dependency preserves meaningful real-Kernel coverage; it does not make Gateway install or start Runtime for end users. A future test cleanup can reduce internal coupling independently of that decision.
 
-Run the new migration and full logging checks explicitly with `node scripts/verify-runtime-1.1.13.mjs`; they are outside default test/CI globs. Existing CI installation, type, build, documentation, regression, archive and consumer checks remain. Workflows, matrix, triggers and Gates are not expanded. Live IM/Provider tools require explicit test credentials; syntax checks and isolated host checks do not establish external interoperability.
+Run the new migration and full logging checks explicitly with `node scripts/verify-runtime-1.1.14.mjs`; they are outside default test/CI globs. Existing CI installation, type, build, documentation, regression, archive and consumer checks remain. Workflows, matrix, triggers and Gates are not expanded. Live IM/Provider tools require explicit test credentials; syntax checks and isolated host checks do not establish external interoperability.
+
+Run `pnpm build && node scripts/lint-runtime-upgrade.mjs` explicitly to check upgrade leftovers: versions and current documentation, removed modules and orphan build outputs, production module reachability and relative imports, and invocation arguments without contexts. It is not part of CI. The module graph does not prove every unused variable or branch is absent; also run typecheck, docs:check and code review. Historical Octospec validation records retain their original versions.
