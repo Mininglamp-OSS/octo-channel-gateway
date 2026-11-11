@@ -318,7 +318,6 @@ test("IM receives over binary WS, reuses session, and replies over REST only aft
       bf_token: "bf_fixture",
       approval_mode: "ask",
       agent: { adapter_type: "codex", workdir: dir },
-      materials: [],
     },
     { kernel: host },
   );
@@ -496,7 +495,6 @@ test("duplicate bot identities fail before opening connections", async (t) => {
     bot_id: "bot",
     bf_token: "bf_fixture",
     agent: { adapter_type: "codex", workdir: dir },
-    materials: [],
   };
   assert.throws(() => validateImBots([bot, { ...bot }]), /IM_BOT_DUPLICATED/);
 });

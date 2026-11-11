@@ -15,6 +15,7 @@ CLI 的 config.json 只属于 Gateway，不是 Runtime 插件清单。SDK 直接
       "enabled": false,
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "model": "your-model-id",
         "effort": "high",
         "workdir": "/absolute/workspace"
@@ -22,8 +23,7 @@ CLI 的 config.json 只属于 Gateway，不是 Runtime 插件清单。SDK 直接
       "approval_mode": "ask",
       "groups_enabled": false
     }
-  ],
-  "material_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
+  ]
 }
 ```
 
@@ -33,7 +33,6 @@ CLI 的 config.json 只属于 Gateway，不是 Runtime 插件清单。SDK 直接
 | -------------------- | ------------------------------------------------------------------------------------------- |
 | bots                 | Bot 数组，最多 64 个；API 地址和 bot_id 组合不可重复                                        |
 | enabled              | false 时不启动任何 Bot 注册                                                                 |
-| material_loading      | timeout_ms 默认 5000（1..30000），max_in_flight 默认 8（1..32）；CLI 本身不从 JSON 加载函数 |
 | authorized_space_ids | 可选已认证空间允许列表；显式 [] 拒绝所有空间                                                |
 
 config 文件/输入上限 1 MiB；每个 Bot 配置上限 256 KiB。extraset 完整替换，修改后 restart；未知业务数据不代表 Runtime 能解释它。
@@ -47,13 +46,11 @@ config 文件/输入上限 1 MiB；每个 Bot 配置上限 256 KiB。extraset �
 | agent.adapter_type                  | Adapter 选择；推荐显式填写并在 Kernel 安装相应 Provider                 |
 | agent.workdir                       | 可选本地绝对路径；OpenClaw 不接受此字段                                 |
 | agent.model / effort                | Provider 模型/思考强度选择；实际支持由 Adapter 决定                     |
-| agent.instruction | 可选普通提示词；新 Provider 会话首轮前置，续聊不重复，reset/fresh fallback 携带冻结文本 |
+| agent.instruction | 全部 CLI Adapter（包括 OpenClaw）支持的可选字符串；空串/全空白不注入，pre_dispatch 在逻辑轮次 1 前置 extra.cli/instruction XML。SDK 接入自行实现 Hook |
 | agent.provider_agent_id             | 仅 OpenClaw，选择已有 Agent；本渠道省略时使用 main                      |
 | approval_mode                         | 默认 full_access；需要人工批准时显式 ask，不能把默认值误认为隔离沙箱    |
 | run_timeout_ms                        | 可选整数 100..86400000，执行时间预算                                    |
-| materials | 可选 `{ name, parts }[]` 静态业务材料；SDK 动态项按名称覆盖 |
 | agent.items | 可选高级执行项，进入 AgentEnv.items，不进入模型正文 |
-| stable_context_refresh_interval_turns | 正整数，默认 30；首轮和 reset 后重新计数                                |
 | codex_retry                           | Codex 专用恢复开关与次数/时间/退避预算；不是通用 Provider 重放开关      |
 
 ## 可选 MCP 与环境变量
@@ -64,8 +61,8 @@ MCP 和环境变量属于可选执行配置，仅在 Bot 有需要时填写；CL
 
 | 可选配置 | 高级执行覆盖位置 | Bot 字段 | 输出 |
 | --- | --- | --- | --- |
-| MCP | materials 项 `octo.execution / mcp` | `agent.mcp`，内容为 `{ mcpServers: ... }` | `agentEnv.items` 中同 namespace/name/payload 的项 |
-| 环境变量 | materials 项 `octo.execution / envs` | `agent.envs`，内容为 `{ env_variables: [{ key, value }] }` | `agentEnv.items` 中同 namespace/name/payload 的项 |
+| MCP | agent.items `octo.execution / mcp` | `agent.mcp`，内容为 `{ mcpServers: ... }` | `agentEnv.items` 中同 namespace/name/payload 的项 |
+| 环境变量 | agent.items `octo.execution / envs` | `agent.envs`，内容为 `{ env_variables: [{ key, value }] }` | `agentEnv.items` 中同 namespace/name/payload 的项 |
 
 下面的[完整可选配置示例](../../examples/gateway-execution.json)使用这两个 Agent 字段，故意禁用 Bot 并省略凭据。启用前填写已安装的 MCP 可执行文件、实际项目路径和 Bot 凭据。保存配置只校验结构，不会安装或启动 MCP、检查远端地址，也不能证明所选 Provider 支持这些配置。
 
@@ -79,6 +76,7 @@ MCP 和环境变量属于可选执行配置，仅在 Bot 有需要时填写；CL
       "enabled": false,
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "workdir": "/absolute/project",
         "model": "gpt-6.1-sol",
         "effort": "high",
@@ -107,15 +105,15 @@ MCP 和环境变量属于可选执行配置，仅在 Bot 有需要时填写；CL
 
 `mcpServers` 按服务器名称组织定义。`stdio` 定义使用 `type`、`command`，以及可选 `args`、`env`、`cwd`；`streamable_http` 定义使用 `type`、`url`，以及可选 `headers`。服务器定义还可以指定 `required`、`startupTimeoutMs`、`toolTimeoutMs`，具体支持须核对所选 Adapter/Provider。`envs.env_variables` 是字符串 key/value 条目列表，不是任意键组成的协议对象。stdio 服务器自身的 `env` 用于该 MCP 进程，`envs` 用于 Agent 执行环境。
 
-SDK 和 CLI 使用同样的 Bot 对象。`loadMaterials` 只返回模型材料，不承载 MCP、环境变量或 Adapter 私有配置。高级宿主可通过 `agent.items` 提供 namespace/name/payload 执行项，按协议合并语义覆盖 Agent 默认值（MCP 按 server 名、环境变量按键）；私有项原样透传，不按命名空间猜测为模型材料。同轮重试冻结这些项；空 items 不清除默认值。随后 Gateway 注入当前 `OCTO_BOT_TOKEN`、`OCTO_TOKEN` 和 `OCTO_API_BASE_URL`，自定义项不能覆盖工具身份（Windows 名称不区分大小写）。token、MCP headers 和环境变量值只应进入执行配置，不应放入 materials。
+CLI 将 Bot 配置映射为 SDK 注册参数。高级宿主可通过 `agent.items` 提供 namespace/name/payload 执行项，按协议合并语义覆盖 Agent 默认值（MCP 按 server 名、环境变量按键）；私有项原样透传，不按命名空间猜测为模型材料。同轮重试冻结这些项；空 items 不清除默认值。随后 Gateway 注入当前 `OCTO_BOT_TOKEN`、`OCTO_TOKEN` 和 `OCTO_API_BASE_URL`，自定义项不能覆盖工具身份（Windows 名称不区分大小写）。token、MCP headers 和环境变量值只应进入执行配置，不应放入模型输入。
 
 CLI 配置提供 bot.agent；SDK 通过 register 第二个参数提供同一业务执行定义，Gateway 将 source、Adapter、模型、审批、MCP/envs 和预算编译为仅含 schema/items 的 AgentEnv；没有旧 AgentConfig 投影。OpenClaw 的 provider_agent_id 编译为私有 adapter.openclaw/options 的 agentId。workspace 仅传 path，不接受 mode；显式目录须已存在且可读写访问，未指定时由 Gateway 准备 ~/octo-runtime/channels/<bot_id>。OpenClaw 不需要本地工作目录。
 
 ## 完整请求调试日志
 
-进程环境变量 `OCO_CHANNEL_GATEWAY_DEUBG=1`（名称按此拼写）启用 `agent_run.client_input` debug 事件，在每次 client 调用前记录完整 inputs 和 agentEnv，包括 fallback、图片 part 的 mimeType/data/byteSize/sha256 和工具凭据。保留完整 base64，不转文本占位或截断。CLI 写入既有 channels/channel-gateway-YYYYMMDDTHH.log，SDK 通过可选 log 回调接收；未配置回调时静默。开关为其他值时不生成该事件；不写入状态镜像。
+进程环境变量 `OCTO_CHANNEL_GATEWAY_DEBUG=1`（名称按此拼写）启用 `agent_run.client_input` debug 事件，在每次 client 调用前记录完整 inputs 和 agentEnv，包括 fallback、图片 part 的 mimeType/data/byteSize/sha256 和工具凭据。保留完整 base64，不转文本占位或截断。CLI pre_invoke Hook 将该事件写入既有 channels/channel-gateway-YYYYMMDDTHH.log。SDK 不读取此环境变量或自动记录完整输入，嵌入宿主自行安装日志 Hook。开关为其他值时不生成该事件；不写入状态镜像。
 
-变量须设置在实际 Gateway 进程环境中。前台可用 `OCO_CHANNEL_GATEWAY_DEUBG=1 octo-channel-gateway run`；由服务管理器启动时应配置该服务的环境，临时 shell 变量不会自动写入已安装的服务定义。
+变量须设置在实际 Gateway 进程环境中。前台可用 `OCTO_CHANNEL_GATEWAY_DEBUG=1 octo-channel-gateway run`；由服务管理器启动时应配置该服务的环境，临时 shell 变量不会自动写入已安装的服务定义。
 
 该显式模式会把提示词、图片、私有配置和凭据写入日志。沿用每小时 100 MiB 容量与保留策略，debug 在待写记录达到 8 条时丢弃整条，不输出残缺 JSON；日志写入失败不影响执行。退出诊断时移除变量。
 
@@ -132,3 +130,7 @@ codex_retry 的 max_consecutive_retries/max_total_retries 范围 0..100，recove
 `bot_name` 是展示名称，空值或省略时使用 bot_id。`your-model-id` 需要替换为所选 Provider 支持的模型，`effort: high` 仅演示显式选择，不设置全局默认值。公开执行配置为 `agent`，其中 `adapter_type` 选择接入实现；不支持旧的外层 `adapter` 字段。
 
 Runtime 连接不属于业务配置。`extraset` 拒绝 `runtime_home`、`endpoint`、`runtime_endpoint` 字段；请使用 `start/run --runtime-home <path>`。
+
+[全部 13 个 Adapter 的完整 extraset 示例](../guides/adapter-extraset.md).
+
+[Hooks 专题](../guides/hooks.md) 区分了 CLI 的 instruction/debug 行为与 Electron 等应用宿主自行实现的业务策略。

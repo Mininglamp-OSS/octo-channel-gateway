@@ -6,27 +6,28 @@ import type {
 import { assertModelInputParts, mergeContext } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImInvocationInput } from "./dispatcher.js";
 import { isModelContextItem, renderModelContexts } from "./model-input.js";
-import { materialParts } from "../materials.js";
 
 /** 渠道材料只在这里渲染；Runtime 收到已经准备好的模型输入和独立执行环境。 */
 export function prepareKernelInput(
   request: ImInvocationInput,
   credentials?: ContextEnvsPayload,
 ): { inputs: InvocationContent & { protocol_mode: "canonical" }; agentEnv: AgentEnv } {
-  const { contexts, inputs, instruction, includeInstruction, materials = [], agentItems = [], sessionId: _session,
+  if (request.preparedInput) {
+    const frozen = structuredClone(request.preparedInput);
+    for (const key of ["invocationId", "runId", "runMetadata"] as const)
+      Object.assign(frozen.inputs, { [key]: structuredClone(request[key]) });
+    const limit = request.contexts.items.find((item) => item.namespace === "octo.execution" && item.name === "limits")?.payload.run_timeout_ms;
+    const item = frozen.agentEnv.items.find((item) => item.namespace === "octo.execution" && item.name === "limits");
+    if (item && typeof limit === "number") item.payload.run_timeout_ms = Math.min(Number(item.payload.run_timeout_ms ?? limit), limit);
+    return frozen;
+  }
+  const { contexts, inputs, preparedInput: _prepared, hooksInvoked: _hooked, agentItems = [], sessionId: _session,
     providerSession: _provider, ...metadata } = structuredClone(request);
   void _session;
   void _provider;
   const rendered = renderModelContexts(contexts);
-  const leading = materials.length ? [
-    ...(rendered ? [{ type: "text" as const, text: rendered }] : []),
-    ...materialParts(materials),
-    { type: "text" as const, text: "\n\n<!-- Query Input -->\n\n" },
-  ] : rendered ? [{ type: "text" as const, text: `${rendered}\n\n<!-- Query Input -->\n\n` }] : [];
+  const leading = rendered ? [{ type: "text" as const, text: `${rendered}\n\n<!-- Query Input -->\n\n` }] : [];
   const prefix = leading.map((part) => part.type === "text" ? part.text : "[Image]").join("\n\n");
-  const instructionParts = instruction?.trim() ? [{ type: "text" as const, text: instruction }] : [];
-  const primaryLeading = [...(includeInstruction ? instructionParts : []), ...leading];
-  const recoveryLeading = [...instructionParts, ...leading];
   const agentEnv: AgentEnv = mergeContext({
     schema: contexts.schema,
     items: contexts.items.filter((item) => !isModelContextItem(item)),
@@ -44,8 +45,8 @@ export function prepareKernelInput(
     if (item) item.payload = payload;
     else agentEnv.items.push({ namespace: "octo.execution", name: "envs", payload });
   }
-  const primaryParts = [...primaryLeading, ...inputs];
-  const fallbackParts = [...recoveryLeading, ...(metadata.freshFallbackModelInputParts ??
+  const primaryParts = [...leading, ...inputs];
+  const fallbackParts = [...leading, ...(metadata.freshFallbackModelInputParts ??
     (metadata.freshFallbackModelInput !== undefined ? [{ type: "text" as const, text: metadata.freshFallbackModelInput }] : inputs))];
   assertModelInputParts(primaryParts);
   assertModelInputParts(fallbackParts);
@@ -55,9 +56,9 @@ export function prepareKernelInput(
       ...metadata,
       prompt: metadata.prompt ?? inputs.map((part) => part.type === "text" ? part.text : "[Image]").join("\n\n"),
       parts: primaryParts,
-      ...(metadata.modelInput !== undefined ? { modelInput: (includeInstruction && instruction ? instruction + "\n\n" : "") + prefix + metadata.modelInput } : {}),
-      ...(metadata.freshFallbackModelInput !== undefined ? { freshFallbackModelInput: (instruction ? instruction + "\n\n" : "") + prefix + metadata.freshFallbackModelInput } : {}),
-      ...(metadata.freshFallbackModelInputParts || materials.length || (instructionParts.length && metadata.freshFallbackModelInput === undefined)
+      ...(metadata.modelInput !== undefined ? { modelInput: prefix + metadata.modelInput } : {}),
+      ...(metadata.freshFallbackModelInput !== undefined ? { freshFallbackModelInput: prefix + metadata.freshFallbackModelInput } : {}),
+      ...(metadata.freshFallbackModelInputParts
         ? { freshFallbackModelInputParts: fallbackParts } : {}),
     },
   };

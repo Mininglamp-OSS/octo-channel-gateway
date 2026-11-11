@@ -54,7 +54,7 @@ test("payload validation belongs to the adapter while malformed envelopes are re
 test("extra payload is rendered completely without Worker projection or registration", () => {
   const context = external();
   context.items[0].namespace = "extra.project";
-  context.items[0].guidance = "本轮项目";
+  context.items[0].payload.guidance = "本轮项目";
   context.items[0].payload.additional = { complete: true };
   const rendered = renderModelContexts(context);
   assert.match(rendered, /本轮项目/);

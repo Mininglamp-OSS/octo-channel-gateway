@@ -2052,14 +2052,14 @@ test("invocation establishes the contract before execution and cannot accept for
     );
     assert.equal(contract.payload.mode, mode ?? "channel");
     assert.deepEqual(contract.payload.allowedRoots, [process.cwd()]);
-    if (mode) assert.match(contract.guidance, /does not automatically upload/);
+    if (mode) assert.match(contract.payload.guidance, /does not automatically upload/);
     else {
       assert.equal(
-        contract.guidance,
+        contract.payload.guidance,
         "If your final deliverable is a local file, reference it using Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path).",
       );
       assert.doesNotMatch(
-        contract.guidance,
+        contract.payload.guidance,
         /upload|tool calls|Do not send|publish/,
       );
     }

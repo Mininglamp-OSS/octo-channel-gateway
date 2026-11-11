@@ -4,7 +4,7 @@
 
 Pull requests and main pushes run frozen pnpm installation, types, build, bilingual documentation, Octospec, and packaging. Linux Node 24/26 and macOS Node 24 run the full regression and focused boundary suites. Windows Node 24 builds and checks documentation and isolated SDK/CLI installation; this does not verify native service operations. CI Gate fails when any required job fails or is skipped. Dependency Review blocks newly introduced high/critical vulnerabilities; Dependabot proposes npm and Actions updates weekly.
 
-The source version stays 0.0.0. A stable annotated vX.Y.Z tag reachable from main supplies the release version for a staging manifest. npm Publish reuses CI at the resolved commit and publishes the same verified archive with provenance. CI installs only public registry dependencies; unavailable dependencies fail the gate. Runtime/client dependencies use ^1.1.13 with official registry hashes; IPC version does not determine npm major version.
+The source version stays 0.0.0. A stable annotated vX.Y.Z tag reachable from main supplies the release version for a staging manifest. npm Publish reuses CI at the resolved commit and publishes the same verified archive with provenance. CI installs only public registry dependencies; unavailable dependencies fail the gate. Runtime/client dependencies use ^1.1.14 with official registry hashes; IPC version does not determine npm major version.
 
 Before the first release, configure a narrowly scoped NPM_TOKEN repository secret with publish permission for this package and the required npm 2FA bypass capability. The token is available only to the publish step; PR tests never receive it. Manual npm Publish defaults to dry-run: select main, supply an existing annotated tag, and keep dry_run enabled. For a real publication, disable dry_run explicitly or push the release tag. The existing publish job has contents: write for GitHub Releases; the other jobs and CI matrix retain their scope.
 
@@ -21,7 +21,7 @@ To recover the already published **1.0.0**, manually run npm Publish on main wit
 
 Dry-run performs source/archive/registry validation without npm upload, Release mutations, latest changes, or waiting for an intentionally unpublished version. A successful dry-run is not a published release. Actual completion is the final verified success of the publish job, not tag creation or the npm command returning.
 
-After the first successful GitHub run, maintainers should add CI Gate and Dependency Review to required checks while retaining code-review and the non-author approval requirement. Workflow files alone do not change branch protection. Runtime/client 1.1.13 is published. Fresh registry installation must still pass; earlier local candidate validation is separate evidence.
+After the first successful GitHub run, maintainers should add CI Gate and Dependency Review to required checks while retaining code-review and the non-author approval requirement. Workflow files alone do not change branch protection. Runtime/client 1.1.14 is published. Fresh registry installation must still pass; earlier local candidate validation is separate evidence.
 
 Local commands:
 

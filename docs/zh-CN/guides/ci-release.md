@@ -4,7 +4,7 @@
 
 PR 与 main 推送执行 pnpm 冻结安装、类型、构建、双语文档、Octospec 和打包。Linux Node 24/26、macOS Node 24 运行完整回归与边界专项。Windows Node 24 检查构建、文档和隔离 SDK/CLI 安装，不代表原生服务操作验收。任一必需任务失败或跳过时 CI Gate 失败。Dependency Review 阻止新增 high/critical 漏洞，Dependabot 每周提出 npm 与 Actions 更新。
 
-源码版本保持 0.0.0，main 可达的稳定 annotated vX.Y.Z tag 提供暂存包版本。npm Publish 对解析后的 commit 复用 CI，随后带 provenance 发布同一份验证归档。CI 只安装公开注册表依赖，不可用时门禁失败。Runtime/client 依赖使用 ^1.1.13 和正式注册表 hash，IPC 版本不决定 npm 主版本。
+源码版本保持 0.0.0，main 可达的稳定 annotated vX.Y.Z tag 提供暂存包版本。npm Publish 对解析后的 commit 复用 CI，随后带 provenance 发布同一份验证归档。CI 只安装公开注册表依赖，不可用时门禁失败。Runtime/client 依赖使用 ^1.1.14 和正式注册表 hash，IPC 版本不决定 npm 主版本。
 
 首次发布前配置仓库 secret NPM_TOKEN，权限限制到本包发布并具备 npm 要求的 2FA bypass 能力。token 只在发布步骤可用，PR 测试不接收。手动 npm Publish 默认 dry-run：选择 main，填写已有 annotated tag，保留 dry_run。正式发布时显式关闭 dry_run，或推送发行 tag。既有 publish job 使用 contents: write 创建 GitHub Release，其他 job 和 CI 矩阵保持原范围。
 
@@ -21,7 +21,7 @@ PR 与 main 推送执行 pnpm 冻结安装、类型、构建、双语文档、Oc
 
 Dry-run 校验源码/归档/registry，不上传 npm、不修改 Release/latest，也不等待有意未发布的版本。Dry-run 成功不代表已经发布。完成的依据是 publish job 最后的验证成功，不是 tag 创建或 npm 命令返回。
 
-首次 GitHub 实际运行成功后，维护者应把 CI Gate、Dependency Review 加入必需检查，同时保留 code-review 和非作者审批要求。提交 workflow 不等于已修改分支保护。Runtime/client 1.1.13 已发布，仍需通过干净注册表安装；先前本地候选验证是独立证据。
+首次 GitHub 实际运行成功后，维护者应把 CI Gate、Dependency Review 加入必需检查，同时保留 code-review 和非作者审批要求。提交 workflow 不等于已修改分支保护。Runtime/client 1.1.14 已发布，仍需通过干净注册表安装；先前本地候选验证是独立证据。
 
 本地命令：
 

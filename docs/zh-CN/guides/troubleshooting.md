@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-Runtime 最低要求为 1.1.13，支持 1.x 系列；仅支持 IPC v2 不足以证明兼容 1.1.13 的 AgentEnv 合同。上述命令安装 npm `@latest`；跨主版本时需核对发行兼容说明。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
+Runtime 最低要求为 1.1.14，支持 1.x 系列；仅支持 IPC v2 不足以证明兼容 1.1.14 的 AgentEnv 合同。上述命令安装 npm `@latest`；跨主版本时需核对发行兼容说明。自定义 Runtime --home 时启动和 doctor 必须使用相同 Home；Gateway --home 是另一个目录。将 Gateway start/run --runtime-home 指向 Runtime 使用的目录后重试。安装 client npm 依赖不等于安装或启动 Kernel。
 
 ## 常见故障
 
@@ -37,4 +37,4 @@ octo-channel-gateway logs --lines 200
 
 doctor 退出 0 只表示检查完成。不要提交包含凭据的 extraget 输出、完整 agentEnv 或原始工具输出。关联诊断用 bot_id、sessionId、invocationId、runId 与代次；含义见[身份参考](../concepts/identifiers.md)。
 
-需要核对实际 client 请求时，可在启动 Gateway 的进程环境中设置 OCO_CHANNEL_GATEWAY_DEUBG=1；完整图片和凭据进入渠道原始 debug 日志，见[配置参考](../reference/configuration.md)。logs 命令读取状态镜像，不展示这些完整请求；直接查看 Gateway Home 下 logs/channels/channel-gateway-YYYYMMDDTHH.log。诊断后移除开关，不分享原始敏感日志。
+需要核对实际 client 请求时，可在启动 Gateway 的进程环境中设置 OCTO_CHANNEL_GATEWAY_DEBUG=1；完整图片和凭据进入渠道原始 debug 日志，见[配置参考](../reference/configuration.md)。logs 命令读取状态镜像，不展示这些完整请求；直接查看 Gateway Home 下 logs/channels/channel-gateway-YYYYMMDDTHH.log。诊断后移除开关，不分享原始敏感日志。

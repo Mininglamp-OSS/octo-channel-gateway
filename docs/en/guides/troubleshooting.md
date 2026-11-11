@@ -14,7 +14,7 @@ octo-runtime start
 octo-runtime doctor --json
 ```
 
-The minimum supported Runtime version is 1.1.13 in the 1.x line; IPC v2 alone does not establish compatibility with the 1.1.13 AgentEnv contract. The command above installs npm `@latest`; check its release notes when crossing a major version. When using a custom Runtime --home, use it consistently for startup and doctor. Gateway --home is a separate directory. Set Gateway start/run --runtime-home to the directory used by Runtime and retry. Installing the client npm dependency does not install or start a Kernel.
+The minimum supported Runtime version is 1.1.14 in the 1.x line; IPC v2 alone does not establish compatibility with the 1.1.14 AgentEnv contract. The command above installs npm `@latest`; check its release notes when crossing a major version. When using a custom Runtime --home, use it consistently for startup and doctor. Gateway --home is a separate directory. Set Gateway start/run --runtime-home to the directory used by Runtime and retry. Installing the client npm dependency does not install or start a Kernel.
 
 ## Common failures
 
@@ -37,4 +37,4 @@ octo-channel-gateway logs --lines 200
 
 A doctor exit code of 0 only means the check completed. Do not share credential-bearing extraget output, complete agentEnv objects, or raw tool output. Correlate diagnostics with bot_id, sessionId, invocationId, runId, and generations; see [Identifiers](../concepts/identifiers.md).
 
-To inspect actual client arguments, set OCO_CHANNEL_GATEWAY_DEUBG=1 in the Gateway process environment. Complete images and credentials enter raw channel debug logs; see [Configuration reference](../reference/configuration.md). The logs command reads status mirrors and does not display full requests. Inspect logs/channels/channel-gateway-YYYYMMDDTHH.log under Gateway Home directly. Remove the switch after diagnosis and do not share raw sensitive logs.
+To inspect actual client arguments, set OCTO_CHANNEL_GATEWAY_DEBUG=1 in the Gateway process environment. Complete images and credentials enter raw channel debug logs; see [Configuration reference](../reference/configuration.md). The logs command reads status mirrors and does not display full requests. Inspect logs/channels/channel-gateway-YYYYMMDDTHH.log under Gateway Home directly. Remove the switch after diagnosis and do not share raw sensitive logs.

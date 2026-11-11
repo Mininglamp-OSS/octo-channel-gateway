@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build_im_contexts } from "../dist/packages/gateway/src/index.js";
+import { buildImContexts } from "../dist/packages/gateway/src/index.js";
 
 const config = {
   bot_id: "reply-fixture",
@@ -18,7 +18,7 @@ const incoming = (reply) => ({
   payload: { type: 1, content: "current question", reply },
 });
 const build = (reply, kind = 1) =>
-  build_im_contexts(
+  buildImContexts(
     config,
     { ...incoming(reply), channelType: kind },
     "bf_fixture",

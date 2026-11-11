@@ -27,10 +27,12 @@ ChannelRegistry 和独立注册句柄已移除，不提供兼容包装。CLI 宿
 
 SDK 负责自建连接、准入、会话映射、Agent 调用、投递及资源清理。单次注册失败只回滚本次资源；若整批注册需要退出，由宿主关闭 Gateway。关闭时停止接纳、协调尚未完成的初始化，在共享截止内收尾所属执行并释放全部绑定；不关闭宿主持有的 Agent/Engine 或共享 Kernel。
 
-构造方式为 `new ChannelGateway({ kernel })`，其中 kernel 是宿主注入的公开 `KernelClient`。`@mininglamp-oss/octo-runtime-client@1.1.13` 已导出该类型；宿主可用 attachKernel 连接既有服务，或用完整 Runtime 的 createKernelService 初始化服务后传入 service.client。Runtime 接入和 client 所有权属于宿主，Agent 配置属于每个 Bot 绑定。Gateway 不能关闭借用 client，也不能调用其全局 invocations.stopAdmission()/drain()；必须独立跟踪、取消和收尾自己的执行。
+构造方式为 `new ChannelGateway({ kernel })`，其中 kernel 是宿主注入的公开 `KernelClient`。`@mininglamp-oss/octo-runtime-client@1.1.14` 已导出该类型；宿主可用 attachKernel 连接既有服务，或用完整 Runtime 的 createKernelService 初始化服务后传入 service.client。Runtime 接入和 client 所有权属于宿主，Agent 配置属于每个 Bot 绑定。Gateway 不能关闭借用 client，也不能调用其全局 invocations.stopAdmission()/drain()；必须独立跟踪、取消和收尾自己的执行。
 
-register 的语义是动态添加或去重覆盖：运行中可继续注册，新身份添加，同身份更新整个绑定，无需全局 close/start。IM 身份由渠道类型、规范化 API 地址和认证得到的 Bot ID 确定，token 轮换不改变身份。同身份操作按调用顺序串行处理；先校验配置与身份，再清理旧绑定，最后启动新绑定，不同时运行两套接纳连接。校验失败保留旧绑定；旧资源清理失败禁止启动新绑定；旧绑定关闭后新绑定启动失败，则清理新资源并明确报告未运行，不承诺自动恢复旧配置。其他身份不受影响。
+register 的语义是动态添加或去重覆盖：运行中可继续注册，新身份添加，同身份更新整个绑定，无需全局 close/start。IM 身份由渠道类型、规范化 API 地址和显式传入且经认证校验的 Bot ID 确定，token 轮换不改变身份。同身份操作按调用顺序串行处理；先校验配置与身份，再清理旧绑定，最后启动新绑定，不同时运行两套接纳连接。校验失败保留旧绑定；旧资源清理失败禁止启动新绑定；旧绑定关闭后新绑定启动失败，则清理新资源并明确报告未运行，不承诺自动恢复旧配置。其他身份不受影响。
 
 close 是整个实例的终止操作，成功才表示全部所属资源已清理；失败或超时必须可观察，关闭后不可继续注册。详细的资源清单、并发与宿主退出要求见[嵌入与关闭合同](../guides/lifecycle-and-delivery.md)。
 
 进程生命周期属于宿主。CLI 使用已有 online 前台循环和退出处理；Electron 使用自己的事件循环和异步退出协调。SDK 不实现 `waitForShutdown()`、保活主循环、signal/exit handler、Electron app 控制、PID 查找、单实例限制或系统服务管理。真实连接需要的网络观察、重连和心跳仍由 SDK 负责。通过公开 Runtime client 连接执行 IPC 也属于 SDK；用于控制另一个 Gateway 宿主进程的 IPC 属于宿主。
+
+[Hooks 专题](../guides/hooks.md) 区分了 CLI 的 instruction/debug 行为与 Electron 等应用宿主自行实现的业务策略。

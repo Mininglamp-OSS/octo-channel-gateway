@@ -31,12 +31,15 @@ Runtime connection settings are command arguments only: `start/run --runtime-hom
 
 Bot execution configuration uses `agent.adapter_type` with model, effort and workdir under `agent`. The previous outer `adapter` field and `ImAdapterConfig` type are replaced by `agent` and `ImAgentConfig`; there is no compatibility conversion.
 
-## Runtime/client 1.1.13
+## Runtime/client 1.1.14
 
-Both the production client and development Runtime dependencies use ^1.1.13. Gateway retains its own ImAgentConfig (CLI bot.agent; SDK register second argument) and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).
+Both the production client and development Runtime dependencies use ^1.1.14. Gateway retains its own ImAgentConfig (CLI bot.agent; SDK register second argument) and no longer generates the removed upstream AgentConfig. Replace old octo.control/instructions configuration with agent.instruction or ordinary business material. Remove workspace.mode and provide only the path of a prepared directory. Context output uses comment boundaries and individual context tags while retaining selection rules. Private execution items reach Adapters unchanged; OpenClaw agentId lives in adapter.openclaw/options. There is no old protocol compatibility layer. See [Inputs and execution environment](../concepts/inputs-and-agent-env.md) and [Configuration reference](../reference/configuration.md).
 
-## Named SDK materials
+## Registration protocol simplification
 
-Replace `bot.context.items` and `loadContexts` with `bot.materials` and `loadMaterials`, each returning `{ name, parts }[]`. Replace SDK `contextLoading` with `materialLoading`, and CLI `context_loading` with `material_loading`. Old fields fail instead of being silently ignored. Move ordinary text into text parts, images into validated image parts, and execution extensions into `agent.items`; `agent.mcp` and `agent.envs` remain available. Dynamic same-name materials replace whole static entries in place; empty results preserve static entries. See the updated [SDK integration](../getting-started/sdk.md) and [material guide](contexts-and-credentials.md).
+botId must be supplied explicitly; authentication only verifies identity. Remove bot.materials, loadMaterials, BusinessMaterial, materialLoading and CLI material_loading. There is no compatibility layer or replacement loader callback. Event context reuses the channel message path as a separate XML text input; CLI first-turn instructions use its agent.instruction Hook; SDK hosts provide their own Hooks. See [Channel event context](contexts-and-credentials.md).
 
-The SDK now uses new ChannelGateway({ kernel }) and register(bot, agent). Remove ChannelRegistry/ChannelDefinition/ChannelRegistration usage. The host owns Runtime attachment and final client disposal; all Bot handles are cleaned up by gateway.close(). CLI JSON remains unchanged.
+The SDK uses new ChannelGateway({ kernel }) and register(bot, agent). Remove ChannelRegistry/ChannelDefinition/ChannelRegistration usage; the host owns Runtime attachment and client release, while Gateway close cleans up its Bot resources. CLI JSON is unchanged.
+
+
+Hook migration: pass an optional third array to register. Only pre_dispatch and pre_invoke are supported. Remove stable_context_refresh_interval_turns (rejected with IM_REFRESH_POLICY_REMOVED); periodic business content belongs in a Hook using ctx.turn.index. The debug switch is now OCTO_CHANNEL_GATEWAY_DEBUG=1; the old misspelled switch is not supported. CLI still accepts agent.instruction; SDK hosts must prepend it explicitly in a Hook.

@@ -19,7 +19,6 @@ import type { RunPresentation } from "./presentation/run-projector.js";
 import type { ImGapPlan, ImGapTurnToken } from "./application/context-gap.js";
 import type { ImArtifactPolicy } from "./delivery/artifact-policy.js";
 import type { ImStableContextState } from "./application/stable-context.js";
-import type { BusinessMaterial } from "./materials.js";
 
 export interface ImPositionObservation {
   conversationId: string;
@@ -33,7 +32,7 @@ export interface ImPositionObservation {
 export interface ImAgentConfig {
   /** 高级执行扩展；按 AgentEnv.items 原样传入，不作为模型材料渲染。 */
   items?: AgentEnv["items"];
-  /** 新 Provider 会话首轮的输入前缀；普通续聊不重复，恢复稿复用本轮快照。 */
+  /** CLI pre_dispatch Hook 在逻辑会话首轮前置的指令；SDK 不自动注入。 */
   instruction?: string;
   /** 可选执行配置，按公开协议编译为 agentEnv，不进入模型输入。 */
   mcp?: { mcpServers: McpServers };
@@ -50,7 +49,6 @@ export interface ImCommonConfig {
   bot_name?: string;
   enabled?: boolean;
   agent: ImAgentConfig;
-  materials?: BusinessMaterial[];
   approval_mode?: ApprovalMode;
   run_timeout_ms?: number;
   /** Codex 专用的故障恢复预算；不会让其他 Adapter 自动重跑。 */
@@ -69,8 +67,6 @@ export interface ImCommonConfig {
 export interface OctoBotConfig extends ImCommonConfig {
   api_url: string;
   bf_token?: string;
-  /** 自动稳定说明的用户任务刷新周期，默认 30；首轮必带，reset/new 后重新计轮。 */
-  stable_context_refresh_interval_turns?: number;
   /** .octospec/tasks/channel-group-admission/plan.md：群/话题入口开关，省略为 true，不影响私聊。 */
   groups_enabled?: boolean;
   /** 仅约束群范围；省略、null、[] 均不增加限制，关闭入口使用 groups_enabled=false。 */
@@ -139,6 +135,7 @@ export interface ImInboundMessage {
     signal: AbortSignal,
     options?: {
       initialSession: boolean;
+      turnIndex?: number;
       configuredItems?: readonly ContextItem[];
       historyGap?: ImGapPlan;
       onHistoryGapPrepared?(plan: ImGapPlan): void;

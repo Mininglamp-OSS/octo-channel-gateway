@@ -2,15 +2,14 @@
  * 宿主依赖入口：注入执行能力、凭据来源和脱敏诊断。
  * SDK 应用自行决定账号目录和凭据生命周期，通道无需依赖 CLI 或具体 Provider。
  */
+import type { GatewayHook } from "./hooks.js";
 import type { GatewayExecutionContext } from "./support/types.js";
 import type { ImBotConfig } from "./contracts.js";
 import type { ImSessionStore } from "./application/session-store.js";
 import type {
   RuntimeLog,
   JsonObject,
-  ChannelDependencies,
 } from "./support/types.js";
-import type { BusinessMaterial } from "./materials.js";
 
 export type ImCredentialSource = (
   config: ImBotConfig,
@@ -21,7 +20,7 @@ export type ImCredentialSource = (
 export type CreateSessionStore = (config: JsonObject) => ImSessionStore;
 
 /** Gateway 专属业务依赖，在调用进程原生注入。 */
-export interface GatewayDependencies extends ChannelDependencies {
+export interface GatewayDependencies {
   createSessionStore?: CreateSessionStore;
 }
 
@@ -30,10 +29,7 @@ export interface ImChannelManagerDependencies extends ImModuleDependencies {
   createSessionStore?: CreateSessionStore;
 }
 export interface ImModuleDependencies {
-  prepareMaterials?: (
-    config: JsonObject,
-    signal: AbortSignal,
-  ) => Promise<BusinessMaterial[]>;
+  hooks?: readonly GatewayHook[];
   log?: RuntimeLog;
   kernel: Pick<
     GatewayExecutionContext,

@@ -12,7 +12,6 @@ import {
 import type { ImBotConfig } from "../contracts.js";
 import { trimTrailingSlashes } from "../transport/api/url.js";
 import { ARTIFACT_LIMITS } from "../delivery/artifact-policy.js";
-import { assertMaterials } from "../materials.js";
 
 export const IM_MAX_BOTS = 64;
 export const IM_MAX_CONFIG_OPERATIONS = 64;
@@ -92,15 +91,12 @@ export function validateImConfig(config: ImBotConfig): void {
     if (agent.provider_agent_id !== undefined)
       throw new Error("IM_PROVIDER_AGENT_ID_UNSUPPORTED");
   }
-  if (Object.hasOwn(config, "context")) throw new Error("IM_CONTEXT_REMOVED_USE_MATERIALS");
-  if (config.materials !== undefined) assertMaterials(config.materials);
+  if (Object.hasOwn(config, "context")) throw new Error("IM_CONTEXT_REMOVED");
+  if (["materials", "loadMaterials", "materialLoading"].some((key) => Object.hasOwn(config, key)))
+    throw new Error("IM_MATERIAL_API_REMOVED");
   if (agent.items !== undefined) assertAgentEnv({ schema: CONTEXT_SCHEMA, items: agent.items });
-  const refreshInterval = config.stable_context_refresh_interval_turns;
-  if (
-    refreshInterval !== undefined &&
-    (!Number.isSafeInteger(refreshInterval) || refreshInterval < 1)
-  )
-    throw new Error("IM_STABLE_CONTEXT_REFRESH_INTERVAL_INVALID");
+  if (Object.hasOwn(config, "stable_context_refresh_interval_turns"))
+    throw new Error("IM_REFRESH_POLICY_REMOVED");
   const delivery = config.artifact_delivery;
   if (delivery !== undefined) {
     if (!delivery || typeof delivery !== "object" || Array.isArray(delivery))

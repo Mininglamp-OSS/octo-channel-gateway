@@ -1,6 +1,5 @@
 import { prepareKernelInput } from "./kernel-input.js";
-import { runDiagnostic } from "../support/diagnostics.js";
-import { noopRuntimeLog, type RuntimeLog } from "../support/runtime-log.js";
+import type { GatewayHookResult } from "../hooks.js";
 import type { ImModuleDependencies } from "../ports.js";
 import type { ImInvocationInput } from "./dispatcher.js";
 /** IM 业务恢复编排。Host 每次仍只执行一个 invoke，不承担重放决策。 */
@@ -84,7 +83,7 @@ export class ImTask {
     readonly onAttempt: (request: ImInvocationInput) => void,
     readonly time: ImTaskClock = clock,
     readonly onModelWaitChanged: () => void = () => {},
-    readonly log: RuntimeLog = noopRuntimeLog,
+    readonly beforeInvoke?: (request: ImInvocationInput, input: GatewayHookResult, signal: AbortSignal) => Promise<GatewayHookResult>,
   ) {
     this.#policy = { ...DEFAULT_CODEX_RETRY, ...config.codex_retry };
     this.#signal = AbortSignal.any([
@@ -285,6 +284,20 @@ export class ImTask {
         for (const item of request.contexts.items)
           if (item.namespace === "octo.execution" && item.name === "limits")
             item.payload.run_timeout_ms = remaining;
+        let prepared: GatewayHookResult;
+        try {
+          prepared = prepareKernelInput(request, this.environment.executionEnvOverrides);
+          if (this.beforeInvoke) prepared = await this.beforeInvoke(request, prepared,
+            AbortSignal.any([this.#signal, this.#retryStop.signal]));
+          this.#signal.throwIfAborted();
+          if (this.#draining || this.#retryStop.signal.aborted) break;
+        } catch (error) {
+          this.notSubmittedFailure = failurePayload({ code: "IM_HOOK_FAILED" }, {
+            stage: "channel_preparation", defaultDomain: "runtime", invocationNotSubmitted: true,
+            runId: request.runId,
+          }).failure;
+          throw error;
+        }
         this.onAttempt(request);
         let finish!: (completion: AttemptCompletion) => void;
         const active: ActiveAttempt = {
@@ -306,12 +319,6 @@ export class ImTask {
         let completion: AttemptCompletion = "unresolved";
         const ignoredAsyncQuestions = new Set<string>();
         try {
-          const prepared = prepareKernelInput(request, this.environment.executionEnvOverrides);
-          if (process.env.OCO_CHANNEL_GATEWAY_DEUBG === "1") {
-            runDiagnostic(() => this.log("debug", "agent_run.client_input", structuredClone({
-                inputs: prepared.inputs, agentEnv: prepared.agentEnv,
-              })));
-          }
           const run = this.kernel.invoke(prepared.inputs, request.sessionId, request.providerSession, prepared.agentEnv);
           const interrupt = () => { void this.cancelExecution("IM owner aborted").catch(() => this.modelWait.unconfirmed()); };
           this.#signal.addEventListener("abort", interrupt, { once: true });

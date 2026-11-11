@@ -1,8 +1,14 @@
-# Business material and credentials
+# Channel event context and credentials
 
 [简体中文](../../zh-CN/guides/contexts-and-credentials.md) | [Documentation](../README.md)
 
-`loadMaterials(config, {signal})` reads current business material each turn and may return an array or a Promise. The callback reference is fixed at registration; config is an independent Bot snapshot. The host owns data sources, authorization, and consistency. This example reads the token and business brief separately:
+The business handler decides which contextual facts accompany this message event, and omits them when absent. Reuse the existing channel message path: advanced channel implementations provide event items through this ImInboundMessage's buildContext. Gateway renders model context as a separate XML text part in inputs; the original question remains its own text part and images remain image parts. The built-in IM channel supplies sender, group/thread, mention and reply facts under its existing rules. register only binds a Bot to an Agent; it has no material-loading callback or per-turn injection list.
+
+Use existing extra.* model-context items for business context; extra.im belongs to the built-in channel. Execution settings stay in agent.items, separate from contextual text. Automatic rules/history retain their injection and omission policies. Same-turn retries and fresh fallback use frozen inputs without recollecting event facts; a new message includes only its selected context.
+
+CLI installs a pre_dispatch Hook for agent.instruction: it prepends an extra.cli/instruction XML text part only at logical turn 1, including after reset. SDK hosts explicitly install their own Hooks; SDK configuration alone does not inject instruction. Same-turn retries reuse the prepared input, while later fresh fallback does not automatically reload a previous instruction.
+
+This host example reads credentials only. botId is required; authentication verifies the token's identity against it instead of filling in a missing identity:
 
 ```ts
 import type {
@@ -15,19 +21,15 @@ export function createDefinition(options: {
   apiUrl: string;
   workdir: string;
   readToken: (signal: AbortSignal) => Promise<string>;
-  readBrief: (signal: AbortSignal) => Promise<string>;
 }): { bot: GatewayBot; agent: ImAgentConfig } {
   return {
     bot: {
       botId: options.botId,
       apiUrl: options.apiUrl,
       approval_mode: "ask",
-      credentials: (_bot, signal) => options.readToken(signal),
-      materialLoading: { timeout_ms: 5000, max_in_flight: 8 },
-      async loadMaterials(_bot, { signal }) {
-        const text = await options.readBrief(signal);
+      credentials: (_bot, signal) => {
         signal.throwIfAborted();
-        return [{ name: "brief", parts: [{ type: "text", text }] }];
+        return options.readToken(signal);
       },
     },
     agent: { adapter_type: "codex", workdir: options.workdir },
@@ -35,18 +37,38 @@ export function createDefinition(options: {
 }
 ```
 
-Returning a Promise does not make synchronous work nonblocking. Pass signal to underlying reads and check cancellation before accepting late results. Defaults are a 5000 ms wait and at most 8 unfinished callbacks. timeout_ms accepts 1..30000 and max_in_flight accepts 1..32. Timeout ends the wait, but the operation retains its slot until it settles. Capacity exhaustion fails immediately rather than creating an unbounded queue.
+credentials(config, signal) receives an internal Bot configuration copy and cancellation signal, and returns a host-managed token. Without the callback, bot.bfToken is used; CLI JSON retains bf_token. Pass signal to the read operation. Credentials enter the tool execution environment, not XML or the user question. The SDK does not own the host database or a credential refresh service.
 
-Static `bot.materials` and dynamic `loadMaterials` results use `BusinessMaterial[]`: each item has only `name` and `parts`. Names are 1–128 ASCII letters/digits/underscore/dot/hyphen, starting with a letter or digit. Each source is validated separately; duplicate names in one source fail. A dynamic same-name material replaces the whole static material at its original position; new names append in return order. An empty dynamic result preserves static materials. The callback result is copied before use.
+See the [channel message contract](../../../packages/gateway/src/contracts.ts), [context renderer](../../../packages/gateway/src/execution/model-input.ts), and [credential port](../../../packages/gateway/src/ports.ts). MCP/envs examples are in [Configuration](../reference/configuration.md).
 
-`parts` contains ordinary text (`{ type: "text", text }`) or complete image parts (`type: "image"`, `mimeType`, base64 `data`, `byteSize`, `sha256`, optional `id`). Images are validated against their bytes and digest and remain image parts through fresh fallback and retries. Per-source and merged material limits are 32 names and 8 MiB serialized JSON; protocol part/image limits also apply to the combined input. Static materials also share the Bot's 256 KiB configuration budget. Material names produce ordinary comment boundaries; they confer no system/developer privilege. Materials cannot overwrite channel-owned rules/history or enter execution configuration.
+buildContext here is the existing internal channel message contract, not a register callback. Business input transformations use the public Hooks described below.
 
-The old `bot.context`, `loadContexts`, `contextLoading` and `ContextItem` business-material contract are removed, with no compatibility translation. Use `materialLoading` for the SDK and `material_loading` for CLI JSON. Move ordinary text to `{ name, parts }`, MCP/environment settings to `agent.mcp`/`agent.envs`, and advanced execution extensions to `agent.items`. Business material has no namespace/data_format/payload envelope. Channel-generated rules/history retain their existing injection policy and internal rendering.
 
-The optional agent.instruction string is a separate first text part before materials and the current text/image on a fresh Provider session. Ordinary continuation and periodic channel refresh do not repeat it. Reset reinjects it; fresh fallback carries the instruction frozen for that turn. Blank values are omitted; invalid types or configuration/request budget overflow fail explicitly. Changes apply to the next fresh session, while retries keep their snapshot.
+Business prepend policy is an explicit [application Hook](../reference/sdk.md); see the [typed example](../../examples/hooks.mts). The CLI installs its own instruction and debug Hooks.
 
-credentials(config, signal) returns a host-managed current token. The SDK neither scans account directories nor owns a refresh service. Without the callback, it reads SDK bot.bfToken (CLI configuration uses bf_token). Keep tokens out of loadMaterials, model inputs, and diagnostic objects. Before invocation, Gateway merges tool credentials into agentEnv/envs; this remains sensitive execution configuration, not a credential vault. Trusted values override environment aliases case-insensitively on Windows and case-sensitively on POSIX.
+The [Hooks guide](hooks.md) separates CLI instruction/debug behavior from policies implemented by Electron and other application hosts.
 
-Gateway supplies tool identity and material; it does not install the separate octo-cli or business MCP servers. The host supplies tools, executable paths, and supported Provider capabilities. Source contracts: [callback and merge](../../../packages/gateway/src/support/material-loader.ts), [credential port](../../../packages/gateway/src/ports.ts).
 
-For optional MCP/environment payloads, a complete working configuration example, override rules, and the mapping from `agent.mcp`/`agent.envs` to execution items, see [Configuration reference](../reference/configuration.md). The default CLI example remains minimal.
+## Built-in IM context blocks
+
+The implementation entry is buildImContexts in [im-context/index.ts](../../../packages/gateway/src/transport/im-context/index.ts). It assembles the following blocks serially in a fixed order; a block produces nothing when inapplicable. Current-message facts are prepared first to reserve budget and appended last, preserving the existing order. There is no new scheduler for parallel block execution.
+
+| Context | Content and inclusion rule | Implementation |
+| --- | --- | --- |
+| message-trigger | Current message, conversation, sender, recipient Bot and actual mentions; failed identity enrichment retains unknown values | [trigger.ts](../../../packages/gateway/src/transport/im-context/trigger.ts) |
+| reply | Quoted text in this message; omitted without a quote | [reply.ts](../../../packages/gateway/src/transport/im-context/reply.ts) |
+| resources | Attachment, document or Drive addresses without prefetching resource bodies | [resources.ts](../../../packages/gateway/src/transport/im-context/resources.ts) |
+| message-content | Rich text or combined forwards; ordinary text adds no extra block | [message-content.ts](../../../packages/gateway/src/transport/im-context/message-content.ts) |
+| group-rules / topic-rules | DMs skip the request; groups/topics read authoritative rules, then compare versions, status and Provider binding | [rules.ts](../../../packages/gateway/src/transport/im-context/rules.ts) |
+| history | Bounded history selected by the existing plan, preserving order, deduplication, output handoff exclusions and recovery material | [history.ts](../../../packages/gateway/src/transport/im-context/history.ts) |
+| history-gap | Missing/omitted history facts, compacted or omitted under the existing budget rules | [history-gap.ts](../../../packages/gateway/src/transport/im-context/history-gap.ts) |
+
+These are the message collection blocks. Stable instructions for mentions, history use and file delivery remain assembled by [stable-context.ts](../../../packages/gateway/src/application/stable-context.ts) and [dispatcher.ts](../../../packages/gateway/src/execution/dispatcher.ts) at the existing first-turn/recovery boundaries. This refactor does not change their inclusion policy.
+
+GROUP.md is not limited to turn 1: the next admitted message reads the authoritative version. Rules already supplied to the same Provider session at the same version are omitted; updates, empty/deleted rules or a new Provider session require appropriate content. rules.ts contains both reading and version selection. The application execution flow calls selection and updates the session cursor at the existing confirmation boundary; builders never mark rules as delivered early.
+
+[ImContextBuildScope](../../../packages/gateway/src/transport/im-context/scope.ts) is an internal readonly snapshot for this build, separate from public Hook ctx. It supplies channelId/channelType, isGroup, turnIndex, message, history plan, source facts, cancellation and readers. Nested message/plan data and reader results are readonly; the signal stays live. Blocks return new content without mutating scope or session state. Readers capture this channel, Bot and credentials privately; history blocks supply only window parameters.
+
+Within one build, identical reads share pending requests and results. Identity reads deduplicate UIDs across overlapping batches and retain unknown/failed results for the rest of that build. Different history windows remain distinct. No new cross-turn cache is added beyond the existing bounded ten-minute identity cache; rules and history are read again on the next turn. Build-local requests never cross Bot scopes, and credentials are not included in model text.
+
+Explicit local checks: `node --test scripts/verify-im-context-scope.mjs` covers readonly data, request deduplication, isolation and cancellation; `node scripts/verify-im-context-equivalence.mjs` compares actual pre_invoke captures from before the refactor. Only random UUIDs and the workspace path are normalized. Its 14 fixed scenarios compare text, ordering, images, AgentEnv and recovery content; they do not prove equivalence under every live network timing. Neither check joins default tests or CI.

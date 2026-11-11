@@ -52,16 +52,16 @@ export function artifactContext(policy: ImArtifactPolicy): ContextItem {
   return {
     namespace: "extra.im",
     name: "artifact-delivery",
-    guidance:
-      policy.mode === "channel"
-        ? "If your final deliverable is a local file, reference it using Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path)."
-        : [
-            "This channel does not automatically upload output files.",
-            "Use normal tool calls when the task requires file delivery and return recipient-accessible URLs.",
-            "Do not present runtime-local paths as downloadable attachments.",
-            "Do not send a duplicate final reply with a messaging tool.",
-          ].join("\n"),
     payload: {
+      guidance:
+        policy.mode === "channel"
+          ? "If your final deliverable is a local file, reference it using Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path)."
+          : [
+              "This channel does not automatically upload output files.",
+              "Use normal tool calls when the task requires file delivery and return recipient-accessible URLs.",
+              "Do not present runtime-local paths as downloadable attachments.",
+              "Do not send a duplicate final reply with a messaging tool.",
+            ].join("\n"),
       mode: policy.mode,
       ...(policy.workspace ? { workspace: policy.workspace } : {}),
       ...(policy.roots !== undefined ? { allowedRoots: policy.roots } : {}),

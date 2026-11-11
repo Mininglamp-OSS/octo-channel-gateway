@@ -22,7 +22,7 @@ import {
   rulesChange,
 } from "./normalize.js";
 import { sessionCommand } from "./session-command.js";
-import { build_im_contexts } from "./contexts.js";
+import { buildImContexts } from "./im-context/index.js";
 import { OctoConnector, stableEffectKey } from "./connector.js";
 import { CardSession } from "./card-session.js";
 import { TypingController } from "../presentation/typing.js";
@@ -489,7 +489,7 @@ export class GatewayTransport {
           },
           buildContext: async (turnSignal, options) => ({
             schema: CONTEXT_SCHEMA,
-            items: await build_im_contexts(
+            items: await buildImContexts(
               this.scopedConfig,
               message,
               this.#taskToken(deliverySignal),

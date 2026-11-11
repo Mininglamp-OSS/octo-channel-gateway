@@ -1,8 +1,8 @@
+import { normalizeHooks, type GatewayHook } from "./hooks.js";
 import type { KernelClient } from "@mininglamp-oss/octo-runtime-client";
 import type { ImAgentConfig, ImBotConfig } from "./contracts.js";
 import type { GatewayDependencies, ImCredentialSource } from "./ports.js";
 import type { RuntimeLog } from "./support/types.js";
-import { createMaterialLoader } from "./support/material-loader.js";
 import {
   abortForShutdown,
   shutdownDeadline,
@@ -26,11 +26,10 @@ export interface GatewayBot
     GatewayDependencies {
   apiUrl: string;
   bfToken?: string;
-  botId?: string;
+  botId: string;
   botName?: string;
   credentials?: ImCredentialSource;
   authorizeSpace?: (spaceId: string) => void;
-  materialLoading?: { timeout_ms?: number; max_in_flight?: number };
 }
 export interface ChannelGatewayOptions {
   kernel: KernelClient;
@@ -39,7 +38,6 @@ export interface ChannelGatewayOptions {
 }
 interface Binding {
   manager: ImChannelManager;
-  materials: ReturnType<typeof createMaterialLoader>;
   executions: OwnedExecutions;
   closing?: Promise<void>;
 }
@@ -73,21 +71,20 @@ export class ChannelGateway {
     ]);
   }
 
-  register(bot: GatewayBot, agent: ImAgentConfig): Promise<void> {
+  register(bot: GatewayBot, agent: ImAgentConfig, hooks: readonly GatewayHook[] = []): Promise<void> {
     if (this.#closed) return Promise.reject(new Error("IM_GATEWAY_CLOSED"));
     if (this.#operations >= IM_MAX_CONFIG_OPERATIONS)
       return Promise.reject(new Error("IM_CONFIG_QUEUE_CAPACITY_EXHAUSTED"));
     let config: ImBotConfig;
-    let requestedBotId: string | undefined;
+    let bindingHooks: readonly GatewayHook[];
     let dependencies: Pick<
       GatewayBot,
-      | "loadMaterials"
       | "createSessionStore"
       | "credentials"
       | "authorizeSpace"
-      | "materialLoading"
     >;
     try {
+      bindingHooks = normalizeHooks(hooks, this.#log);
       if (!bot || typeof bot !== "object" || Array.isArray(bot))
         throw new Error("IM_CONFIG_INVALID");
       for (const key of [
@@ -99,6 +96,9 @@ export class ChannelGateway {
         "bot_name",
         "loadContexts",
         "contextLoading",
+        "loadMaterials",
+        "materials",
+        "materialLoading",
       ])
         if (Object.hasOwn(bot, key))
           throw new Error("IM_REGISTRATION_API_REMOVED");
@@ -107,49 +107,35 @@ export class ChannelGateway {
         bfToken,
         botId,
         botName,
-        loadMaterials,
         createSessionStore,
         credentials,
         authorizeSpace,
-        materialLoading,
         ...settings
       } = bot;
-      requestedBotId = botId;
       for (const callback of [
-        loadMaterials,
         createSessionStore,
         credentials,
         authorizeSpace,
       ])
         if (callback !== undefined && typeof callback !== "function")
           throw new Error("IM_CALLBACK_INVALID");
-      if (botId !== undefined && (typeof botId !== "string" || !botId.trim()))
-        throw new Error("IM_BOT_ID_REQUIRED");
-      if (bot.enabled === false && !botId)
+      if (typeof botId !== "string" || !botId.trim())
         throw new Error("IM_BOT_ID_REQUIRED");
       const draft = {
         ...settings,
         api_url: apiUrl,
         bf_token: bfToken,
-        bot_id: botId ?? "pending-authentication",
+        bot_id: botId,
         bot_name: botName,
         agent,
       };
       validateImConfig(draft);
       config = structuredClone(draft);
       dependencies = {
-        loadMaterials,
         createSessionStore,
         credentials,
         authorizeSpace,
-        materialLoading: structuredClone(materialLoading),
       };
-      // 在排队和拆除旧绑定之前验证回调池设置，不留下资源。
-      createMaterialLoader(
-        loadMaterials,
-        dependencies.materialLoading,
-        this.#owner.signal,
-      );
     } catch (error) {
       return Promise.reject(error);
     }
@@ -175,12 +161,8 @@ export class ChannelGateway {
             this.#owner.signal,
           );
           this.#assertOpen();
-          if (
-            requestedBotId !== undefined &&
-            config.bot_id !== identity.bot_uid
-          )
+          if (config.bot_id !== identity.bot_uid)
             throw new Error("IM_BOT_IDENTITY_MISMATCH");
-          config.bot_id = identity.bot_uid;
           config.bf_token = token;
           dependencies.authorizeSpace?.(identity.space_id);
           validateImConfig(config);
@@ -197,21 +179,16 @@ export class ChannelGateway {
           this.#bindings.delete(key);
         }
         this.#assertOpen();
-        const materials = createMaterialLoader(
-          dependencies.loadMaterials,
-          dependencies.materialLoading,
-          this.#owner.signal,
-        );
         const executions = new OwnedExecutions(this.#kernel);
         const manager = new ImChannelManager({
           kernel: executions.port,
           log: this.#log,
+          hooks: bindingHooks,
           createSessionStore: dependencies.createSessionStore,
           authorizeSpace: dependencies.authorizeSpace,
           credentials: dependencies.credentials,
-          prepareMaterials: (value, signal) => materials.load(value, signal),
         });
-        const binding: Binding = { manager, materials, executions };
+        const binding: Binding = { manager, executions };
         // 先登记再进入可重入的初始化，close 必须看见所有已取得的资源。
         this.#bindings.set(key, binding);
         try {
@@ -261,11 +238,6 @@ export class ChannelGateway {
       withShutdownDeadline(until, async () => {
         const results = await Promise.allSettled([
           withinShutdown(binding.manager.close(), until, "IM_DISPOSE_FAILED"),
-          withinShutdown(
-            binding.materials.close(),
-            until,
-            "IM_MATERIAL_CLEANUP_INCOMPLETE",
-          ),
           binding.executions.drain(until),
         ]);
         const errors = results

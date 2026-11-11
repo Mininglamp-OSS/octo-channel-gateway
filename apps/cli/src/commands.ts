@@ -21,32 +21,7 @@ function validate(config: JsonObject): void {
         spaces.some((id) => typeof id !== "string" || !id.trim()))
     )
       throw new Error("IM_AUTHORIZED_SPACES_INVALID");
-    const settings = config.material_loading;
-    if (settings !== undefined) {
-      if (
-        !settings ||
-        typeof settings !== "object" ||
-        Array.isArray(settings) ||
-        Object.keys(settings).some(
-          (key) => !["timeout_ms", "max_in_flight"].includes(key),
-        )
-      )
-        throw new Error("IM_MATERIAL_LOADING_CONFIG_INVALID");
-      for (const [key, max] of [
-        ["timeout_ms", 30000],
-        ["max_in_flight", 32],
-      ] as const) {
-        const value = settings[key];
-        if (
-          value !== undefined &&
-          (typeof value !== "number" ||
-            !Number.isInteger(value) ||
-            value < 1 ||
-            value > max)
-        )
-          throw new Error("IM_MATERIAL_LOADING_CONFIG_INVALID");
-      }
-    }
+    if (Object.hasOwn(config, "material_loading")) throw new Error("IM_MATERIAL_API_REMOVED");
   } catch (error) {
     const hints: Record<string, string> = {
       IM_BOT_ID_REQUIRED: "Provide a non-empty --bot_id (JSON: bots[].bot_id).",
@@ -68,8 +43,8 @@ function validate(config: JsonObject): void {
         "bots must be an array within the Gateway Bot limit.",
       IM_AUTHORIZED_SPACES_INVALID:
         "authorized_space_ids must contain non-empty strings.",
-      IM_MATERIAL_LOADING_CONFIG_INVALID:
-        "material_loading accepts timeout_ms (1..30000) and max_in_flight (1..32).",
+      IM_MATERIAL_API_REMOVED:
+        "Remove materials and material_loading; per-message context belongs to the channel input.",
     };
     const code =
       error instanceof Error && Object.hasOwn(hints, error.message)

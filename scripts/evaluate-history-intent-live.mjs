@@ -9,7 +9,7 @@ import { spawn } from "node:child_process";
 import { AgentExecutor } from "@mininglamp-oss/octo-runtime/executor-core";
 import { createVerificationCodex } from "../test-support/verification-kernel.mjs";
 import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
+import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
 import {
   planHistoryGap,
   compactHistoryGap,
@@ -107,7 +107,7 @@ const server = createServer(async (request, response) => {
     message_seq: index + 1,
     payload: { type: 1, content: text },
   }));
-  // 包含触发点后及其他 scope 的干扰材料，由实际 build_im_contexts 过滤触发点后记录。
+  // 包含触发点后及其他 scope 的干扰材料，由实际 buildImContexts 过滤触发点后记录。
   if (sample.category === "scope")
     messages.push({
       from_uid: "user",
@@ -238,7 +238,7 @@ try {
                 ? "group"
                 : "user";
           const trigger = sample.history.length + 2;
-          const items = await build_im_contexts(
+          const items = await buildImContexts(
             config,
             {
               channelId,
@@ -285,12 +285,12 @@ try {
             .flatMap((item) => {
               if (item.namespace !== "extra.im") return [item];
               if (item.name === "history")
-                return [{ ...item, guidance: prompts.history }];
+                return [{ ...item, payload: { ...item.payload, guidance: prompts.history } }];
               if (item.name !== "history-gap") return [item];
               const selectedItem =
                 variant === "compact" ? compactHistoryGap(item) : item;
               assert.ok(selectedItem);
-              return [{ ...selectedItem, guidance: prompts[variant] }];
+              return [{ ...selectedItem, payload: { ...selectedItem.payload, guidance: prompts[variant] } }];
             });
           const { request } = createImInvocation(
             config,

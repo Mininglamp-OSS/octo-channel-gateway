@@ -1,3 +1,5 @@
+import { createCliHooks } from "../dist/apps/cli/src/hooks.js";
+import { runHooks, hookContext } from "../dist/packages/gateway/src/hooks.js";
 // 显式本地专项；不加入默认测试或 CI glob。
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -21,23 +23,27 @@ import { createVerificationKernel } from "../test-support/verification-kernel.mj
 import { fileURLToPath } from "node:url";
 
 const schema = "octo.context-envelope/v3";
-const bot = { bot_id: "runtime-113", api_url: "https://example.test/api",
+const bot = { bot_id: "runtime-114", api_url: "https://example.test/api",
   agent: { adapter_type: "codex", workdir: process.cwd(), instruction: "  frozen instruction\n" } };
 const message = { messageId: "m", conversationId: "owner", senderId: "owner", text: "question" };
 const draft = (providerSession, refresh, config = bot, items = []) => createImInvocation(config, message,
   { schema, items }, "key", { id: "session", generation: 1, ...(providerSession ? { providerSession } : {}) },
   new AbortController().signal, "m", refresh).request;
 const resumed = { sessionId: "provider", resumable: true };
+const invokeHooks = (log) => (request, prepared, signal) => runHooks(createCliHooks({}, log), "pre_invoke", hookContext({
+  botId: bot.bot_id, sessionKey: "key", sessionId: request.sessionId, providerSession: request.providerSession,
+  generation: 1, messageId: "m", conversation: { kind: "direct", id: "owner" }, turn: { index: 1 }, signal,
+}), prepared);
 
-test("instruction precedes materials only on fresh sessions, including explicit recovery", () => {
+test("SDK compilation does not inject CLI instruction, including explicit recovery", () => {
   for (const [provider, refresh, expected] of [[undefined, true, true], [resumed, false, false],
     [resumed, true, false], [{ ...resumed, resumable: false }, true, true]]) {
     const input = draft(provider, refresh);
     input.freshFallbackModelInputParts = [{ type: "text", text: "recovery history" }];
     const compiled = prepareKernelInput(input);
-    assert.equal(compiled.inputs.parts[0].text === bot.agent.instruction, expected);
+    assert.equal(compiled.inputs.parts[0].text === bot.agent.instruction, false);
     assert.equal(compiled.inputs.parts.at(-1).text, "question");
-    assert.equal(compiled.inputs.freshFallbackModelInputParts[0].text, bot.agent.instruction);
+    assert.notEqual(compiled.inputs.freshFallbackModelInputParts[0].text, bot.agent.instruction);
     assert.equal(compiled.inputs.freshFallbackModelInputParts.at(-1).text, "recovery history");
     assert.ok(!JSON.stringify(compiled.agentEnv).includes("frozen instruction"));
     assert.deepEqual(Object.keys(compiled.agentEnv).sort(), ["items", "schema"]);
@@ -47,7 +53,7 @@ test("instruction precedes materials only on fresh sessions, including explicit 
   const textRecovery = draft(resumed, false);
   textRecovery.freshFallbackModelInput = "explicit text recovery";
   const compiled = prepareKernelInput(textRecovery).inputs;
-  assert.ok(compiled.freshFallbackModelInput.startsWith(bot.agent.instruction));
+  assert.ok(!compiled.freshFallbackModelInput.startsWith(bot.agent.instruction));
   assert.ok(compiled.freshFallbackModelInput.endsWith("explicit text recovery"));
   assert.equal(compiled.freshFallbackModelInputParts, undefined);
 });
@@ -107,7 +113,8 @@ test("Runtime session lifecycle freezes instruction on card retry and reinjects 
   const calls = [], controls = [];
   t.mock.method(GatewayTransport.prototype, "start", async function () { receive = (value) => this.callbacks.onMessage(value); });
   t.mock.method(GatewayTransport.prototype, "close", async () => {});
-  const runtime = new ImRuntime({ ...bot, stable_context_refresh_interval_turns: 1, codex_retry: { enabled: false } }, {
+  const runtime = new ImRuntime({ ...bot, codex_retry: { enabled: false } }, {
+    hooks: createCliHooks(bot.agent, () => {}),
     kernel: kernelMock({ async *invoke(input) {
       calls.push(input);
       yield { protocolVersion: 2, type: "session.update", payload: { providerSession: resumed } };
@@ -129,22 +136,22 @@ test("Runtime session lifecycle freezes instruction on card retry and reinjects 
   runtime.config.agent.instruction = "changed instruction";
   assert.equal(controls[1].retry("owner", "retry"), true);
   await waitFor(() => calls.length === 3 && runtime.status.sessions.length === 0);
-  assert.equal(calls[0].inputs[0].text, bot.agent.instruction);
+  assert.match(calls[0].inputs[0].text, /frozen instruction/);
   for (const input of calls.slice(1)) {
     assert.notEqual(input.inputs[0].text, bot.agent.instruction);
-    assert.equal(input.freshFallbackModelInputParts[0].text, bot.agent.instruction);
+    assert.doesNotMatch(JSON.stringify(input.inputs), /frozen instruction/);
   }
   await send("/reset", "reset");
   await send("after reset", "next");
   await waitFor(() => calls.length === 4);
-  assert.equal(calls[3].inputs[0].text, "changed instruction");
+  assert.match(calls[3].inputs[0].text, /frozen instruction/); // CLI uses the registration config snapshot.
 });
 
 test("actual client/Kernel preserves private items, ordered images and complete debug log", { timeout: 10000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "gateway-client-113-"));
-  const previous = process.env.OCO_CHANNEL_GATEWAY_DEUBG;
-  t.after(() => { if (previous === undefined) delete process.env.OCO_CHANNEL_GATEWAY_DEUBG;
-    else process.env.OCO_CHANNEL_GATEWAY_DEUBG = previous; });
+  const previous = process.env.OCTO_CHANNEL_GATEWAY_DEBUG;
+  t.after(() => { if (previous === undefined) delete process.env.OCTO_CHANNEL_GATEWAY_DEBUG;
+    else process.env.OCTO_CHANNEL_GATEWAY_DEBUG = previous; });
   const seen = [], sdkLogs = [], statuses = [];
   const kernel = createKernelService({ home: directory, endpoint: componentEndpoint(directory), adapters: [{
     metadata: { type: "octobuddy", agentSources: ["provisioned"], protocolSupport: { protocol: "fixture", modes: ["canonical"], nativeMethods: [] } },
@@ -168,11 +175,11 @@ test("actual client/Kernel preserves private items, ordered images and complete 
   const before = structuredClone(input);
   const log = logging.channel("channel-gateway");
   for (const setting of [undefined, "0", "true", "01", "1"]) {
-    if (setting === undefined) delete process.env.OCO_CHANNEL_GATEWAY_DEUBG;
-    else process.env.OCO_CHANNEL_GATEWAY_DEUBG = setting;
+    if (setting === undefined) delete process.env.OCTO_CHANNEL_GATEWAY_DEBUG;
+    else process.env.OCTO_CHANNEL_GATEWAY_DEBUG = setting;
     const task = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {
       executionEnvOverrides: { env_variables: [{ key: "TOKEN", value: "full-debug-credential" }] },
-    }, () => {}, undefined, undefined, (level, event, data) => { sdkLogs.push({ level, event, data }); log(level, event, data); });
+    }, () => {}, undefined, undefined, invokeHooks((level, event, data) => { sdkLogs.push({ level, event, data }); log(level, event, data); }));
     assert.equal((await Array.fromAsync(task.events())).at(-1).type, "run.completed");
   }
   assert.deepEqual(input, before);
@@ -190,7 +197,7 @@ test("actual client/Kernel preserves private items, ordered images and complete 
   const records = (await Promise.all(files.filter((file) => /^channel-gateway-\d/.test(file)).map((file) =>
     readFile(join(directory, "logs/channels", file), "utf8")))).join("").trim().split("\n").map(JSON.parse);
   assert.equal(records.length, 1);
-  assert.deepEqual(records[0].data, record.data);
+  assert.deepEqual(records[0].data, JSON.parse(JSON.stringify(record.data)));
   assert.equal(statuses.length, 0);
   for (const sink of [
     () => { throw new Error("sync log failure"); },
@@ -198,7 +205,7 @@ test("actual client/Kernel preserves private items, ordered images and complete 
     () => ({ then(_resolve, reject) { reject(new Error("thenable log failure")); } }),
     () => new Promise(() => {}),
   ]) {
-    const faulty = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {}, () => {}, undefined, undefined, sink);
+    const faulty = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {}, () => {}, undefined, undefined, invokeHooks(sink));
     assert.equal((await Array.fromAsync(faulty.events())).at(-1).type, "run.completed");
     // 让未处理拒绝有机会触发；node:test 会将其判为失败，不安装吞错监听器。
     await new Promise((resolve) => setImmediate(resolve));

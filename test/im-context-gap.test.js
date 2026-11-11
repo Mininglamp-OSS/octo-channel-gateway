@@ -8,7 +8,7 @@ import { setImmediate as settle } from "node:timers/promises";
 import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
 import {
   ImRuntime,
-  build_im_contexts,
+  buildImContexts,
 } from "../dist/packages/gateway/src/index.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
 import { MENTION_GUIDANCE } from "../dist/packages/gateway/src/transport/mentions.js";
@@ -54,10 +54,6 @@ async function fixture(
   });
   const runtime = new ImRuntime(config, {
     sessions: store,
-    prepareMaterials: async () => {
-      prepares++;
-      return structuredClone(configuredItems);
-    },
     kernel: kernelMock({
       async *invoke(request) {
         requests.push(request);
@@ -93,9 +89,10 @@ async function fixture(
         return { update() {}, async finish() {} };
       },
       async buildContext(signal, options) {
+        prepares++;
         return {
           schema: "octo.context-envelope/v3",
-          items: await build_im_contexts(
+          items: [...structuredClone(configuredItems), ...await buildImContexts(
             config,
             {
               channelId: "group____topic",
@@ -108,7 +105,7 @@ async function fixture(
             "bf_fixture",
             signal,
             options,
-          ),
+          )],
         };
       },
       ...overrides,
@@ -271,7 +268,7 @@ test("HG-18 failure leaves a repairable interval that includes the failed trigge
   assert.equal(current.binding().gap.pendingAfterSeq, undefined);
 });
 
-test("HG-19 same-generation card retry reuses frozen contexts without new history or configured-context IO", async (context) => {
+test("HG-19 same-generation card retry reuses frozen contexts without collecting new history or event context", async (context) => {
   const current = await fixture(
     context,
     async function* (_request, count) {
@@ -284,8 +281,9 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
     undefined,
     [
       {
-        name: "instructions",
-        parts: [{ type: "text", text: MENTION_GUIDANCE }, { type: "text", text: MENTION_GUIDANCE }],
+        namespace: "extra.business",
+        name: "event",
+        payload: { facts: ["this-event", "this-event"] },
       },
     ],
   );
@@ -294,10 +292,10 @@ test("HG-19 same-generation card retry reuses frozen contexts without new histor
   current.send(103);
   await current.idle();
   const frozen = structuredClone(current.requests[1]);
-  assert.equal(
-    frozen.inputs.filter((part) => part.type === "text" && part.text === MENTION_GUIDANCE).length,
-    2,
-    "two explicit host copies remain unchanged; channel guidance is a separate material item",
+  assert.deepEqual(
+    modelItems(frozen).find((item) => item.namespace === "extra.business").payload,
+    { facts: ["this-event", "this-event"] },
+    "explicit per-message facts remain unchanged through the channel context path",
   );
   const revision = current.binding().gap.revision;
   const fetches = current.historyCalls.length;
@@ -378,7 +376,6 @@ for (const conversationKind of ["group", "thread"]) {
       assert.deepEqual(current.requests.at(-1).inputs, frozen.inputs);
     }
     assert.equal(builds, 1);
-    assert.equal(current.prepares(), 1);
     assert.equal(current.historyCalls.length, 0);
   });
 }
@@ -507,7 +504,7 @@ test("a resumed topic receives two discussion messages through API before model 
     async buildContext(signal, options) {
       return {
         schema: "octo.context-envelope/v3",
-        items: await build_im_contexts(
+        items: await buildImContexts(
           config,
           {
             channelId: "group____topic",

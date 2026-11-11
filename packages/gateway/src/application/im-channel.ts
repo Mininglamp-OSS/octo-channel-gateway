@@ -1,4 +1,6 @@
-import type { JsonObject } from "../support/types.js";
+import { selectRulesContext } from "../transport/im-context/rules.js";
+import { hookContext, normalizeHooks, runHooks, type GatewayHook } from "../hooks.js";
+import { prepareKernelInput } from "../execution/kernel-input.js";
 import { runDiagnostic } from "../support/diagnostics.js";
 import { shutdownDeadline, withinShutdown } from "../support/shutdown.js";
 /**
@@ -42,7 +44,6 @@ import { ImRunProjector } from "../presentation/run-projector.js";
 import { MemoryImSessionStore, type ImSessionStore } from "./session-store.js";
 import {
   addRulesRecovery,
-  selectRulesContext,
   type ImRulesVersions,
 } from "./rules-context.js";
 import { planStableContext } from "./stable-context.js";
@@ -107,6 +108,7 @@ const preparationFailureMessages = new Map([
 ]);
 
 export class ImRuntime {
+  readonly #hooks: readonly GatewayHook[];
   readonly #processEpoch = randomUUID();
   readonly #preparing = new Map<string, AbortController>();
   readonly #finalDeliveries = new Map<string, AbortController>();
@@ -162,6 +164,7 @@ export class ImRuntime {
     readonly dependencies: ImModuleDependencies,
   ) {
     validateImConfig(config);
+    this.#hooks = normalizeHooks(dependencies.hooks, dependencies.log);
     this.config = structuredClone(config);
     this.config.bot_name = this.config.bot_name?.trim() || this.config.bot_id;
     this.#sessionStore = dependencies.sessions ?? new MemoryImSessionStore();
@@ -1186,10 +1189,7 @@ export class ImRuntime {
     const initialWasAttempted = executionSession.initialization!.attempted;
     const stablePlan = message.historyRetry
       ? { turn: stableState.turnCount, refresh: false }
-      : planStableContext(
-          stableState,
-          this.config.stable_context_refresh_interval_turns,
-        );
+      : planStableContext(stableState);
     let stableRecovered = false;
     const rulesEnabled = message.conversationKind !== "direct";
     // Octospec F05: .octospec/tasks/gateway-august-feature-assessment/assessment.md
@@ -1255,11 +1255,9 @@ export class ImRuntime {
           processEpoch: this.#processEpoch,
         });
       }
-      const materials = message.historyRetry ? undefined : await this.dependencies.prepareMaterials?.(
-        this.config as unknown as JsonObject, turnSignal,
-      );
       const fullContext = await message.buildContext(turnSignal, {
         initialSession,
+        turnIndex: stablePlan.turn,
         ...(gapEnabled
           ? {
               historyGap: gapPlan,
@@ -1289,7 +1287,6 @@ export class ImRuntime {
         occurrenceId,
         refreshStableContext,
       );
-      if (materials) prepared.request.materials = materials;
       if (
         gapEnabled &&
         context.items.some(
@@ -1335,9 +1332,8 @@ export class ImRuntime {
         if (saved?.freshFallbackModelInput !== undefined)
           prepared.request.freshFallbackModelInput =
             saved.freshFallbackModelInput;
-        prepared.request.instruction = saved?.instruction;
-        prepared.request.includeInstruction = saved?.includeInstruction;
-        prepared.request.materials = structuredClone(saved?.materials ?? []);
+        prepared.request.preparedInput = structuredClone(saved?.preparedInput);
+        prepared.request.hooksInvoked = saved?.hooksInvoked;
         prepared.request.agentItems = structuredClone(saved?.agentItems ?? []);
         if (saved?.freshFallbackModelInputParts)
           prepared.request.freshFallbackModelInputParts = structuredClone(
@@ -1352,6 +1348,19 @@ export class ImRuntime {
       message.executionEnvironment?.();
       if (prepared.adapterType === "openclaw") environment = {};
       turnSignal.throwIfAborted();
+      const preparingIdentity = { id: session.id, generation: session.generation };
+      if (!message.historyRetry && this.#hooks.length) {
+        prepared.request.preparedInput = await runHooks(this.#hooks, "pre_dispatch", hookContext({
+          botId: this.config.bot_id, sessionKey: key, generation: executionSession.generation,
+          sessionId: prepared.request.sessionId, providerSession: prepared.request.providerSession,
+          messageId: message.messageId,
+          conversation: { kind: message.conversationKind, id: message.conversationId },
+          turn: { index: stablePlan.turn }, signal: turnSignal,
+        }), prepareKernelInput(prepared.request, environment.executionEnvOverrides));
+      }
+      turnSignal.throwIfAborted();
+      if (session.id !== preparingIdentity.id || session.generation !== preparingIdentity.generation)
+        return;
       const snapshot = { ...prepared.request };
       this.#sessionStore.remember(key, occurrenceId ?? message.messageId, {
         text: message.text,
@@ -1376,8 +1385,7 @@ export class ImRuntime {
           : undefined;
       if (
         error instanceof Error &&
-        (preparationMessage ||
-          /^IM_MATERIAL_(?:LOADING|RESULT)_[A-Z_]+$/.test(error.message))
+        (preparationMessage || /^IM_HOOK_[A-Z_]+$/.test(error.message))
       )
         this.#diagnostic(error.message);
       this.#diagnostic("IM_CONTEXT_PREPARATION_FAILED");
@@ -1473,7 +1481,23 @@ export class ImRuntime {
       },
       undefined,
       () => updatePresentation(),
-      this.dependencies.log,
+      this.#hooks.length ? async (attempt, input, signal) => {
+        const invokingIdentity = { id: session.id, generation: session.generation };
+        const result = await runHooks(this.#hooks, "pre_invoke", hookContext({
+          botId: this.config.bot_id, sessionKey: key, generation: executionSession.generation,
+          sessionId: attempt.sessionId, providerSession: attempt.providerSession,
+          messageId: message.messageId,
+          conversation: { kind: message.conversationKind, id: message.conversationId },
+          turn: { index: Number(attempt.runMetadata?.conversationTurn ?? stablePlan.turn) }, signal,
+        }), input, attempt.hooksInvoked === true);
+        if (session.id !== invokingIdentity.id || session.generation !== invokingIdentity.generation)
+          throw new Error("IM_HOOK_SESSION_STALE");
+        attempt.preparedInput = structuredClone(result);
+        attempt.hooksInvoked = true;
+        const saved = this.#sessionStore.occurrence(key, occurrenceId ?? message.messageId);
+        if (saved) this.#sessionStore.remember(key, occurrenceId ?? message.messageId, { ...saved, snapshot: attempt });
+        return result;
+      } : undefined,
     );
     this.#tasks.set(key, { rootInvocationId: request.invocationId, task });
     const snapshot = () => ({

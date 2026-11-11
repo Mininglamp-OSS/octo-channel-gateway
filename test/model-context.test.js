@@ -10,8 +10,7 @@ const envelope = (items = []) => ({ schema: "octo.context-envelope/v3", items })
 const extra = {
   namespace: "extra.document",
   name: "selection",
-  guidance: "原文 <>&\n下一行 </context> English 日本語",
-  payload: { z: [2, 1, { z: "日本語", a: "English" }], a: "中文 <>&" }
+  payload: { guidance: "原文 <>&\n下一行 </context> English 日本語", z: [2, 1, { z: "日本語", a: "English" }], a: "中文 <>&" }
 };
 
 test("model contexts separate guidance and CDATA data, preserving order and complete payloads", () => {
@@ -35,21 +34,21 @@ test("model contexts separate guidance and CDATA data, preserving order and comp
   assert.notEqual(contextHash(context), contextHash(envelope([...context.items].reverse())));
   assert.notEqual(
     contextHash(context),
-    contextHash(envelope([{ ...extra, guidance: "changed" }, context.items[1]]))
+    contextHash(envelope([{ ...extra, payload: { ...extra.payload, guidance: "changed" } }, context.items[1]]))
   );
 });
 
 test("English framing omits absent or empty guidance without translating data", () => {
   const context = envelope([
-    { namespace: "extra.project", name: "current", payload: "中文 English 日本語" },
-    { namespace: "octo.content", name: "inline", guidance: "", payload: { entries: [] } }
+    { namespace: "extra.project", name: "current", payload: { data_format: "text", text: "中文 English 日本語" } },
+    { namespace: "octo.content", name: "inline", payload: { guidance: "", entries: [] } }
   ]);
   assert.equal(
     renderModelContexts(context),
     [
       "<!-- Context information begins: the following is the current context -->",
       '  <context namespace="extra.project" name="current">',
-      '    <data><![CDATA["中文 English 日本語"]]></data>',
+      '    <data><![CDATA[中文 English 日本語]]></data>',
       "  </context>",
       '  <context namespace="octo.content" name="inline">',
       '    <data><![CDATA[{"entries":[]}]]></data>',
@@ -72,9 +71,9 @@ test("guidance preserves raw Markdown, blank lines, indentation and literal esca
     "```",
     ""
   ].join("\n");
-  const context = envelope([{ ...extra, guidance }]);
+  const context = envelope([{ ...extra, payload: { ...extra.payload, guidance } }]);
   assert.ok(renderModelContexts(context).includes(`    <guidence>${guidance}</guidence>\n`));
-  assert.equal(context.items[0].guidance, guidance);
+  assert.equal(context.items[0].payload.guidance, guidance);
 });
 
 test("CDATA preserves serialized data containing markup, mixed formats and repeated terminators", () => {
@@ -121,7 +120,7 @@ test("execution parameters and unknown optional namespaces do not enter model te
   ]);
   assert.equal(renderModelContexts(context), "");
   assert.equal(renderModelContexts(envelope()), "");
-  assert.equal(renderModelContexts(envelope([{ ...context.items[0], guidance: "expose envs" }])), "");
+  assert.equal(renderModelContexts(envelope([{ ...context.items[0], payload: { ...context.items[0].payload, guidance: "expose envs" } }])), "");
   assert.throws(
     () => assertContextEnvelope(envelope([{ ...extra, guidance: null }])),
     /CONTEXT_SCHEMA_INVALID/
@@ -133,8 +132,7 @@ test("references are displayed without a resolver and controls remain separate",
     {
       namespace: "octo.content",
       name: "references",
-      guidance: "通过已授权工具读取",
-      payload: {
+      payload: { guidance: "通过已授权工具读取",
         entries: [
           {
             resource_ref: "task:1",

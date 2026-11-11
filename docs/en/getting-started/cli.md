@@ -2,7 +2,7 @@
 
 [简体中文](../../zh-CN/getting-started/cli.md) | [Documentation](../README.md)
 
-Use Node.js 24 or 26, a ready local Runtime Kernel (minimum 1.1.13, supported 1.x), a platform Bot with valid credentials, and the Provider installation used by the Kernel. Runtime and Gateway have separate services and Homes. Runtime/client 1.1.13 is available from npm; see [Dependencies and releases](../guides/dependencies.md) for version and archive verification.
+Use Node.js 24 or 26, a ready local Runtime Kernel (minimum 1.1.14, supported 1.x), a platform Bot with valid credentials, and the Provider installation used by the Kernel. Runtime and Gateway have separate services and Homes. Runtime/client 1.1.14 is available from npm; see [Dependencies and releases](../guides/dependencies.md) for version and archive verification.
 
 CLI execution uses the public client's attachKernel to connect to an existing Kernel. Prerequisite checks, registration and doctor never create a Kernel, Adapter or Engine. Gateway start/run manages its channel process; stopping Gateway leaves shared Runtime running.
 
@@ -70,6 +70,7 @@ node dist/apps/cli/src/index.js extraset <<'JSON'
       "bf_token": "your-bot-token",
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "model": "your-model-id",
         "effort": "high",
         "workdir": "/absolute/workspace"
@@ -81,3 +82,5 @@ JSON
 ```
 
 Replace all example paths, Bot identity, credentials and model ID before use. `bot_name` is a display label for distinguishing Bots; an empty or omitted value falls back to bot_id. `agent` contains execution settings; `adapter_type` selects the Provider integration. `model` is a placeholder, and `effort: high` is an example, not a global default. Runtime Home is not a configuration field; specify it with start/run --runtime-home, or omit that option to use ~/.octo-runtime. extraset replaces the full configuration; restart applies it. Config and logs stay in ~/.octo-channel-gateway.
+
+`agent.instruction` is optional and supported for every CLI Adapter, including OpenClaw. Leave it empty to add nothing. Only nonblank text on logical turn 1 is prepended by the CLI Hook. **SDK integrations must implement and register their own Hook; this field does not enable SDK injection.** See [Adapter examples](../guides/adapter-extraset.md) and [Hooks](../guides/hooks.md).

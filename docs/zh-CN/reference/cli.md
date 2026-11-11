@@ -46,3 +46,5 @@ JSON 错误为 error.code / error.message。Runtime 前置条件失败的 messag
 `--bot_name` 只设置展示名称，空值或省略时显示 bot_id，不改变 Bot 身份。`--adapter_type`、`--model`、`--effort`、`--workdir` 分别写入 `agent.adapter_type`、`agent.model`、`agent.effort`、`agent.workdir`。样例模型 ID 需要替换为 Provider 支持的值，样例中的 `high` 不是全局默认推理强度。
 
 `start --runtime-home /absolute/runtime` 将 `run --home … --runtime-home …` 写入或更新原生服务定义后启动。不带该参数的 `start` 明确使用默认 Runtime 目录。`restart` 沿用已安装参数，不接收该选项，也不改写定义；切换 Runtime 目录使用 `start --runtime-home …`。`doctor` 检查运行中 Gateway 报告的 endpoint；Gateway 停止时不猜测 Runtime 地址。管理状态标记 `definition_comparison: "not_requested"`，只核对服务身份/状态，不比较期望启动参数。
+
+[全部 13 个 Adapter 的完整 extraset 示例](../guides/adapter-extraset.md).

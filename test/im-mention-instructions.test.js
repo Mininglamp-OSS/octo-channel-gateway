@@ -5,9 +5,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
 import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { createMaterialLoader } from "../dist/packages/gateway/src/support/material-loader.js";
 import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
+import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
 import { MENTION_GUIDANCE } from "../dist/packages/gateway/src/transport/mentions.js";
 import { waitFor } from "./runtime-fixture.js";
 
@@ -99,36 +98,6 @@ test("Gateway appends defaults after effective host entries without deduplicatio
   assert.deepEqual(context, original);
 });
 
-test("dynamic host instructions replace the host persona before channel defaults are appended once per turn", async () => {
-  let current = "new persona";
-  const material = (text) => ({ name: "persona", parts: [{ type: "text", text }] });
-  const hostConfig = {
-    ...config,
-    materials: [material("old persona")],
-  };
-  const loader = createMaterialLoader(
-    () => [material(current)],
-    undefined,
-    signal,
-  );
-  try {
-    for (const text of ["new persona", "latest persona"]) {
-      current = text;
-      const materials = await loader.load(hostConfig, signal);
-      const request = invoke({ schema, items: [] });
-      request.materials = materials;
-      assert.equal(
-        gatewayWire(request).inputs.filter((part) => part.type === "text" && part.text === text).length,
-        1,
-      );
-      assert.deepEqual(materials, [material(text)]);
-    }
-    assert.deepEqual(hostConfig.materials, [material("old persona")]);
-  } finally {
-    await loader.close();
-  }
-});
-
 test("required instructions and explicit host material are never silently dropped to fit the budget", () => {
   assert.throws(
     () => invoke({ schema, items: [control("x".repeat(64000))] }),
@@ -156,7 +125,7 @@ test("an existing provider session receives compact current trigger facts separa
     );
     return Response.json({}, { status: 404 });
   });
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     {
       channelId: "group____topic",
@@ -173,7 +142,7 @@ test("an existing provider session receives compact current trigger facts separa
     false,
   );
   const reminder = items.find((item) => item.name === "message-trigger");
-  assert.equal(reminder.guidance.split("\n").length, 1);
+  assert.equal(reminder.payload.guidance.split("\n").length, 1);
   assert.equal(reminder.payload.sender.uid, "current-user");
   assert.equal(reminder.payload.conversation.id, "group____topic");
   assert.equal(reminder.payload.conversation.type, "group_topic");

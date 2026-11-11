@@ -6,7 +6,6 @@ export { ImRuntime } from "./application/im-channel.js";
 export { octoCliEnvironment } from "./execution/tool-environment.js";
 export { ChannelGateway } from "./gateway.js";
 export type { GatewayBot, ChannelGatewayOptions } from "./gateway.js";
-export type { LoadMaterials } from "./support/material-loader.js";
 export { ImChannelManager } from "./lifecycle/manager.js";
 export { MemoryImSessionStore } from "./application/session-store.js";
 export type {
@@ -29,11 +28,11 @@ export {
   configuredCredential,
   imBotIdentity,
 } from "./lifecycle/configuration.js";
-export { build_im_contexts } from "./transport/contexts.js";
+export { buildImContexts } from "./transport/im-context/index.js";
 export { registerBot, WukongConnection } from "./transport/wukong.js";
 export type { ImMessage, BotRegistration } from "./transport/wukong.js";
 export type * from "./contracts.js";
 export type * from "./ports.js";
 export * as imApi from "./transport/api/index.js";
 
-export type { BusinessMaterial } from "./materials.js";
+export type { GatewayHook, GatewayHookContext, GatewayHookResult, GatewayInputs } from "./hooks.js";

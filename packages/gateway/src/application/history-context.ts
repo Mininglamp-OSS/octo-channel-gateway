@@ -19,9 +19,12 @@ export function modelHistoryContexts(items: ContextItem[]): ContextItem[] {
   const history = (messages: unknown): ContextItem => ({
     namespace: "extra.im",
     name: "history",
-    guidance:
-      "Earlier messages, oldest first; sentAt=system-zone time, content.type=body type; null=unknown, read=false=unread, truncated=true=shortened.",
-    payload: { messages, ...(note ? { note } : {}) },
+    payload: {
+      guidance:
+        "Earlier messages, oldest first; sentAt=system-zone time, content.type=body type; null=unknown, read=false=unread, truncated=true=shortened.",
+      messages,
+      ...(note ? { note } : {}),
+    },
   });
   // 读取失败时也可用空消息列表说明事实；显式宿主 history 保持原值，不追加同 key 自动项。
   const hasHistory = items.some(

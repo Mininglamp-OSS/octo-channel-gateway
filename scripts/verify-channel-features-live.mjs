@@ -177,7 +177,7 @@ async function createTestGroup() {
   }
 }
 try {
-  kernel = await createVerificationKernel({ home: directory, endpoint: socket,  });
+  kernel = await createVerificationKernel({ home: directory, endpoint: socket, });
   assert.equal((await kernel.client.status()).pid, process.pid);
   report.nativeKernelHost = true;
   group = await createTestGroup();
@@ -203,9 +203,9 @@ try {
         {
           namespace: "extra.qa",
           name: "image-request",
-          guidance:
-            "收到图片时，只说明上半部分和下半部分的颜色；处理图片时不要调用工具、修改文件或另发消息。",
-          payload: {},
+          payload: {
+            guidance:
+              "收到图片时，只说明上半部分和下半部分的颜色；处理图片时不要调用工具、修改文件或另发消息。", },
         },
       ],
     },

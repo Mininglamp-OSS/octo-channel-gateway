@@ -9,7 +9,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const agent = { adapter_type: "test", workdir: process.cwd() };
-const bot = (id = "one", extra = {}) => ({ apiUrl: "https://example.test/api", bfToken: `bf_${id}`, ...extra });
+const bot = (id = "one", extra = {}) => ({ botId: id.replace(/_rotated$/, ""), apiUrl: "https://example.test/api", bfToken: `bf_${id}`, ...extra });
 async function setup(t) {
   const fixture = await kernelFixture(t);
   const active = new Set();
@@ -46,7 +46,7 @@ test("authentication and validation failures preserve the old binding", async t 
   const original = [...active][0];
   await assert.rejects(gateway.register(bot("invalid"), agent));
   await assert.rejects(gateway.register(bot("one", { botId: "wrong" }), agent), /IDENTITY_MISMATCH/);
-  await assert.rejects(gateway.register(bot("one", { materialLoading: { timeout_ms: 0 } }), agent), /CONFIG_INVALID/);
+  await assert.rejects(gateway.register(bot("one", { botId: "" }), agent), /BOT_ID_REQUIRED/);
   assert.deepEqual([...active], [original]);
 });
 
@@ -188,21 +188,6 @@ test("Gateway close cancels only owned execution; shared client and new Gateway 
   await client.interrupt(unrelated.invocationId);
   await unrelatedResult;
   assert.equal((await client.status()).execution_ready, true);
-});
-
-test("uncooperative material callback reports incomplete cleanup and cannot invoke after close", async t => {
-  const { gateway, client, active } = await setup(t);
-  const entered = Promise.withResolvers(), release = Promise.withResolvers();
-  await gateway.register(bot("one", { async loadMaterials() { entered.resolve(); await release.promise; return []; } }), agent);
-  [...active][0].callbacks.onMessage({ messageId: "material", senderId: "sender", conversationId: "chat", conversationKind: "direct", text: "hello", buildContext: async () => ({ schema: "octo.context-envelope/v3", items: [] }), reply: async () => {} });
-  await entered.promise;
-  const closing = gateway.close();
-  await assert.rejects(closing, /DISPOSE_FAILED/);
-  assert.equal(active.size, 0);
-  release.resolve();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(client.invocations.snapshot().length, 0);
-  assert.equal(gateway.close(), closing);
 });
 
 test("late credentials after shutdown timeout cannot create a binding", async t => {

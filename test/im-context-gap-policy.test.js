@@ -10,7 +10,7 @@ import {
 import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
 import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
 import { getChannelMessagePage } from "../dist/packages/gateway/src/transport/api/conversations.js";
-import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
+import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
 import {
   acceptsImMessage,
   observesImScope,
@@ -96,6 +96,7 @@ test("HG-23 removing history reports omitted material without asking the model t
     (item) => item.name === "history",
   );
   assert.deepEqual(history.payload, {
+    guidance: "Earlier messages, oldest first; sentAt=system-zone time, content.type=body type; null=unknown, read=false=unread, truncated=true=shortened.",
     messages: [],
     note: "Earlier messages are not included.",
   });
@@ -164,7 +165,7 @@ test("HG-29 a configured extra.im gap item is ignored before automatic context i
   context.mock.method(globalThis, "fetch", async () =>
     Response.json({}, { status: 404 }),
   );
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     message,
     "bf_fixture",
@@ -256,7 +257,7 @@ for (const [name, trigger, previous, mode, limit] of [
       calls.push(JSON.parse(options.body));
       return Response.json({ more: 0, messages: [] });
     });
-    await build_im_contexts(
+    await buildImContexts(
       config,
       { ...message, messageSeq: trigger },
       "bf_fixture",
@@ -530,7 +531,7 @@ test("HG-07 cold history coordinates complete, omitted and truncated windows wit
   ]) {
     page = value;
     let prepared;
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       message,
       "bf_fixture",
@@ -562,7 +563,7 @@ test("HG-08 cold and warm API failures do not block or delegate repair to model 
     return Response.json({}, { status: 403 });
   });
   for (const initialSession of [true, false]) {
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       message,
       "bf_fixture",
@@ -611,7 +612,7 @@ test("HG-05 API preparation enforces the latest twenty records even when the ser
       ],
     });
   });
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     {
       ...message,
@@ -654,7 +655,7 @@ test("HG-08 malformed API responses remain unavailable without another request",
     return Response.json(response);
   });
   for (response of [{ messages: "invalid" }, { messages: [], more: 2 }, null]) {
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       message,
       "bf_fixture",
@@ -684,7 +685,7 @@ test("history API rate limits are not retried by the fixed preparation pipeline"
     calls++;
     return Response.json({}, { status: 429, headers: { "Retry-After": "0" } });
   });
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     message,
     "bf_fixture",
@@ -728,7 +729,7 @@ test("review regression: DM cold history retains its original timeout and HTTP 4
       ],
     });
   });
-  const items = await build_im_contexts(
+  const items = await buildImContexts(
     config,
     { ...message, channelId: "peer", channelType: 1 },
     "bf_fixture",

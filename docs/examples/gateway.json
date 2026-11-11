@@ -10,11 +10,11 @@
         "adapter_type": "codex",
         "model": "your-model-id",
         "effort": "high",
-        "workdir": "/absolute/workspace"
+        "workdir": "/absolute/workspace",
+        "instruction": ""
       },
       "approval_mode": "ask",
       "groups_enabled": false
     }
-  ],
-  "material_loading": { "timeout_ms": 5000, "max_in_flight": 8 }
+  ]
 }

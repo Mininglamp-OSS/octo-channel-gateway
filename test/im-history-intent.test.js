@@ -6,7 +6,7 @@ import {
   historyGapContext,
   planHistoryGap,
 } from "../dist/packages/gateway/src/application/context-gap.js";
-import { build_im_contexts } from "../dist/packages/gateway/src/transport/contexts.js";
+import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
 import { renderModelContexts } from "../dist/packages/gateway/src/execution/model-input.js";
 const historyGuidance =
@@ -52,7 +52,7 @@ for (const channelType of [1, 2, 5]) {
       spaceId: "synthetic",
       agent: { adapter_type: "codex", workdir: process.cwd() },
     };
-    const items = await build_im_contexts(
+    const items = await buildImContexts(
       config,
       {
         channelId,
@@ -81,7 +81,7 @@ for (const channelType of [1, 2, 5]) {
       },
     ]);
     const history = items.find((item) => item.name === "history");
-    assert.equal(history.guidance, historyGuidance);
+    assert.equal(history.payload.guidance, historyGuidance);
     assert.deepEqual(history.payload.messages, [
       {
         uid: "Alice",
@@ -107,10 +107,10 @@ for (const channelType of [1, 2, 5]) {
     const gap = items.find((item) => item.name === "history-gap");
     if (channelType === 1) assert.equal(gap, undefined);
     else {
-      assert.equal(gap.guidance, gapGuidance);
+      assert.equal(gap.payload.guidance, gapGuidance);
       const compact = compactHistoryGap(gap);
       assert.ok(compact);
-      assert.equal(compact.guidance, gapGuidance);
+      assert.equal(compact.payload.guidance, gapGuidance);
       for (const key of [
         "source",
         "status",

@@ -6,7 +6,7 @@ Independent Octo IM registration SDK and service CLI. Gateway owns Bot configura
 
 ## Install
 
-Requires Node.js 24 or 26 and Runtime **1.1.13 or later in the supported 1.x line** (IPC v2). The installation example uses npm `@latest`; the minimum supported version remains 1.1.13. Install and start Runtime separately; installing the client does not install or start a Kernel.
+Requires Node.js 24 or 26 and Runtime **1.1.14 or later in the supported 1.x line** (IPC v2). The installation example uses npm `@latest`; the minimum supported version remains 1.1.14. Install and start Runtime separately; installing the client does not install or start a Kernel.
 
 ```sh
 npm install -g @mininglamp-oss/octo-runtime@latest
@@ -32,6 +32,7 @@ octo-channel-gateway extraset <<'JSON'
       "bf_token": "REPLACE_WITH_BOT_TOKEN",
       "agent": {
         "adapter_type": "codex",
+        "instruction": "",
         "workdir": "/absolute/project",
         "model": "gpt-6.1-sol",
         "effort": "high"
@@ -77,7 +78,7 @@ const gateway = new ChannelGateway({ kernel });
 try {
   for (const binding of bindings) {
     await gateway.register(
-      { apiUrl: binding.apiUrl, bfToken: binding.bfToken },
+      { botId: binding.botId, apiUrl: binding.apiUrl, bfToken: binding.bfToken },
       binding.agent,
     );
   }
@@ -88,13 +89,13 @@ try {
 }
 ```
 
-`register(bot, agent)` returns `Promise<void>` and adds or replaces a binding by normalized platform address and authenticated Bot ID. Token rotation does not create another binding. Validate the replacement, close the old binding, then start the new one; a failed replacement does not automatically restore the old configuration. Other Bots keep running. No separate start or registration handle is needed. After close, create a new ChannelGateway; the same host-owned client remains reusable until the host closes it.
+`register(bot, agent, hooks?)` returns `Promise<void>` and adds or replaces a binding by normalized platform address and authenticated Bot ID. Token rotation does not create another binding. Validate the replacement, close the old binding, then start the new one; a failed replacement does not automatically restore the old configuration. Other Bots keep running. No separate start or registration handle is needed. After close, create a new ChannelGateway; the same host-owned client remains reusable until the host closes it.
 
-Gateway owns Bot connections, timers, listeners, material callbacks, session-store handles and its own executions. It never closes the borrowed client or globally stops/drains its other users. Close shares a four-second deadline, attempts all resource cleanup and reports failures; timeout is not proof of cleanup. Hosts must await it before releasing Runtime resources. Electron intercepts before-quit and coordinates asynchronous cleanup in the main process; the SDK supplies no waitForShutdown or process handlers.
+Gateway owns Bot connections, timers, listeners, session-store handles and its own executions. It never closes the borrowed client or globally stops/drains its other users. Close shares a four-second deadline, attempts all resource cleanup and reports failures; timeout is not proof of cleanup. Hosts must await it before releasing Runtime resources. Electron intercepts before-quit and coordinates asynchronous cleanup in the main process; the SDK supplies no waitForShutdown or process handlers.
 
-`bot.materials` supplies optional static `{ name, parts }` data, and `bot.loadMaterials` reads that shape each turn. Dynamic same-name entries replace static entries in place. Text/image parts go to model inputs; the separate `agent` argument supplies execution settings, including private `agent.items`. `bot.createSessionStore` provides owned handles over a host-owned database. The old ChannelRegistry, ChannelDefinition, ChannelRegistration, loadContexts and ContextItem material APIs are removed without compatibility wrappers. CLI configuration remains snake_case with nested bot.agent; the CLI maps it to the SDK API.
+The Bot ID is required and must match the credential identity. Per-message contextual facts reuse the channel input path and become a separate XML text part; the original question remains unchanged. There are no registration-level material loaders or static material lists. CLI first-turn instructions use its `agent.instruction` Hook; SDK hosts supply their own Hooks; execution settings, including private `agent.items`, remain separate. `bot.createSessionStore` supplies owned handles over a host-owned database. CLI configuration retains snake_case and nested bot.agent.
 
-Gateway prepares history, channel context, and business material before invoking `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv)`. Interrupt an execution using its `invocationId`; a business `sessionId` or Provider continuation identifier cannot replace it. MCP, environment variables, model/effort, and workspace settings travel in `agentEnv`. See [Inputs and execution environment](docs/en/concepts/inputs-and-agent-env.md) for the current boundary and remaining protocol migrations.
+Gateway prepares history and per-message channel context before invoking `KernelClient.invoke(inputs, sessionId, providerSession, agentEnv)`. Interrupt an execution using its `invocationId`; a business `sessionId` or Provider continuation identifier cannot replace it. MCP, environment variables, model/effort, and workspace settings travel in `agentEnv`. See [Inputs and execution environment](docs/en/concepts/inputs-and-agent-env.md) for the current boundary and remaining protocol migrations.
 
 ## Documentation
 
@@ -118,6 +119,14 @@ npm run test:package
 
 `apps/cli` contains command and service management; `packages/gateway` contains the SDK and channel behavior. One npm package exports both the SDK and CLI. The full `@mininglamp-oss/octo-runtime` package is a development dependency used to launch real Kernels and exercise execution behavior in tests and manual verification. Production execution uses the independent client; installing Gateway globally does not install the full Runtime through that development dependency.
 
-The client dependency is `^1.1.13`; npm resolves it at installation or explicit update, without background upgrades or crossing into 2.x. For explicit three-package interoperability verification, run `node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz` with actual archives. Candidate-lock tooling is for manual candidate verification, not a substitute for registry-backed release lockfiles.
+The client dependency is `^1.1.14`; npm resolves it at installation or explicit update, without background upgrades or crossing into 2.x. For explicit three-package interoperability verification, run `node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz` with actual archives. Candidate-lock tooling is for manual candidate verification, not a substitute for registry-backed release lockfiles.
 
 This repository follows Mininglamp-OSS/octo-spec. Engineering plans and validation records are indexed in [.octospec](.octospec/index.md).
+
+See [complete extraset examples for all 13 Adapters](docs/en/guides/adapter-extraset.md) / [全部 Adapter 的 extraset 示例](docs/zh-CN/guides/adapter-extraset.md).
+
+Application input policies use `register(bot, agent, [{ type: "pre_dispatch", hook }, { type: "pre_invoke", hook }])`. Each callback receives `(ctx, inputs, agentEnv)` and returns `{ inputs, agentEnv }`; `ctx.turn.index` lets the host choose when to prepend content. See [Hooks guide](docs/en/guides/hooks.md). The CLI supplies first-turn XML instruction and opt-in `OCTO_CHANNEL_GATEWAY_DEBUG=1` logging Hooks.
+
+[Hooks 专题（中文）](docs/zh-CN/guides/hooks.md) documents both execution points, every ctx field, CLI-only defaults, and policies implemented by embedded hosts such as Electron.
+
+`agent.instruction` is supported by every CLI Adapter, including OpenClaw. The empty example adds nothing; nonblank text is prepended only on logical turn 1 by the CLI Hook. **SDK integrations must implement and register their own Hook; setting this field alone does not inject instructions.**

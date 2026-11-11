@@ -1,3 +1,4 @@
+import { createCliHooks } from "./hooks.js";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -177,6 +178,7 @@ async function run(
         spaces.some((space) => typeof space !== "string" || !space.trim()))
     )
       throw new Error("IM_AUTHORIZED_SPACES_INVALID");
+    if (Object.hasOwn(config, "material_loading")) throw new Error("IM_MATERIAL_API_REMOVED");
     kernel = attachKernel({ endpoint });
     gateway = new ChannelGateway({ kernel, log, signal: controller.signal });
     if (config.enabled !== false)
@@ -185,15 +187,13 @@ async function run(
         const { api_url, bf_token, bot_id, bot_name, agent, ...settings } = bot as ImBotConfig;
         await gateway.register({
             ...settings, apiUrl: api_url, bfToken: bf_token, botId: bot_id, botName: bot_name,
-            materialLoading: config.material_loading as
-              { timeout_ms?: number; max_in_flight?: number } | undefined,
             authorizeSpace: spaces
               ? (spaceId) => {
                   if (!spaces.includes(spaceId))
                     throw new Error("IM_TENANT_NOT_ACTIVE");
                 }
               : undefined,
-          }, agent);
+          }, agent, createCliHooks(agent, log));
       }
     controller.signal.throwIfAborted();
     closeStatus = await serveStatus(home, () => ({
@@ -365,6 +365,8 @@ export async function runCli(
         throw new CliUsageError("GATEWAY_CONFIG_INVALID",
           "Supply Gateway configuration directly, with bots at the top level. config and module are not supported fields.", usageHelp);
       const next = value;
+      if (Object.hasOwn(next, "material_loading"))
+        throw new GatewayCommandError("IM_MATERIAL_API_REMOVED", "Remove material_loading; the material loader has been removed.");
       validateImBots(next.bots ?? []);
       validateRuntimeHomeConfig(next);
       await withConfigLock(home, () => saveConfig(home, next));

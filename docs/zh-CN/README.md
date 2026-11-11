@@ -14,7 +14,8 @@ Octo Channel Gateway 把平台消息接到已有 Runtime Kernel，管理 Bot、�
 
 | 任务                           | 页面                                                 |
 | ------------------------------ | ---------------------------------------------------- |
-| 每轮加载材料、人格和工具凭据   | [业务材料与凭据](guides/contexts-and-credentials.md) |
+| 宿主扩展输入、执行参数和日志 | [Hooks：宿主业务扩展](guides/hooks.md) |
+| 本次事件感知信息与工具凭据   | [渠道事件信息与凭据](guides/contexts-and-credentials.md) |
 | 续聊、reset/new/stop、自有存储 | [会话管理](guides/sessions.md)                       |
 | 安全关闭注册、处理回复与附件   | [生命周期与投递](guides/lifecycle-and-delivery.md)   |
 | 定位连接、配置、执行和关闭问题 | [故障排查](guides/troubleshooting.md)                |
@@ -32,3 +33,5 @@ Octo Channel Gateway 把平台消息接到已有 Runtime Kernel，管理 Bot、�
 文档结构遵循 Runtime 的双语同路径和共享示例方式；内容以本仓当前实现为准。版本、实测范围和更新方法见[维护与验证](maintenance.md)。
 
 [CI 与 npm 发布](guides/ci-release.md)
+
+[全部 13 个 Adapter 的完整 extraset 示例](guides/adapter-extraset.md).

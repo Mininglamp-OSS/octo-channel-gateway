@@ -172,9 +172,9 @@ export class RuntimeLogging {
     }
     if (!this.#worker || this.#pending >= 128) return;
     try {
-      // 显式诊断开关允许完整请求（含图片和凭据）；只进入渠道日志，绝不进入状态镜像。
+      // 完整输入日志由 CLI Hook 显式提交；这里只负责有界写盘，绝不进入状态镜像。
       if (level === "debug") {
-        if (process.env.OCO_CHANNEL_GATEWAY_DEUBG !== "1" || source !== "channel" ||
+        if (source !== "channel" ||
           channel !== "channel-gateway" || event !== "agent_run.client_input" || this.#pending >= 8) return;
         this.#worker.postMessage({ channel, line: `${JSON.stringify({
           time: new Date().toISOString(), level, source, event, channel_type: channel, data,
