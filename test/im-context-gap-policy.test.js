@@ -6,15 +6,15 @@ import {
   gapMetadata,
   historyGapContext,
   planHistoryGap,
-} from "../dist/packages/gateway/src/application/context-gap.js";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { getChannelMessagePage } from "../dist/packages/gateway/src/transport/api/conversations.js";
-import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
+} from "../packages/octo-channel-gateway-sdk/dist/application/context-gap.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/session-store.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { getChannelMessagePage } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/transport/im-context/index.js";
 import {
   acceptsImMessage,
   observesImScope,
-} from "../dist/packages/gateway/src/transport/normalize.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
 
 const source = {
   service: "https://im-test.deepminer.com.cn/api",

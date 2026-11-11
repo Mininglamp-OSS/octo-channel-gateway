@@ -4,7 +4,7 @@ import {
   contextHash,
   assertContextEnvelope
 } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { renderModelContexts } from "../dist/packages/gateway/src/execution/model-input.js";
+import { renderModelContexts } from "../packages/octo-channel-gateway-sdk/dist/execution/model-input.js";
 
 const envelope = (items = []) => ({ schema: "octo.context-envelope/v3", items });
 const extra = {

@@ -12,10 +12,10 @@ import { crc32, deflateSync } from "node:zlib";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import { randomBytes } from "node:crypto";
 import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 仅操作显式给定的测试账号和本脚本新建的隔离群；不输出凭据或文件签名 URL。
 assert.ok(

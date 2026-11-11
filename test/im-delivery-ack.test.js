@@ -1,11 +1,11 @@
 import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImDeliveryDispatcher } from "../dist/packages/gateway/src/delivery/dispatcher.js";
-import { ImSendError } from "../dist/packages/gateway/src/delivery/send-error.js";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { OctoApiError } from "../dist/packages/gateway/src/transport/api/errors.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImDeliveryDispatcher } from "../packages/octo-channel-gateway-sdk/dist/delivery/dispatcher.js";
+import { ImSendError } from "../packages/octo-channel-gateway-sdk/dist/delivery/send-error.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { OctoApiError } from "../packages/octo-channel-gateway-sdk/dist/transport/api/errors.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 
 test("dispatcher stops permanent rejection and preserves earlier REST uncertainty", async () => {
   const dispatcher = new ImDeliveryDispatcher(new AbortController().signal);

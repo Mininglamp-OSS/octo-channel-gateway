@@ -6,12 +6,12 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createVerificationKernel, clientInput } from "../test-support/verification-kernel.mjs";
 import { modelItems } from "../test-support/kernel-mock.js";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
 import {
   fetchBotGroups,
   getChannelMessages,
-} from "../dist/packages/gateway/src/transport/api/conversations.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 真实 IM 与受控模型评估分开。只向显式账号共享的既有隔离 QA 群发送合成材料。
 assert.ok(

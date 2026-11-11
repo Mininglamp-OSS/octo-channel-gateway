@@ -39,7 +39,7 @@ export function createDefinition(options: {
 
 credentials(config, signal) receives an internal Bot configuration copy and cancellation signal, and returns a host-managed token. Without the callback, bot.bfToken is used; CLI JSON retains bf_token. Pass signal to the read operation. Credentials enter the tool execution environment, not XML or the user question. The SDK does not own the host database or a credential refresh service.
 
-See the [channel message contract](../../../packages/gateway/src/contracts.ts), [context renderer](../../../packages/gateway/src/execution/model-input.ts), and [credential port](../../../packages/gateway/src/ports.ts). MCP/envs examples are in [Configuration](../reference/configuration.md).
+See the [channel message contract](../../../packages/octo-channel-gateway-sdk/src/contracts.ts), [context renderer](../../../packages/octo-channel-gateway-sdk/src/execution/model-input.ts), and [credential port](../../../packages/octo-channel-gateway-sdk/src/ports.ts). MCP/envs examples are in [Configuration](../reference/configuration.md).
 
 buildContext here is the existing internal channel message contract, not a register callback. Business input transformations use the public Hooks described below.
 
@@ -51,23 +51,23 @@ The [Hooks guide](hooks.md) separates CLI instruction/debug behavior from polici
 
 ## Built-in IM context blocks
 
-The implementation entry is buildImContexts in [im-context/index.ts](../../../packages/gateway/src/transport/im-context/index.ts). It assembles the following blocks serially in a fixed order; a block produces nothing when inapplicable. Current-message facts are prepared first to reserve budget and appended last, preserving the existing order. There is no new scheduler for parallel block execution.
+The implementation entry is buildImContexts in [im-context/index.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/index.ts). It assembles the following blocks serially in a fixed order; a block produces nothing when inapplicable. Current-message facts are prepared first to reserve budget and appended last, preserving the existing order. There is no new scheduler for parallel block execution.
 
 | Context | Content and inclusion rule | Implementation |
 | --- | --- | --- |
-| message-trigger | Current message, conversation, sender, recipient Bot and actual mentions; failed identity enrichment retains unknown values | [trigger.ts](../../../packages/gateway/src/transport/im-context/trigger.ts) |
-| reply | Quoted text in this message; omitted without a quote | [reply.ts](../../../packages/gateway/src/transport/im-context/reply.ts) |
-| resources | Attachment, document or Drive addresses without prefetching resource bodies | [resources.ts](../../../packages/gateway/src/transport/im-context/resources.ts) |
-| message-content | Rich text or combined forwards; ordinary text adds no extra block | [message-content.ts](../../../packages/gateway/src/transport/im-context/message-content.ts) |
-| group-rules / topic-rules | DMs skip the request; groups/topics read authoritative rules, then compare versions, status and Provider binding | [rules.ts](../../../packages/gateway/src/transport/im-context/rules.ts) |
-| history | Bounded history selected by the existing plan, preserving order, deduplication, output handoff exclusions and recovery material | [history.ts](../../../packages/gateway/src/transport/im-context/history.ts) |
-| history-gap | Missing/omitted history facts, compacted or omitted under the existing budget rules | [history-gap.ts](../../../packages/gateway/src/transport/im-context/history-gap.ts) |
+| message-trigger | Current message, conversation, sender, recipient Bot and actual mentions; failed identity enrichment retains unknown values | [trigger.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/trigger.ts) |
+| reply | Quoted text in this message; omitted without a quote | [reply.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/reply.ts) |
+| resources | Attachment, document or Drive addresses without prefetching resource bodies | [resources.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/resources.ts) |
+| message-content | Rich text or combined forwards; ordinary text adds no extra block | [message-content.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/message-content.ts) |
+| group-rules / topic-rules | DMs skip the request; groups/topics read authoritative rules, then compare versions, status and Provider binding | [rules.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/rules.ts) |
+| history | Bounded history selected by the existing plan, preserving order, deduplication, output handoff exclusions and recovery material | [history.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/history.ts) |
+| history-gap | Missing/omitted history facts, compacted or omitted under the existing budget rules | [history-gap.ts](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/history-gap.ts) |
 
-These are the message collection blocks. Stable instructions for mentions, history use and file delivery remain assembled by [stable-context.ts](../../../packages/gateway/src/application/stable-context.ts) and [dispatcher.ts](../../../packages/gateway/src/execution/dispatcher.ts) at the existing first-turn/recovery boundaries. This refactor does not change their inclusion policy.
+These are the message collection blocks. Stable instructions for mentions, history use and file delivery remain assembled by [stable-context.ts](../../../packages/octo-channel-gateway-sdk/src/application/stable-context.ts) and [dispatcher.ts](../../../packages/octo-channel-gateway-sdk/src/execution/dispatcher.ts) at the existing first-turn/recovery boundaries. This refactor does not change their inclusion policy.
 
 GROUP.md is not limited to turn 1: the next admitted message reads the authoritative version. Rules already supplied to the same Provider session at the same version are omitted; updates, empty/deleted rules or a new Provider session require appropriate content. rules.ts contains both reading and version selection. The application execution flow calls selection and updates the session cursor at the existing confirmation boundary; builders never mark rules as delivered early.
 
-[ImContextBuildScope](../../../packages/gateway/src/transport/im-context/scope.ts) is an internal readonly snapshot for this build, separate from public Hook ctx. It supplies channelId/channelType, isGroup, turnIndex, message, history plan, source facts, cancellation and readers. Nested message/plan data and reader results are readonly; the signal stays live. Blocks return new content without mutating scope or session state. Readers capture this channel, Bot and credentials privately; history blocks supply only window parameters.
+[ImContextBuildScope](../../../packages/octo-channel-gateway-sdk/src/transport/im-context/scope.ts) is an internal readonly snapshot for this build, separate from public Hook ctx. It supplies channelId/channelType, isGroup, turnIndex, message, history plan, source facts, cancellation and readers. Nested message/plan data and reader results are readonly; the signal stays live. Blocks return new content without mutating scope or session state. Readers capture this channel, Bot and credentials privately; history blocks supply only window parameters.
 
 Within one build, identical reads share pending requests and results. Identity reads deduplicate UIDs across overlapping batches and retain unknown/failed results for the rest of that build. Different history windows remain distinct. No new cross-turn cache is added beyond the existing bounded ten-minute identity cache; rules and history are read again on the next turn. Build-local requests never cross Bot scopes, and credentials are not included in model text.
 

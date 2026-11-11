@@ -2,12 +2,12 @@ import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import {
   interactionAnswer,
   interactionCard,
-} from "../dist/packages/gateway/src/transport/interaction-card.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/interaction-card.js";
 const request = () => ({
   interactionId: "question",
   executionInstanceId: "instance",

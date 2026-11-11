@@ -125,7 +125,7 @@ artifact_delivery supports mode (channel/tools), allowed_roots, allowed_mime_typ
 
 codex_retry allows max_consecutive_retries/max_total_retries in 0..100, recovery_timeout_ms in 100..3600000, initial_delay_ms in 100..60000, and max_delay_ms in 100..300000. Initial delay cannot exceed maximum delay. Default initial/maximum delays are 2000/30000 ms. Interpret recovery behavior with logs; structural validation does not prove replay is safe.
 
-Authoritative definitions: [configuration types](../../../packages/gateway/src/contracts.ts), [validation](../../../packages/gateway/src/lifecycle/configuration.ts).
+Authoritative definitions: [configuration types](../../../packages/octo-channel-gateway-sdk/src/contracts.ts), [validation](../../../packages/octo-channel-gateway-sdk/src/lifecycle/configuration.ts).
 
 `bot_name` is a display label; empty or omitted uses bot_id. Replace `your-model-id` with a model supported by the selected Provider. `effort: high` demonstrates explicit selection and does not set a global default. Public execution configuration is `agent`; its `adapter_type` selects the integration implementation. The former outer `adapter` field is unsupported.
 

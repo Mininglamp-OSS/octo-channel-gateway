@@ -5,9 +5,9 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { ChannelGateway, validateImConfig } from "../dist/packages/gateway/src/index.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
+import { ChannelGateway, validateImConfig } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
 
 const agent = { adapter_type: "codex", workdir: process.cwd() };
 const bot = { botId: "explicit-bot", apiUrl: "https://example.test/api", bfToken: "bf_placeholder" };
@@ -73,11 +73,11 @@ test("all 13 adapter extraset examples save valid isolated configurations and ma
   // 固定已核对的公开 Runtime 1.1.14 清单；不读取 Runtime checkout 或执行外部 Provider。
   assert.deepEqual(examples.map((config) => config.bots[0].agent.adapter_type), ["dsh", "codex", "claude-code", "codebuddy", "grok-build", "hermes", "kimi-code", "mcode", "opencode", "openclaw", "qodercli", "qoderclicn", "antigravity"]);
   for (const config of examples) {
-    const result = spawnSync(process.execPath, [join(root, "dist/apps/cli/src/index.js"), "--home", home, "extraset"], { encoding: "utf8", input: JSON.stringify(config) });
+    const result = spawnSync(process.execPath, [join(root, "apps/cli/dist/index.js"), "--home", home, "extraset"], { encoding: "utf8", input: JSON.stringify(config) });
     assert.equal(result.status, 0, `${config.bots[0].agent.adapter_type}: ${result.stderr}`);
     assert.deepEqual(JSON.parse(await readFile(join(home, "config.json"), "utf8")), config);
   }
-  const rejected = spawnSync(process.execPath, [join(root, "dist/apps/cli/src/index.js"), "--home", home, "extraset"], { encoding: "utf8", input: JSON.stringify({ bots: [], material_loading: {} }) });
+  const rejected = spawnSync(process.execPath, [join(root, "apps/cli/dist/index.js"), "--home", home, "extraset"], { encoding: "utf8", input: JSON.stringify({ bots: [], material_loading: {} }) });
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stdout + rejected.stderr, /IM_MATERIAL_API_REMOVED/);
   assert.deepEqual(JSON.parse(await readFile(join(home, "config.json"), "utf8")), examples.at(-1));

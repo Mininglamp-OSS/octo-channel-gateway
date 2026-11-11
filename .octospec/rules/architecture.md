@@ -22,6 +22,8 @@ supersedes: []
 
 ## SDK 与宿主范围
 
+源码 SDK 位于 `packages/octo-channel-gateway-sdk`，私有包名为 `@mininglamp-oss/octo-channel-gateway-sdk`。CLI 与 cross-service 独立构建，通过包 exports 和 `workspace:*` 连接；SDK 不依赖 CLI、系统服务或根发行包。根包保留公共名称，发布装配携带私有包真实构建文件，不得泄漏 workspace 协议或源码链接。宿主组合 Runtime 0.0.0 源码时必须显式覆盖 Client 选择，并先构建 protocol/Client，再构建 SDK 和宿主；semver 不匹配时不能假设 pnpm override 同时建立递归构建排序边。专项验证显式本地运行。
+
 公开 API 为实例方法 `await gateway.register(bot, agent, hooks?): Promise<void>` 和 `await gateway.close(): Promise<void>`。一个 Gateway 可在循环中注册多组 Bot ↔ Agent 绑定；不向业务方暴露独立 registration/close 句柄。Bot 与 Agent 是两个参数；Bot 提供平台连接与认证信息，Agent 提供 adapter、模型、instruction、MCP 等执行定义。Agent 参数使用 ImAgentConfig；Bot 使用 GatewayBot，内部与 CLI 配置继续采用 ImBotConfig。
 
 宿主负责 Runtime 接入，向 `new ChannelGateway({ kernel })` 注入公开 `KernelClient`。`attachKernel()` 返回 client；自建模式使用完整 Runtime 的 `createKernelService()`，初始化后传入 service.client。SDK 只依赖公开 client 类型，不创建 Kernel，也不接管注入 client 的所有权。Agent 是每个绑定的执行定义，不再承担 Runtime endpoint 选择。Gateway 拥有 Manager 和自建渠道资源，不拥有共享 client、Kernel、宿主 Engine/Agent 或数据库。

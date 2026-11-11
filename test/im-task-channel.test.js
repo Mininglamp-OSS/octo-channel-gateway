@@ -8,9 +8,9 @@ import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { buildReasoningFrame } from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 import { createDiagnosticHost } from "../test-support/im-diagnostic-host.mjs";
 const event = (type, payload = {}) => ({ protocolVersion: 2, type, payload });
 const failure = () => {

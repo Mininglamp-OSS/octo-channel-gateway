@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 将测试服务器返回的真实卡片交给桌面的原有渲染组件；不切换用户账号或服务地址。
 assert.ok(

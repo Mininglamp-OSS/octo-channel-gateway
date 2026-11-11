@@ -7,8 +7,8 @@ import { tmpdir, homedir } from "node:os";
 import { join, basename } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/session-store.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 仅向显式 QA 群发送合成消息，限定两个测试 Bot 的触发名单；Provider 与 IM 均为真实服务。
 assert.ok(process.env.OCTO_CHANNEL_QA_ACCOUNTS, "Set OCTO_CHANNEL_QA_ACCOUNTS");

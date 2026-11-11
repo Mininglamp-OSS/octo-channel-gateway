@@ -8,11 +8,11 @@ import {
   verificationCommandError,
 } from "./verification-command.mjs";
 import WebSocket from "ws";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 import {
   registerBot,
   WukongConnection,
-} from "../dist/packages/gateway/src/transport/wukong.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 
 // 凭据只从显式指定的受保护文件读取；只操作测试 Bot，不改变持久配置或强制抢占连接。
 assert.ok(process.env.OCTO_CHANNEL_QA_ACCOUNTS, "Set OCTO_CHANNEL_QA_ACCOUNTS");

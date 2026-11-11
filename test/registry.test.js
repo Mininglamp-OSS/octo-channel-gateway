@@ -1,7 +1,7 @@
 import { ChannelGateway } from "@mininglamp-oss/octo-channel-gateway";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import { kernelFixture } from "./kernel-fixture.js";
 
 const agent = { adapter_type: "test", workdir: process.cwd() };
@@ -41,7 +41,7 @@ test("registration closes host handles on abort without stopping a sibling", asy
   const controller = new AbortController();
   let closes = 0;
   const { MemoryImSessionStore } =
-    await import("../dist/packages/gateway/src/application/session-store.js");
+    await import("../packages/octo-channel-gateway-sdk/dist/application/session-store.js");
   const store = new MemoryImSessionStore();
   const originalClose = store.close.bind(store);
   store.close = async () => {

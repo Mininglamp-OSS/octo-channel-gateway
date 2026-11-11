@@ -59,7 +59,7 @@ Home defaults to `~/.octo-channel-gateway`; use `--home` to select an instance. 
 ## Import a complete configuration
 
 ```sh
-node dist/apps/cli/src/index.js extraset <<'JSON'
+node apps/cli/dist/index.js extraset <<'JSON'
 {
   "enabled": true,
   "bots": [

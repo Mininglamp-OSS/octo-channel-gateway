@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildImContexts } from "../dist/packages/gateway/src/index.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 
 const config = {
   bot_id: "reply-fixture",

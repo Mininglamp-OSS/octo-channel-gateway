@@ -107,6 +107,8 @@ Gateway prepares history and per-message channel context before invoking `Kernel
 
 ## Development
 
+Source hosts consume the private SDK by package name with `workspace:*`; see [source workspace integration](docs/en/guides/source-workspace.md) ([中文](docs/zh-CN/guides/source-workspace.md)) for explicit local Runtime selection, ordered builds and release assembly.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm run build
@@ -117,7 +119,7 @@ npm run pack:release
 npm run test:package
 ```
 
-`apps/cli` contains command and service management; `packages/gateway` contains the SDK and channel behavior. One npm package exports both the SDK and CLI. The full `@mininglamp-oss/octo-runtime` package is a development dependency used to launch real Kernels and exercise execution behavior in tests and manual verification. Production execution uses the independent client; installing Gateway globally does not install the full Runtime through that development dependency.
+`apps/cli` contains command and service management; `packages/octo-channel-gateway-sdk` contains the SDK and channel behavior. One npm package exports both the SDK and CLI. The full `@mininglamp-oss/octo-runtime` package is a development dependency used to launch real Kernels and exercise execution behavior in tests and manual verification. Production execution uses the independent client; installing Gateway globally does not install the full Runtime through that development dependency.
 
 The client dependency is `^1.1.14`; npm resolves it at installation or explicit update, without background upgrades or crossing into 2.x. For explicit three-package interoperability verification, run `node scripts/verify-package.mjs GATEWAY.tgz RUNTIME.tgz CLIENT.tgz` with actual archives. Candidate-lock tooling is for manual candidate verification, not a substitute for registry-backed release lockfiles.
 

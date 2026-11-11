@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { chmod, lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { JsonObject } from "../../../packages/gateway/src/support/types.js";
+import type { JsonObject } from "@mininglamp-oss/octo-channel-gateway-sdk/host/types";
 import type { GatewayCommandContext } from "./command-types.js";
 import { acquireProcessLock } from "./lock.js";
 

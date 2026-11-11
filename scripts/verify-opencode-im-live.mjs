@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 只连接显式测试账号。消息与凭据不写入报告；发送方名单限定到测试 Bot。
 assert.ok(process.env.OCTO_CHANNEL_QA_ACCOUNTS, "Set OCTO_CHANNEL_QA_ACCOUNTS");

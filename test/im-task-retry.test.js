@@ -14,10 +14,10 @@ import {
 import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { ImModelWait } from "../dist/packages/gateway/src/execution/model-wait.js";
-import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
-import { validateImConfig } from "../dist/packages/gateway/src/index.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { ImModelWait } from "../packages/octo-channel-gateway-sdk/dist/execution/model-wait.js";
+import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
+import { validateImConfig } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
 const { InvocationWatchdog } = await runtimeModule(
   "executor-core",

@@ -21,7 +21,7 @@ register 只保存 Hook 定义，不立即调用处理函数。没有通过准�
 
 调用实例方法 `await gateway.register(bot, agent, hooks)`。第三个参数直接是数组，每项包含 type 和 hook；不需要 name，不包在另一层 options 中。省略 hooks 等价于空数组。一个 Gateway 可以为不同 Bot 注册不同的业务 Hooks。
 
-接口结构如下；完整公共类型见 [hooks.ts](../../../packages/gateway/src/hooks.ts)：
+接口结构如下；完整公共类型见 [hooks.ts](../../../packages/octo-channel-gateway-sdk/src/hooks.ts)：
 
 ```text
 hooks: [{ type: "pre_dispatch" | "pre_invoke", hook }]
@@ -69,7 +69,7 @@ Gateway 维护 sessionId/providerSession 映射。Hook 读取已准备的 ctx，
 | --- | --- |
 | [apps/cli/src/hooks.ts](../../../apps/cli/src/hooks.ts) | createCliHooks(agent, log)：创建 instruction 的 pre_dispatch 和 debug 的 pre_invoke |
 | [apps/cli/src/main.ts](../../../apps/cli/src/main.ts) | CLI 注册 Bot 时调用 createCliHooks，并作为第三个参数传给 gateway.register |
-| [packages/gateway/src/hooks.ts](../../../packages/gateway/src/hooks.ts) | SDK 的公共类型、Hook 顺序执行、返回值及修改边界校验，不包含 CLI 业务策略 |
+| [packages/octo-channel-gateway-sdk/src/hooks.ts](../../../packages/octo-channel-gateway-sdk/src/hooks.ts) | SDK 的公共类型、Hook 顺序执行、返回值及修改边界校验，不包含 CLI 业务策略 |
 | [docs/examples/hooks.mts](../../examples/hooks.mts) | SDK/Electron 业务示例：异步读取、业务自定轮次、完整输入日志 |
 | [scripts/verify-gateway-hooks.mjs](../../../scripts/verify-gateway-hooks.mjs) | 显式专项：首轮、图片、日志故障、冻结重试、reset 与关闭 |
 

@@ -17,7 +17,7 @@ register does not register a plugin or channel definition in the Kernel. It comp
 
 This repository contains no WebUI/WeCom and defines no Extra discovery or universal plugin JSON. The SDK currently also exports some advanced orchestration types, including ImInvocationInput. Use ChannelGateway for normal integration rather than assembling internal drafts. Their `contexts` field is not the new Runtime invocation contract; see [Inputs and execution environment](inputs-and-agent-env.md).
 
-Implementation: [ChannelGateway](../../../packages/gateway/src/gateway.ts), [public exports](../../../packages/gateway/src/index.ts), [execution input boundary](../../../packages/gateway/src/execution/kernel-input.ts).
+Implementation: [ChannelGateway](../../../packages/octo-channel-gateway-sdk/src/gateway.ts), [public exports](../../../packages/octo-channel-gateway-sdk/src/index.ts), [execution input boundary](../../../packages/octo-channel-gateway-sdk/src/execution/kernel-input.ts).
 
 ## Facade and host lifecycle
 

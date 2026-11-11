@@ -1,7 +1,7 @@
 import type {
   JsonObject,
   JsonValue,
-} from "../../../packages/gateway/src/support/types.js";
+} from "@mininglamp-oss/octo-channel-gateway-sdk/host/types";
 
 /** Gateway 自有命令声明；导入模块不初始化服务或访问业务后端。 */
 export interface GatewayCommandExtension {
@@ -78,7 +78,7 @@ export class GatewayCommandError extends Error {
 export type {
   JsonObject,
   JsonValue,
-} from "../../../packages/gateway/src/support/types.js";
+} from "@mininglamp-oss/octo-channel-gateway-sdk/host/types";
 
 /** 将宿主保存回执转换为明确的文本/JSON 输出；业务对象不参与回执识别。 */
 export function savedConfigResult(

@@ -1,17 +1,17 @@
-import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
+import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
 import { modelItems } from "../test-support/kernel-mock.js";
 import { kernelMock } from "../test-support/kernel-mock.js";
 import { CONTEXT_MAX_BYTES } from "@mininglamp-oss/octo-runtime-client/protocol";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/session-store.js";
 import {
   ImRuntime,
   buildImContexts,
-} from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { MENTION_GUIDANCE } from "../dist/packages/gateway/src/transport/mentions.js";
+} from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { MENTION_GUIDANCE } from "../packages/octo-channel-gateway-sdk/dist/transport/mentions.js";
 
 const config = {
   bot_id: "gap-bot",

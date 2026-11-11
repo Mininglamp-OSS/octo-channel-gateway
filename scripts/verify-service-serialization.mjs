@@ -7,8 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { SystemdUserBackend } from "../dist/packages/cross-service/src/systemd.js";
-import { withConfigLock } from "../dist/apps/cli/src/config.js";
+import { SystemdUserBackend } from "../packages/cross-service/dist/systemd.js";
+import { withConfigLock } from "../apps/cli/dist/config.js";
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "gateway-service-serialization-"));
@@ -62,7 +62,7 @@ test("direct backend callers need a guard across install/uninstall", { timeout: 
 
 test("CLI config guard rejects another process before mutation and releases afterward", { timeout: 10_000 }, async (t) => {
   const home = await fixture(t);
-  const configModule = new URL("../dist/apps/cli/src/config.js", import.meta.url).href;
+  const configModule = new URL("../apps/cli/dist/config.js", import.meta.url).href;
   const childSource = `
     import { withConfigLock } from ${JSON.stringify(configModule)};
     try {

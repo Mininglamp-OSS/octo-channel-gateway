@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 test("typing disposal aborts and waits for an in-flight send even after its lease was released", async () => {
   const { TypingController } =
-    await import("../dist/packages/gateway/src/presentation/typing.js");
+    await import("../packages/octo-channel-gateway-sdk/dist/presentation/typing.js");
   let signal, finish;
   const sending = new Promise((resolve) => {
     finish = resolve;

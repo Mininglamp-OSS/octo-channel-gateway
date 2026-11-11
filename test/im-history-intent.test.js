@@ -5,10 +5,10 @@ import {
   compactHistoryGap,
   historyGapContext,
   planHistoryGap,
-} from "../dist/packages/gateway/src/application/context-gap.js";
-import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
+} from "../packages/octo-channel-gateway-sdk/dist/application/context-gap.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/transport/im-context/index.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
-import { renderModelContexts } from "../dist/packages/gateway/src/execution/model-input.js";
+import { renderModelContexts } from "../packages/octo-channel-gateway-sdk/dist/execution/model-input.js";
 const historyGuidance =
   "This data contains bounded earlier messages from the current channel.";
 const gapGuidance =

@@ -1,6 +1,6 @@
-import type { GatewayHook, ImAgentConfig } from "../../../packages/gateway/src/index.js";
-import type { RuntimeLog } from "../../../packages/gateway/src/support/types.js";
-import { runDiagnostic } from "../../../packages/gateway/src/support/diagnostics.js";
+import type { GatewayHook, ImAgentConfig } from "@mininglamp-oss/octo-channel-gateway-sdk";
+import type { RuntimeLog } from "@mininglamp-oss/octo-channel-gateway-sdk/host/types";
+import { runDiagnostic } from "@mininglamp-oss/octo-channel-gateway-sdk/host/diagnostics";
 
 /** CLI 的业务默认策略；SDK 不读取进程环境，也不自行注入 instruction。 */
 export function createCliHooks(agent: ImAgentConfig, log: RuntimeLog): readonly GatewayHook[] {

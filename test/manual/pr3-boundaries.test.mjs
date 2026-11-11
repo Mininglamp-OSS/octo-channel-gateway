@@ -6,27 +6,27 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
-import extension from "../../dist/apps/cli/src/commands.js";
-import { WindowsUserTaskBackend } from "../../dist/packages/cross-service/src/windows-task.js";
+import extension from "../../apps/cli/dist/commands.js";
+import { WindowsUserTaskBackend } from "../../packages/cross-service/dist/windows-task.js";
 import {
   ImRunProjector,
   FINAL_OUTPUT_LIMITS,
-} from "../../dist/packages/gateway/src/presentation/run-projector.js";
+} from "../../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
 import {
   getGroupMd,
   getThreadMd,
   getMentionPref,
-} from "../../dist/packages/gateway/src/transport/api/rules.js";
+} from "../../packages/octo-channel-gateway-sdk/dist/transport/api/rules.js";
 import {
   fetchBotGroups,
   fetchUserInfo,
   searchSpaceMembers,
-} from "../../dist/packages/gateway/src/transport/api/conversations.js";
-import { getJson } from "../../dist/packages/gateway/src/transport/api/client.js";
-import { GatewayTransport } from "../../dist/packages/gateway/src/transport/channel.js";
-import { WukongConnection } from "../../dist/packages/gateway/src/transport/wukong.js";
-import { OctoConnector } from "../../dist/packages/gateway/src/transport/connector.js";
-import { ImRuntime } from "../../dist/packages/gateway/src/index.js";
+} from "../../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
+import { getJson } from "../../packages/octo-channel-gateway-sdk/dist/transport/api/client.js";
+import { GatewayTransport } from "../../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { WukongConnection } from "../../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
+import { OctoConnector } from "../../packages/octo-channel-gateway-sdk/dist/transport/connector.js";
+import { ImRuntime } from "../../packages/octo-channel-gateway-sdk/dist/index.js";
 import { kernelMock } from "../../test-support/kernel-mock.js";
 import { waitFor } from "../runtime-fixture.js";
 

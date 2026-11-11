@@ -2,8 +2,8 @@ import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 
 test("F05: read starts with accepted work, queued and duplicate messages wait; failure is isolated", async (t) => {
   let receive, release;

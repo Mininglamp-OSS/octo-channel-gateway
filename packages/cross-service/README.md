@@ -8,7 +8,7 @@ It maps a portable `ServiceSpec` to launchd, systemd user units and Windows user
 
 Gateway retains its existing Windows task ownership checks in `windows-task.ts`: lifecycle mutations require confirmed current-user ownership. The other source files are copied unchanged from the revision above.
 
-Build as part of the repository root build. Native Windows/Linux validation requires those platforms; rendering and injected command runners can be tested locally.
+Build independently with `pnpm --filter @mininglamp-oss/octo-channel-gateway-cross-service run build`, or as part of the dependency-ordered root build. The CLI consumes this package's exports via `workspace:*`. Native Windows/Linux validation requires those platforms; rendering and injected command runners can be tested locally.
 
 ## Host serialization contract
 

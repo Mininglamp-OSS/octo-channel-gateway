@@ -3,13 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { failurePayload } from '@mininglamp-oss/octo-runtime-client/protocol';
-import { ImRuntime, ChannelGateway } from '../dist/packages/gateway/src/index.js';
-import { normalizeHooks, runHooks, hookContext } from '../dist/packages/gateway/src/hooks.js';
-import { createCliHooks } from '../dist/apps/cli/src/hooks.js';
-import { GatewayTransport } from '../dist/packages/gateway/src/transport/channel.js';
+import { ImRuntime, ChannelGateway } from '../packages/octo-channel-gateway-sdk/dist/index.js';
+import { normalizeHooks, runHooks, hookContext } from '../packages/octo-channel-gateway-sdk/dist/hooks.js';
+import { createCliHooks } from '../apps/cli/dist/hooks.js';
+import { GatewayTransport } from '../packages/octo-channel-gateway-sdk/dist/transport/channel.js';
 import { kernelMock, modelItems } from '../test-support/kernel-mock.js';
 import { waitFor } from '../test/runtime-fixture.js';
-import { withShutdownDeadline } from '../dist/packages/gateway/src/support/shutdown.js';
+import { withShutdownDeadline } from '../packages/octo-channel-gateway-sdk/dist/support/shutdown.js';
 
 const schema = 'octo.context-envelope/v3';
 const retryFailure = () => {

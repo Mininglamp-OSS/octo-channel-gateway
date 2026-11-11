@@ -5,13 +5,13 @@ import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/session-store.js";
 import {
   ImRuntime,
   buildImContexts,
-} from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { imagePart } from "../dist/packages/gateway/src/transport/image-input.js";
+} from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { imagePart } from "../packages/octo-channel-gateway-sdk/dist/transport/image-input.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
 
 

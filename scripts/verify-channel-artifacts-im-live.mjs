@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 import { createHash, randomUUID } from "node:crypto";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 import { artifactImage } from "../test-support/channel-artifact-samples.mjs";
 
 // 显式 QA：测试 Bot 私聊或显式指定的测试群，真实模型；不输出消息正文或凭据。

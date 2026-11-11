@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildImContexts } from "../dist/packages/gateway/src/index.js";
-import { acceptsImMessage } from "../dist/packages/gateway/src/transport/normalize.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { acceptsImMessage } from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
 const config = {
   bot_id: "bot",
   api_url: "https://im-test.deepminer.com.cn/api",

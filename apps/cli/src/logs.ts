@@ -7,7 +7,7 @@ import {
   kernelStatusRecord,
   type ChannelStatusRecord,
   type KernelStatusRecord,
-} from "../../../packages/gateway/src/support/service-status.js";
+} from "@mininglamp-oss/octo-channel-gateway-sdk/host/service-status";
 
 const MAX_READ = 4 * 1024 * 1024;
 const MAX_LINE = 4096;

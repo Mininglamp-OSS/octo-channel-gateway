@@ -3,11 +3,11 @@ import { gatewayWire } from "../test-support/kernel-mock.js";
 import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
-import { MENTION_GUIDANCE } from "../dist/packages/gateway/src/transport/mentions.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/transport/im-context/index.js";
+import { MENTION_GUIDANCE } from "../packages/octo-channel-gateway-sdk/dist/transport/mentions.js";
 import { waitFor } from "./runtime-fixture.js";
 
 const schema = "octo.context-envelope/v3";

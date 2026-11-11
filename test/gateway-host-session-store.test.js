@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import test from "node:test";
-import { HostSessionStore } from "../dist/packages/gateway/src/application/host-session-store.js";
-import { ImRuntime } from "../dist/packages/gateway/src/application/im-channel.js";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/application/session-store.js";
-import { ImChannelManager } from "../dist/packages/gateway/src/lifecycle/manager.js";
-import { withShutdownDeadline } from "../dist/packages/gateway/src/support/shutdown.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { HostSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/host-session-store.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/application/im-channel.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/application/session-store.js";
+import { ImChannelManager } from "../packages/octo-channel-gateway-sdk/dist/lifecycle/manager.js";
+import { withShutdownDeadline } from "../packages/octo-channel-gateway-sdk/dist/support/shutdown.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import { kernelRelay } from "./kernel-relay.js";
 import { waitFor } from "./runtime-fixture.js";
 

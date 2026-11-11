@@ -1,0 +1,46 @@
+{
+  "name": "@mininglamp-oss/octo-channel-gateway-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./host/types": {
+      "types": "./dist/support/types.d.ts",
+      "import": "./dist/support/types.js"
+    },
+    "./host/diagnostics": {
+      "types": "./dist/support/diagnostics.d.ts",
+      "import": "./dist/support/diagnostics.js"
+    },
+    "./host/runtime-log": {
+      "types": "./dist/support/runtime-log.d.ts",
+      "import": "./dist/support/runtime-log.js"
+    },
+    "./host/service-status": {
+      "types": "./dist/support/service-status.d.ts",
+      "import": "./dist/support/service-status.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mininglamp-oss/octo-runtime-client": "^1.1.14",
+    "mdast-util-from-markdown": "^2.1.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
+    "typescript": "^7.0.2"
+  }
+}

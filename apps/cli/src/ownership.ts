@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { ServiceStatus } from "../../../packages/cross-service/src/index.js";
+import type { ServiceStatus } from "@mininglamp-oss/octo-channel-gateway-cross-service";
 import { readStatus } from "./control.js";
 import { inspectProcessLock, processAlive } from "./lock.js";
 import { GatewayCommandError } from "./command-types.js";

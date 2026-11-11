@@ -9,10 +9,10 @@ import {
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
 import { WebSocketServer } from "ws";
-import { CardSession } from "../dist/packages/gateway/src/transport/card-session.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { OctoConnector } from "../dist/packages/gateway/src/transport/connector.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
+import { CardSession } from "../packages/octo-channel-gateway-sdk/dist/transport/card-session.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { OctoConnector } from "../packages/octo-channel-gateway-sdk/dist/transport/connector.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 import { imCardProfile } from "./fixtures/im-card-profile.js";
 
 const hash = (value) => createHash("md5").update(value).digest("hex");

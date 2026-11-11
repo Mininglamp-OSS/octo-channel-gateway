@@ -40,4 +40,4 @@ final 正文累计另限 128 条消息、合计 1 MiB UTF-8。任一超限报告
 
 artifact_delivery.mode 默认 channel：成功 final 中明确的本地文件引用按本轮冻结的路径、MIME、数量、大小和取消预算检查后交付。它不是“把所有模型输出路径都上传”。tools 模式不自动上传，由业务工具提供接收方可访问的链接。
 
-默认上限为单文件 20 MiB、总计 50 MiB、16 个文件、30 秒；配置可收紧，不能超过上限。allowed_roots 省略表示不增加该项限制，空数组拒绝全部文件；这不改变 Agent 工作区或其他路径检查。模型 Context 无权放宽宿主配置。详见[配置参考](../reference/configuration.md)与 [产物策略](../../../packages/gateway/src/delivery/artifact-policy.ts)。
+默认上限为单文件 20 MiB、总计 50 MiB、16 个文件、30 秒；配置可收紧，不能超过上限。allowed_roots 省略表示不增加该项限制，空数组拒绝全部文件；这不改变 Agent 工作区或其他路径检查。模型 Context 无权放宽宿主配置。详见[配置参考](../reference/configuration.md)与 [产物策略](../../../packages/octo-channel-gateway-sdk/src/delivery/artifact-policy.ts)。

@@ -13,10 +13,10 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRunProjector } from "../dist/packages/gateway/src/presentation/run-projector.js";
-import { RuntimeLogging } from "../dist/packages/gateway/src/support/runtime-log.js";
-import { withShutdownDeadline } from "../dist/packages/gateway/src/support/shutdown.js";
-import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+import { ImRunProjector } from "../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
+import { RuntimeLogging } from "../packages/octo-channel-gateway-sdk/dist/support/runtime-log.js";
+import { withShutdownDeadline } from "../packages/octo-channel-gateway-sdk/dist/support/shutdown.js";
+import { buildReasoningFrame } from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 import { testAdapter as invokeAdapter } from "./fixtures/invoke-adapter.js";
 import { kernelFixture, kernelInput } from "./kernel-fixture.js";
 
@@ -30,12 +30,12 @@ async function until(predicate) {
 }
 
 async function fixture(t, suffix, options = {}) {
-  const { ImRuntime } = await import(`../dist/packages/gateway/src/index.js`);
+  const { ImRuntime } = await import(`../packages/octo-channel-gateway-sdk/dist/index.js`);
   const { MemoryImSessionStore } = await import(
-    `../dist/packages/gateway/src/application/session-store.js`
+    `../packages/octo-channel-gateway-sdk/dist/application/session-store.js`
   );
   const transport = await import(
-    `../dist/packages/gateway/src/transport/channel.js`
+    `../packages/octo-channel-gateway-sdk/dist/transport/channel.js`
   );
   const Transport =
     transport[suffix === "gateway" ? "GatewayTransport" : "WecomTransport"];

@@ -16,7 +16,7 @@ try {
 } catch {
   // 源码归档可能没有 Git；不伪造来源信息。
 }
-const directory = new URL("dist/apps/cli/src/", root);
+const directory = new URL("apps/cli/dist/", root);
 await mkdir(directory, { recursive: true });
 await writeFile(
   new URL("build-info.json", directory),

@@ -24,7 +24,7 @@ rules:
   load_bearing: true
   inject_when:
     paths:
-    - packages/gateway/**
+    - packages/octo-channel-gateway-sdk/**
     - test/im-*
     - test/gateway-*
     touches:

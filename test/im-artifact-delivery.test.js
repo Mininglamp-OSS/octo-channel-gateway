@@ -6,26 +6,26 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { artifactPolicy } from "../dist/packages/gateway/src/delivery/artifact-policy.js";
-import { prepareArtifacts as prepareArtifactReply } from "../dist/packages/gateway/src/delivery/artifacts.js";
-import { ImDeliveryDispatcher } from "../dist/packages/gateway/src/delivery/dispatcher.js";
-import { ImSendError } from "../dist/packages/gateway/src/delivery/send-error.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { validateImConfig } from "../dist/packages/gateway/src/lifecycle/configuration.js";
-import { ImRunProjector } from "../dist/packages/gateway/src/presentation/run-projector.js";
+import { artifactPolicy } from "../packages/octo-channel-gateway-sdk/dist/delivery/artifact-policy.js";
+import { prepareArtifacts as prepareArtifactReply } from "../packages/octo-channel-gateway-sdk/dist/delivery/artifacts.js";
+import { ImDeliveryDispatcher } from "../packages/octo-channel-gateway-sdk/dist/delivery/dispatcher.js";
+import { ImSendError } from "../packages/octo-channel-gateway-sdk/dist/delivery/send-error.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { validateImConfig } from "../packages/octo-channel-gateway-sdk/dist/lifecycle/configuration.js";
+import { ImRunProjector } from "../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
 import {
   attachmentUrl,
   uploadChatAttachment,
-} from "../dist/packages/gateway/src/transport/api/files.js";
-import { CardSession } from "../dist/packages/gateway/src/transport/card-session.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/api/files.js";
+import { CardSession } from "../packages/octo-channel-gateway-sdk/dist/transport/card-session.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 import { waitFor } from "./runtime-fixture.js";
 
-import { ImDeliveryIdentity } from "../dist/packages/gateway/src/delivery/identity.js";
-import { OctoApiError } from "../dist/packages/gateway/src/transport/api/errors.js";
-import { OctoConnector } from "../dist/packages/gateway/src/transport/connector.js";
+import { ImDeliveryIdentity } from "../packages/octo-channel-gateway-sdk/dist/delivery/identity.js";
+import { OctoApiError } from "../packages/octo-channel-gateway-sdk/dist/transport/api/errors.js";
+import { OctoConnector } from "../packages/octo-channel-gateway-sdk/dist/transport/connector.js";
 import { symlinkFixture } from "../test-support/symlink-fixture.mjs";
 
 const prepareArtifacts = async (...args) =>

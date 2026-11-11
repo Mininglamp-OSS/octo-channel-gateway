@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { prepareFinalMention } from "../dist/packages/gateway/src/transport/mentions.js";
-import { acceptsImMessage } from "../dist/packages/gateway/src/transport/normalize.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { prepareFinalMention } from "../packages/octo-channel-gateway-sdk/dist/transport/mentions.js";
+import { acceptsImMessage } from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 
 const members = [
   { uid: "u", name: "李白", robot: 0 },

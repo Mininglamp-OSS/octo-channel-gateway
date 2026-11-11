@@ -14,11 +14,11 @@
   "packageManager": "pnpm@11.25.0",
   "exports": {
     ".": {
-      "types": "./dist/packages/gateway/src/index.d.ts",
-      "import": "./dist/packages/gateway/src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
-  "types": "./dist/packages/gateway/src/index.d.ts",
+  "types": "./dist/index.d.ts",
   "bin": {
     "octo-channel-gateway": "dist/apps/cli/src/index.js"
   },
@@ -31,10 +31,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/write-build-info.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm -r run build && node scripts/assemble-root.mjs",
+    "typecheck": "pnpm -r run build && pnpm -r run typecheck",
     "test": "pnpm run build && node --test test/*.test.js",
-    "prepack": "pnpm run build",
+    "prepack": "node scripts/require-release-pack.mjs",
     "lint:spec": "python3 .octospec/scripts/lint.py",
     "docs:check": "tsc -p docs/examples/tsconfig.json && node scripts/check-developer-docs.mjs && node --test docs/checks/*.test.mjs",
     "test:ci": "node --test --test-concurrency=4 --test-timeout=20000 test/*.test.js test/manual/*.test.mjs test/release-ci.test.mjs",
@@ -42,6 +42,8 @@
     "test:package": "node scripts/verify-distribution.mjs"
   },
   "dependencies": {
+    "@mininglamp-oss/octo-channel-gateway-sdk": "workspace:*",
+    "@mininglamp-oss/octo-channel-gateway-cli": "workspace:*",
     "@mininglamp-oss/octo-runtime-client": "^1.1.14",
     "commander": "^15.0.0",
     "iconv-lite": "0.7.3",

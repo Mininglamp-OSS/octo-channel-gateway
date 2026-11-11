@@ -1,5 +1,9 @@
 # 工程知识变更记录
 
+## 2026-11-11
+
+- [Issue 36：SDK 与 CLI 源码包分层](journal/shared/workspace-sdk-cli.md)：独立私有包、根发行闭包及本地 CI；[实际验证](tasks/workspace-sdk-cli/validation.md)。
+
 ## 2026-11-08
 
 - [Gateway PR 交付授权](journal/shared/2026-11-08-gateway-pr-delivery.md)：用户追加要求提交并合并 main；覆盖 SDK/CLI、API 迁移及双语文档，保持未发布候选限制。

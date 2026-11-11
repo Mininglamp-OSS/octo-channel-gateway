@@ -7,8 +7,8 @@ import {
 import {
   imBotIdentity,
   validateImBots,
-} from "../../../packages/gateway/src/lifecycle/configuration.js";
-import type { ImAgentConfig } from "../../../packages/gateway/src/contracts.js";
+} from "@mininglamp-oss/octo-channel-gateway-sdk";
+import type { ImAgentConfig } from "@mininglamp-oss/octo-channel-gateway-sdk";
 
 /** 离线业务校验复用运行时 Bot 合同；不认证、不构造 manager 或服务。 */
 function validate(config: JsonObject): void {

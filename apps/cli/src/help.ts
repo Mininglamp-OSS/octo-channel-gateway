@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const manifest = JSON.parse(
-  readFileSync(new URL("../../../../package.json", import.meta.url), "utf8"),
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { version: string };
 export const repositoryUrl =
   "https://github.com/Mininglamp-OSS/octo-channel-gateway";

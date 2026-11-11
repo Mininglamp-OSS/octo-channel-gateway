@@ -4,11 +4,11 @@ import { mkdtemp, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
-import { readConfig } from "../dist/apps/cli/src/config.js";
-import { parseCliCommand } from "../dist/apps/cli/src/command-tree.js";
-import { renderLaunchdPlist, renderSystemdUnit, renderWindowsTaskXml } from "../dist/packages/cross-service/src/index.js";
-import { runtimeEndpoint } from "../dist/apps/cli/src/runtime-endpoint.js";
+import { runCli, serviceSpec } from "../apps/cli/dist/main.js";
+import { readConfig } from "../apps/cli/dist/config.js";
+import { parseCliCommand } from "../apps/cli/dist/command-tree.js";
+import { renderLaunchdPlist, renderSystemdUnit, renderWindowsTaskXml } from "../packages/cross-service/dist/index.js";
+import { runtimeEndpoint } from "../apps/cli/dist/runtime-endpoint.js";
 import { componentEndpoint } from "@mininglamp-oss/octo-runtime/host";
 
 test("service launch arguments keep Runtime Home out of business configuration", async (t) => {
