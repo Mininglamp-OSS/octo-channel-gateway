@@ -1,5 +1,5 @@
-import { createCliHooks } from "../dist/apps/cli/src/hooks.js";
-import { runHooks, hookContext } from "../dist/packages/gateway/src/hooks.js";
+import { createCliHooks } from "../apps/cli/dist/hooks.js";
+import { runHooks, hookContext } from "../packages/octo-channel-gateway-sdk/dist/hooks.js";
 // 显式本地专项；不加入默认测试或 CI glob。
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -10,13 +10,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import { createKernelService, componentEndpoint } from "@mininglamp-oss/octo-runtime/host";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
-import { ImRuntime, validateImConfig } from "../dist/packages/gateway/src/index.js";
-import { RuntimeLogging } from "../dist/packages/gateway/src/support/runtime-log.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { renderModelContexts } from "../dist/packages/gateway/src/execution/model-input.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
+import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
+import { ImRuntime, validateImConfig } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { RuntimeLogging } from "../packages/octo-channel-gateway-sdk/dist/support/runtime-log.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { renderModelContexts } from "../packages/octo-channel-gateway-sdk/dist/execution/model-input.js";
 import { kernelMock } from "../test-support/kernel-mock.js";
 import { waitFor } from "../test/runtime-fixture.js";
 import { createVerificationKernel } from "../test-support/verification-kernel.mjs";
@@ -72,7 +72,7 @@ test("instruction empty values, invalid types and configuration byte budget", ()
 test("CLI extraset/extraget preserves the business instruction without an AgentEnv envelope", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "gateway-config-113-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const cli = join(process.cwd(), "dist/apps/cli/src/index.js");
+  const cli = join(process.cwd(), "apps/cli/dist/index.js");
   execFileSync(process.execPath, [cli, "extraset", "--home", directory], {
     input: JSON.stringify({ enabled: false, bots: [{ ...bot, enabled: false }] }), encoding: "utf8",
   });

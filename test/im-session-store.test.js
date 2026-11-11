@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MemoryImSessionStore } from "../dist/packages/gateway/src/index.js";
+import { MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 
 test("IM reset keeps pending bindings within one process and retries do not clear the next session", () => {
   const store = new MemoryImSessionStore();

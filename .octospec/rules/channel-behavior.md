@@ -8,7 +8,7 @@ tier: repo
 priority: 90
 load_bearing: true
 inject_when:
-  paths: ["packages/gateway/**", "test/im-*", "test/gateway-*"]
+  paths: ["packages/octo-channel-gateway-sdk/**", "test/im-*", "test/gateway-*"]
   touches: [channel, session, context, delivery]
 source: self
 supersedes: []

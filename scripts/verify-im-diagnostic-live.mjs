@@ -10,11 +10,11 @@ import { fileURLToPath } from "node:url";
 import { createDiagnosticHost } from "../test-support/im-diagnostic-host.mjs";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import { clientInput } from "../test-support/verification-kernel.mjs";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
-import { CardSession } from "../dist/packages/gateway/src/transport/card-session.js";
-import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
+import { CardSession } from "../packages/octo-channel-gateway-sdk/dist/transport/card-session.js";
+import { buildReasoningFrame } from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 
 // 受控 app-server 故障注入，真实 IM 收发。只接受测试环境和已有 QA 群。
 assert.ok(

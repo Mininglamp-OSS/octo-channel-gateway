@@ -9,16 +9,16 @@ import { setTimeout as delay } from "node:timers/promises";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
 import {
   ChannelGateway,
+  validateImBots,
   type ImBotConfig,
-} from "../../../packages/gateway/src/index.js";
-import { validateImBots } from "../../../packages/gateway/src/lifecycle/configuration.js";
-import { RuntimeLogging } from "../../../packages/gateway/src/support/runtime-log.js";
-import type { JsonObject } from "../../../packages/gateway/src/support/types.js";
+} from "@mininglamp-oss/octo-channel-gateway-sdk";
+import { RuntimeLogging } from "@mininglamp-oss/octo-channel-gateway-sdk/host/runtime-log";
+import type { JsonObject } from "@mininglamp-oss/octo-channel-gateway-sdk/host/types";
 import {
   createServiceBackend,
   type ServiceBackend,
   type ServiceSpec,
-} from "../../../packages/cross-service/src/index.js";
+} from "@mininglamp-oss/octo-channel-gateway-cross-service";
 import {
   GatewayCommandError,
   type GatewayCommandContext,

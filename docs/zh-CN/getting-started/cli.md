@@ -59,7 +59,7 @@ octo-channel-gateway run --runtime-home /absolute/runtime
 ## 导入完整配置
 
 ```sh
-node dist/apps/cli/src/index.js extraset <<'JSON'
+node apps/cli/dist/index.js extraset <<'JSON'
 {
   "enabled": true,
   "bots": [

@@ -5,9 +5,9 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertAgentEnv, assertInvokeInput } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { modelContextPresentation } from "../dist/packages/gateway/src/execution/model-input.js";
-import { addRulesRecovery } from "../dist/packages/gateway/src/application/rules-context.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
+import { modelContextPresentation } from "../packages/octo-channel-gateway-sdk/dist/execution/model-input.js";
+import { addRulesRecovery } from "../packages/octo-channel-gateway-sdk/dist/application/rules-context.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -48,14 +48,16 @@ await check("current documentation and executable examples contain no obsolete r
 });
 
 await check("removed modules and obsolete compiled artifacts are absent", () => {
-  for (const path of ["packages/gateway/src/materials.ts", "packages/gateway/src/support/material-loader.ts",
+  for (const path of ["packages/octo-channel-gateway-sdk/src/materials.ts", "packages/octo-channel-gateway-sdk/src/support/material-loader.ts",
     "scripts/verify-materials.mjs", "scripts/verify-runtime-1.1.13.mjs",
-    "packages/gateway/src/transport/contexts.ts", "packages/gateway/src/transport/message-trigger.ts"])
+    "packages/octo-channel-gateway-sdk/src/transport/contexts.ts", "packages/octo-channel-gateway-sdk/src/transport/message-trigger.ts"])
     assert.equal(existsSync(resolve(root, path)), false, path);
-  for (const path of walk("dist")) {
+  const generated = new Set(["dist/index.js", "dist/index.d.ts", "dist/apps/cli/src/index.js"]);
+  for (const path of [...walk("dist"), ...walk("packages/octo-channel-gateway-sdk/dist"), ...walk("apps/cli/dist"), ...walk("packages/cross-service/dist")]) {
     assert.doesNotMatch(path, /\/(?:materials|material-loader)\.(?:js|d\.ts)(?:\.map)?$/, path);
     if (!path.endsWith(".js") && !path.endsWith(".d.ts")) continue;
-    const source = path.replace(/^dist\//, "").replace(/(?:\.d)?\.ts$|\.js$/, ".ts");
+    if (generated.has(path)) continue;
+    const source = path.replace("/dist/", "/src/").replace(/(?:\.d)?\.ts$|\.js$/, ".ts");
     assert.ok(existsSync(resolve(root, source)), `Orphan build output: ${path}`);
   }
 });
@@ -63,20 +65,27 @@ await check("removed modules and obsolete compiled artifacts are absent", () => 
 await check("production source modules are reachable and relative imports resolve", () => {
   // 仅检查静态相对 import/export 、字面量 dynamic import 与 Worker URL；类型引用计入依赖。
   // 不是通用的未使用变量/分支证明，类型检查与独立审查负责其余部分。
-  const files = [...walk("packages/gateway/src"), ...walk("apps/cli/src")].filter((p) => p.endsWith(".ts"));
+  const files = [...walk("packages/octo-channel-gateway-sdk/src"), ...walk("apps/cli/src")].filter((p) => p.endsWith(".ts"));
   const graph = new Map();
   for (const file of files) {
     const source = read(file);
-    const imports = [...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*|\bnew\s+URL\(\s*)["'](\.[^"']+)["']/g)].filter((m) => !m[0].startsWith("new") || m[1].endsWith(".js")).map((m) => m[1]);
+    const imports = [...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*|\bnew\s+URL\(\s*)["']([^"']+)["']/g)].filter((m) => !m[0].startsWith("new") || m[1].endsWith(".js")).map((m) => m[1]).filter(target => target.startsWith(".") || target.startsWith("@mininglamp-oss/octo-channel-gateway-sdk"));
     graph.set(file, imports.map((target) => {
-      const candidate = relative(root, resolve(root, dirname(file), target.replace(/\.js$/, ".ts")));
+      let candidate;
+      if (target.startsWith(".")) candidate = relative(root, resolve(root, dirname(file), target.replace(/\.js$/, ".ts")));
+      else {
+        const packageRoot = "packages/octo-channel-gateway-sdk";
+        const manifest = JSON.parse(read(packageRoot + "/package.json"));
+        const key = target.replace("@mininglamp-oss/octo-channel-gateway-sdk", ".").replace(/^\.\//, "./");
+        candidate = join(packageRoot, manifest.exports[key].import.replace("./dist/", "src/").replace(/\.js$/, ".ts"));
+      }
       assert.ok(existsSync(resolve(root, candidate)), `${file}: unresolved ${target}`);
       return candidate;
     }));
   }
   const reachable = new Set();
   function visit(file) { if (reachable.has(file)) return; reachable.add(file); for (const next of graph.get(file) ?? []) visit(next); }
-  visit("packages/gateway/src/index.ts");
+  visit("packages/octo-channel-gateway-sdk/src/index.ts");
   visit("apps/cli/src/index.ts");
   assert.deepEqual(files.filter((file) => !reachable.has(file)), [], "Unreachable production modules");
 });
@@ -107,7 +116,7 @@ await check("channel drafts render only into inputs; private AgentEnv stays opaq
   for (const field of ["guidance", "data_format"])
     assert.throws(() => assertAgentEnv({ schema, items: [{ ...execution, [field]: "old" }] }), /CONTEXT_SCHEMA_INVALID/);
   assert.throws(() => modelContextPresentation({ ...fact, payload: { data_format: "text", text: 42 } }), /IM_MODEL_CONTEXT_INVALID/);
-  const task = read("packages/gateway/src/execution/task.ts");
+  const task = read("packages/octo-channel-gateway-sdk/src/execution/task.ts");
   assert.match(task, /this\.kernel\.invoke\(prepared\.inputs, request\.sessionId, request\.providerSession, prepared\.agentEnv\)/);
   assert.doesNotMatch(task, /process\.env|agent_run\.client_input|OCO_CHANNEL_GATEWAY_DEUBG/);
 });

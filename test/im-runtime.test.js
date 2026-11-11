@@ -20,7 +20,7 @@ import { WebSocketServer } from "ws";
 import {
   ImRuntime,
   validateImBots,
-} from "../dist/packages/gateway/src/index.js";
+} from "../packages/octo-channel-gateway-sdk/dist/index.js";
 import { imCardProfile } from "./fixtures/im-card-profile.js";
 import { waitFor } from "./runtime-fixture.js";
 const md5 = (s) => createHash("md5").update(s).digest("hex");

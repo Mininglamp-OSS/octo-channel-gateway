@@ -2,8 +2,8 @@ import { kernelMock } from "../test-support/kernel-mock.js";
 // 真实 Gateway 准入与 ImRuntime 调度共用；仅替换网络边界和 Provider。
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 import { waitFor } from "./runtime-fixture.js";
 
 for (const fromUid of ["non-owner-user", "non-owner-bot"]) {

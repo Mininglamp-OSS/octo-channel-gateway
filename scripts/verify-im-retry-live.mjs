@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createRetryKernel } from "../test-support/im-retry-live-host.mjs";
-import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
+import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
 
 // im-test 认证合同实测和本地真实 Provider 故障恢复分别记录；不冒充真实 IM 收发验收。
 const endpoint = "https://im-test.deepminer.com.cn";

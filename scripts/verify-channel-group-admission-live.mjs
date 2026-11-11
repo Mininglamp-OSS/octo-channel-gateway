@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
 import {
   fetchBotGroups,
   getChannelMessages,
-} from "../dist/packages/gateway/src/transport/api/conversations.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 import {
   acceptsImMessage,
   mentionsBot,
-} from "../dist/packages/gateway/src/transport/normalize.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
 
 // .octospec/tasks/channel-group-admission/brief.md：仅读取 im-test 的既有 QA 消息，
 // 在内存重放准入，不注册 WS、不发送消息、不调用 Provider，不输出正文或凭据。

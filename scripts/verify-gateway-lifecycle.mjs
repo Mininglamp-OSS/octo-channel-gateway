@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ChannelGateway, MemoryImSessionStore } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { ImConnectionError } from "../dist/packages/gateway/src/transport/connection-error.js";
+import { ChannelGateway, MemoryImSessionStore } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { ImConnectionError } from "../packages/octo-channel-gateway-sdk/dist/transport/connection-error.js";
 import { kernelFixture, kernelInput } from "../test/kernel-fixture.js";
 import { waitFor } from "../test/runtime-fixture.js";
 import { execFile } from "node:child_process";
@@ -210,7 +210,7 @@ test("unavailable Kernel preserves old binding and invalid legacy APIs reject", 
   await assert.rejects(gateway.register(bot(), agent), /KERNEL_UNAVAILABLE/);
   await assert.rejects(gateway.register({ bot: bot(), agent }), /API_REMOVED/);
   assert.equal(active.size, 1);
-  const publicApi = await import("../dist/packages/gateway/src/index.js");
+  const publicApi = await import("../packages/octo-channel-gateway-sdk/dist/index.js");
   assert.equal("ChannelRegistry" in publicApi, false);
   assert.equal("ChannelRegistration" in publicApi, false);
 });
@@ -220,8 +220,8 @@ test("all logging and diagnostic callbacks contain sync and async failures under
   const source = `
     import assert from "node:assert/strict";
     import { attachKernel } from ${JSON.stringify(import.meta.resolve("@mininglamp-oss/octo-runtime-client"))};
-    import { ChannelGateway, ImRuntime, imApi } from ${JSON.stringify(new URL("../dist/packages/gateway/src/index.js", import.meta.url).href)};
-    import { GatewayTransport } from ${JSON.stringify(new URL("../dist/packages/gateway/src/transport/channel.js", import.meta.url).href)};
+    import { ChannelGateway, ImRuntime, imApi } from ${JSON.stringify(new URL("../packages/octo-channel-gateway-sdk/dist/index.js", import.meta.url).href)};
+    import { GatewayTransport } from ${JSON.stringify(new URL("../packages/octo-channel-gateway-sdk/dist/transport/channel.js", import.meta.url).href)};
     const kernel = attachKernel({ endpoint: ${JSON.stringify(fixture.endpoint)} });
     const events = new Set();
     let callbacks;

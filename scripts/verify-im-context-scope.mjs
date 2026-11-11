@@ -1,9 +1,9 @@
 // 显式本地专项：只读边界、请求复用与原有串行失败边界，不增加 CI。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createImContextBuildScope } from '../dist/packages/gateway/src/transport/im-context/scope.js';
-import { buildImContexts } from '../dist/packages/gateway/src/transport/im-context/index.js';
-import { buildChannelRules } from '../dist/packages/gateway/src/transport/im-context/rules.js';
+import { createImContextBuildScope } from '../packages/octo-channel-gateway-sdk/dist/transport/im-context/scope.js';
+import { buildImContexts } from '../packages/octo-channel-gateway-sdk/dist/transport/im-context/index.js';
+import { buildChannelRules } from '../packages/octo-channel-gateway-sdk/dist/transport/im-context/rules.js';
 
 const config = { bot_id: 'scope-bot', api_url: 'https://example.invalid/api', spaceId: 'space', agent: { adapter_type: 'codex' } };
 const message = { messageId: 'm', messageSeq: 10, fromUid: 'alice', channelId: 'group____topic', channelType: 5, timestamp: 0,

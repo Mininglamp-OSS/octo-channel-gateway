@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assertContextEnvelope } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { renderModelContexts } from "../dist/packages/gateway/src/execution/model-input.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
+import { renderModelContexts } from "../packages/octo-channel-gateway-sdk/dist/execution/model-input.js";
 
 const context = {
   schema: "octo.context-envelope/v3",

@@ -1,5 +1,7 @@
 # 开发者文档
 
+[源码工作区接入与私有包](guides/source-workspace.md)
+
 [English](../en/README.md) | [文档目录](../README.md)
 
 Octo Channel Gateway 把平台消息接到已有 Runtime Kernel，管理 Bot、授权、业务材料、会话、回复与产物投递。本仓提供一个 npm 包，包含注册 SDK 与服务 CLI；不会创建或接管 Kernel。

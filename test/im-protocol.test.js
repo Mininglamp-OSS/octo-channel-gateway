@@ -1,7 +1,7 @@
 import { modelItems } from "../test-support/kernel-mock.js";
 import { gatewayWire } from "../test-support/kernel-mock.js";
 import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
-import { imBotIdentity } from "../dist/packages/gateway/src/index.js";
+import { imBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 // 协议与展示回归：验证 Context、公开事件投影、卡片合同、终态和投递幂等。
 // 服务端 0.4.1 schema fixture 防止合法 TypeScript 对象生成不合法卡片报文。
 import Ajv from "ajv";
@@ -10,28 +10,28 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { ImDeliveryDispatcher } from "../dist/packages/gateway/src/delivery/dispatcher.js";
-import { ProgressScheduler } from "../dist/packages/gateway/src/delivery/scheduler.js";
-import { ImSendError } from "../dist/packages/gateway/src/delivery/send-error.js";
-import { createImInvocation as createChannelInput } from "../dist/packages/gateway/src/execution/dispatcher.js";
+import { ImDeliveryDispatcher } from "../packages/octo-channel-gateway-sdk/dist/delivery/dispatcher.js";
+import { ProgressScheduler } from "../packages/octo-channel-gateway-sdk/dist/delivery/scheduler.js";
+import { ImSendError } from "../packages/octo-channel-gateway-sdk/dist/delivery/send-error.js";
+import { createImInvocation as createChannelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
 import {
   ImChannelManager,
   buildImContexts,
-} from "../dist/packages/gateway/src/index.js";
+} from "../packages/octo-channel-gateway-sdk/dist/index.js";
 import {
   ImRunProjector,
   compactRunes,
   toolPreview,
-} from "../dist/packages/gateway/src/presentation/run-projector.js";
-import { TypingController } from "../dist/packages/gateway/src/presentation/typing.js";
-import { parseCardAction } from "../dist/packages/gateway/src/transport/card-action.js";
-import { CardSession } from "../dist/packages/gateway/src/transport/card-session.js";
-import { selectReasoningTemplate } from "../dist/packages/gateway/src/transport/cards.js";
-import { OctoConnector } from "../dist/packages/gateway/src/transport/connector.js";
+} from "../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
+import { TypingController } from "../packages/octo-channel-gateway-sdk/dist/presentation/typing.js";
+import { parseCardAction } from "../packages/octo-channel-gateway-sdk/dist/transport/card-action.js";
+import { CardSession } from "../packages/octo-channel-gateway-sdk/dist/transport/card-session.js";
+import { selectReasoningTemplate } from "../packages/octo-channel-gateway-sdk/dist/transport/cards.js";
+import { OctoConnector } from "../packages/octo-channel-gateway-sdk/dist/transport/connector.js";
 import {
   buildReasoningFrame,
   formatDuration,
-} from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 
 const template = {
   ref: { id: "ai.reasoning-process", version: "0.4.0" },

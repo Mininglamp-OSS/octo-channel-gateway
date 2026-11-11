@@ -14,12 +14,12 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { sanitizePublicValue } from "../dist/packages/gateway/src/support/public-display.js";
+import { sanitizePublicValue } from "../packages/octo-channel-gateway-sdk/dist/support/public-display.js";
 import { adapter } from "./fixtures/tool-environment-adapter.js";
 import { nativeHost } from "./native-host-fixture.js";
 import { invokeRequest } from "./runtime-fixture.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
 
 const token = `bf_${randomUUID()}`;
 const base = "https://im-test.deepminer.com.cn";

@@ -5,9 +5,9 @@ import { setImmediate as settle } from "node:timers/promises";
 import {
   buildImContexts,
   ImRuntime,
-} from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { historyMessages } from "../dist/packages/gateway/src/transport/history-messages.js";
+} from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { historyMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/history-messages.js";
 
 const previousZone = process.env.TZ;
 process.env.TZ = "Asia/Shanghai";

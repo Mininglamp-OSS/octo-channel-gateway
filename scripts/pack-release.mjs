@@ -18,6 +18,27 @@ await mkdir(staging, { recursive: true });
 try {
   for (const entry of ["dist", "README.md", "LICENSE"])
     await cp(join(root, entry), join(staging, entry), { recursive: true });
+  // 私有源码包随根发行包携带真实文件，发布物不依赖 workspace 链接。
+  manifest.bundleDependencies = [];
+  for (const directory of [
+    "packages/octo-channel-gateway-sdk", "packages/cross-service", "apps/cli",
+  ]) {
+    const source = join(root, directory);
+    const internal = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
+    internal.version = manifest.version;
+    delete internal.scripts;
+    delete internal.devDependencies;
+    for (const [name, range] of Object.entries(internal.dependencies ?? {})) {
+      if (range.startsWith("workspace:")) internal.dependencies[name] = manifest.version;
+      else assert.equal(manifest.dependencies[name], range, `Root production dependency closure differs: ${name}`);
+    }
+    manifest.dependencies[internal.name] = manifest.version;
+    manifest.bundleDependencies.push(internal.name);
+    const destination = join(staging, "node_modules", internal.name);
+    await mkdir(destination, { recursive: true });
+    await cp(join(source, "dist"), join(destination, "dist"), { recursive: true });
+    await writeFile(join(destination, "package.json"), JSON.stringify(internal, null, 2) + "\n");
+  }
   // 仅在发布暂存目录注入版本，不改源码 manifest 或锁文件。
   await writeFile(
     join(staging, "package.json"),
@@ -44,6 +65,7 @@ try {
     manifest.types,
     ...Object.values(manifest.bin),
     "dist/apps/cli/src/build-info.json",
+    "node_modules/@mininglamp-oss/octo-channel-gateway-cli/dist/build-info.json",
     "README.md",
     "LICENSE",
   ])
@@ -57,6 +79,7 @@ try {
     [...files].every(
       (file) =>
         file.startsWith("dist/") ||
+        file.startsWith("node_modules/@mininglamp-oss/octo-channel-gateway-") ||
         ["package.json", "README.md", "LICENSE"].includes(file),
     ),
   );

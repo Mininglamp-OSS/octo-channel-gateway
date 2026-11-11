@@ -3,8 +3,8 @@ import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 
 test("F26: Bot working 64 and session waiting 4 are independent; rejection never invokes or marks read", async (t) => {
   let receive, release;

@@ -6,13 +6,13 @@ import { Readable } from "node:stream";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import test from "node:test";
-import { readConfig } from "../dist/apps/cli/src/config.js";
-import { readStatus, serveStatus } from "../dist/apps/cli/src/control.js";
-import { runCli, serviceSpec } from "../dist/apps/cli/src/main.js";
+import { readConfig } from "../apps/cli/dist/config.js";
+import { readStatus, serveStatus } from "../apps/cli/dist/control.js";
+import { runCli, serviceSpec } from "../apps/cli/dist/main.js";
 import { kernelFixture as createKernelFixture } from "./kernel-fixture.js";
 import { waitFor } from "./runtime-fixture.js";
-import { parseCliCommand } from "../dist/apps/cli/src/command-tree.js";
-import { processStartIdentity } from "../dist/apps/cli/src/process-identity.js";
+import { parseCliCommand } from "../apps/cli/dist/command-tree.js";
+import { processStartIdentity } from "../apps/cli/dist/process-identity.js";
 
 const kernelFixture = (t) =>
   createKernelFixture(t, { useDefaultEndpoint: true });
@@ -65,7 +65,7 @@ test("CLI help and version follow Runtime sections without accessing configurati
   assert.equal(await invoke(["version"]), version);
   const metadata = JSON.parse(
     await readFile(
-      new URL("../dist/apps/cli/src/build-info.json", import.meta.url),
+      new URL("../apps/cli/dist/build-info.json", import.meta.url),
       "utf8",
     ),
   );

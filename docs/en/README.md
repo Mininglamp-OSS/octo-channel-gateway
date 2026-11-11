@@ -12,6 +12,8 @@ Octo Channel Gateway connects platform messages to an existing Runtime Kernel an
 
 ## Guides
 
+[Source workspace integration and private packages](guides/source-workspace.md)
+
 | Task                                                        | Page                                                                    |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
 | Extend inputs, execution settings, and logging from the host | [Application Hooks](guides/hooks.md) |

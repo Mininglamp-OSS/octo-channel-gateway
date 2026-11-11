@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImRuntime as GatewayRuntime } from "../dist/packages/gateway/src/application/im-channel.js";
-import { ImDeliveryDispatcher as GatewayDelivery } from "../dist/packages/gateway/src/delivery/dispatcher.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime as GatewayRuntime } from "../packages/octo-channel-gateway-sdk/dist/application/im-channel.js";
+import { ImDeliveryDispatcher as GatewayDelivery } from "../packages/octo-channel-gateway-sdk/dist/delivery/dispatcher.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 
 for (const [name, Dispatcher] of [["Gateway", GatewayDelivery]]) {
   test(`${name} exposes only the count of its bounded receipt cache`, async () => {

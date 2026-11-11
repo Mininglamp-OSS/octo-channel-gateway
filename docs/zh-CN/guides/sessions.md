@@ -21,4 +21,4 @@ reset 不调用模型，不隐式取消旧执行，不删除产物，不改变�
 
 需要持久化时，由 `createSessionStore(config)` 同步返回 ImSessionStore 句柄。read/save/reset/occurrence/remember 都是同步合同；read 返回独立快照，reset 需原子去重控制 ID 并增加 generation。可选 patchGap/patchRules 按 sessionId/generation 原子更新，不能把 Promise 包装成同步成功。
 
-宿主负责数据库、迁移、租户分区、保留期限和并发一致性。注册关闭会释放工厂返回的句柄，句柄 close 不得关闭其他注册共享的数据库。完整类型见 [会话存储源码](../../../packages/gateway/src/application/session-store.ts)与 [SDK 参考](../reference/sdk.md)。
+宿主负责数据库、迁移、租户分区、保留期限和并发一致性。注册关闭会释放工厂返回的句柄，句柄 close 不得关闭其他注册共享的数据库。完整类型见 [会话存储源码](../../../packages/octo-channel-gateway-sdk/src/application/session-store.ts)与 [SDK 参考](../reference/sdk.md)。

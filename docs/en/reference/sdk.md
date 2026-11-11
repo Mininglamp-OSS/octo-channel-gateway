@@ -2,7 +2,7 @@
 
 [简体中文](../../zh-CN/reference/sdk.md) | [Documentation](../README.md)
 
-Import the facade and types from `@mininglamp-oss/octo-channel-gateway`; import KernelClient from the public Runtime client. See [exports](../../../packages/gateway/src/index.ts) and [implementation](../../../packages/gateway/src/gateway.ts).
+Import the facade and types from `@mininglamp-oss/octo-channel-gateway`; import KernelClient from the public Runtime client. See [exports](../../../packages/octo-channel-gateway-sdk/src/index.ts) and [implementation](../../../packages/octo-channel-gateway-sdk/src/gateway.ts).
 
 ## ChannelGateway
 

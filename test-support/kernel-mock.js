@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { assertInvokeInput } from "@mininglamp-oss/octo-runtime-client/protocol";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
 
 /** 严格模拟新公开入口；测试回调接收 IPC v2 wire，绝不反向重建旧业务 contexts。 */
 export function kernelMock(source) {

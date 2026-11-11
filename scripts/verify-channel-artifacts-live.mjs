@@ -3,10 +3,10 @@ import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { artifactPolicy } from "../dist/packages/gateway/src/delivery/artifact-policy.js";
-import { prepareArtifacts } from "../dist/packages/gateway/src/delivery/artifacts.js";
-import { uploadChatAttachment } from "../dist/packages/gateway/src/transport/api/files.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
+import { artifactPolicy } from "../packages/octo-channel-gateway-sdk/dist/delivery/artifact-policy.js";
+import { prepareArtifacts } from "../packages/octo-channel-gateway-sdk/dist/delivery/artifacts.js";
+import { uploadChatAttachment } from "../packages/octo-channel-gateway-sdk/dist/transport/api/files.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
 import { artifactImage } from "../test-support/channel-artifact-samples.mjs";
 
 // 仅上传测试文件和匿名下载；不注册 IM、不建群、不向任何会话发送消息。

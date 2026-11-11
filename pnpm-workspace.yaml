@@ -3,3 +3,6 @@
 minimumReleaseAgeExclude:
   - '@mininglamp-oss/octo-runtime'
   - '@mininglamp-oss/octo-runtime-client'
+packages:
+  - 'packages/*'
+  - 'apps/*'

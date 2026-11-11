@@ -4,11 +4,11 @@ import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
-import { ImModelWait } from "../dist/packages/gateway/src/execution/model-wait.js";
-import { ImTask } from "../dist/packages/gateway/src/execution/task.js";
-import { ImRunProjector } from "../dist/packages/gateway/src/presentation/run-projector.js";
-import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
+import { ImModelWait } from "../packages/octo-channel-gateway-sdk/dist/execution/model-wait.js";
+import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
+import { ImRunProjector } from "../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
+import { buildReasoningFrame } from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 import { testAdapter as invokeAdapter } from "./fixtures/invoke-adapter.js";
 import { kernelFixture, kernelInput as runtimeInput } from "./kernel-fixture.js";
 

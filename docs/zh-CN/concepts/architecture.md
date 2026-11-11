@@ -17,7 +17,7 @@ register 不向 Kernel 注册插件或渠道定义，只在当前进程装配本
 
 本仓不包含 WebUI/WeCom，不定义 Extra 发现或统一插件 JSON。当前 SDK 仍导出部分高级内部编排类型，例如 ImInvocationInput；常规接入使用 ChannelGateway，避免自行拼装内部草稿。其 `contexts` 不属于 Runtime 新调用合同，见[输入与执行环境](inputs-and-agent-env.md)。
 
-实现入口：[ChannelGateway](../../../packages/gateway/src/gateway.ts)、[公开导出](../../../packages/gateway/src/index.ts)、[执行输入边界](../../../packages/gateway/src/execution/kernel-input.ts)。
+实现入口：[ChannelGateway](../../../packages/octo-channel-gateway-sdk/src/gateway.ts)、[公开导出](../../../packages/octo-channel-gateway-sdk/src/index.ts)、[执行输入边界](../../../packages/octo-channel-gateway-sdk/src/execution/kernel-input.ts)。
 
 ## 公开入口与宿主生命周期
 

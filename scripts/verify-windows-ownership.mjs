@@ -5,11 +5,11 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { WindowsUserTaskBackend } from "../dist/packages/cross-service/src/windows-task.js";
-import { acquireProcessLock } from "../dist/apps/cli/src/lock.js";
-import { inspectOwnership } from "../dist/apps/cli/src/ownership.js";
-import { runCli } from "../dist/apps/cli/src/main.js";
-import { serveStatus } from "../dist/apps/cli/src/control.js";
+import { WindowsUserTaskBackend } from "../packages/cross-service/dist/windows-task.js";
+import { acquireProcessLock } from "../apps/cli/dist/lock.js";
+import { inspectOwnership } from "../apps/cli/dist/ownership.js";
+import { runCli } from "../apps/cli/dist/main.js";
+import { serveStatus } from "../apps/cli/dist/control.js";
 import { kernelFixture } from "../test/kernel-fixture.js";
 
 const spec = { id: "gateway", command: "C:\\Program Files\\node.exe", args: ["C:\\gateway\\index.js", "run"],

@@ -8,7 +8,7 @@
 
 保留 Gateway 在 `windows-task.ts` 中已有的 Windows 任务归属校验：生命周期变更必须确认属于当前用户。其他源码文件与上述 revision 一致。
 
-在仓库根目录构建。Windows/Linux 原生验证需要对应平台；渲染与注入命令执行器可本地测试。
+可以通过 `pnpm --filter @mininglamp-oss/octo-channel-gateway-cross-service run build` 独立构建，也可由根构建按依赖顺序构建；CLI 通过 `workspace:*` 消费本包 exports。Windows/Linux 原生验证需要对应平台；渲染与注入命令执行器可本地测试。
 
 ## 宿主串行化合同
 

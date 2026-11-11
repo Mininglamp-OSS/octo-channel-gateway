@@ -1,0 +1,10 @@
+brief: .octospec/tasks/workspace-sdk-cli/brief.md
+injected:
+  - id: gateway-architecture
+    source: repo
+  - id: gateway-channel-behavior
+    source: repo
+  - id: gateway-review
+    source: repo
+  - id: gateway-documentation
+    source: repo

@@ -8,13 +8,13 @@ import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { AgentExecutor } from "@mininglamp-oss/octo-runtime/executor-core";
 import { createVerificationCodex } from "../test-support/verification-kernel.mjs";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { buildImContexts } from "../dist/packages/gateway/src/transport/im-context/index.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
+import { buildImContexts } from "../packages/octo-channel-gateway-sdk/dist/transport/im-context/index.js";
 import {
   planHistoryGap,
   compactHistoryGap,
-} from "../dist/packages/gateway/src/application/context-gap.js";
-import { createImInvocation } from "../dist/packages/gateway/src/execution/dispatcher.js";
+} from "../packages/octo-channel-gateway-sdk/dist/application/context-gap.js";
+import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
 import {
   historyIntentCases,
   historyPromptVersions,

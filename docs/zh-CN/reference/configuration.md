@@ -125,7 +125,7 @@ artifact_delivery 可设置 mode（channel/tools）、allowed_roots、allowed_mi
 
 codex_retry 的 max_consecutive_retries/max_total_retries 范围 0..100，recovery_timeout_ms 100..3600000，initial_delay_ms 100..60000，max_delay_ms 100..300000；初始延迟不能超过最大延迟。默认初始/最大延迟为 2000/30000 ms。启用策略与运行情况应结合日志，不把结构校验视为可安全重跑的证明。
 
-权威定义：[配置类型](../../../packages/gateway/src/contracts.ts)、[校验](../../../packages/gateway/src/lifecycle/configuration.ts)。
+权威定义：[配置类型](../../../packages/octo-channel-gateway-sdk/src/contracts.ts)、[校验](../../../packages/octo-channel-gateway-sdk/src/lifecycle/configuration.ts)。
 
 `bot_name` 是展示名称，空值或省略时使用 bot_id。`your-model-id` 需要替换为所选 Provider 支持的模型，`effort: high` 仅演示显式选择，不设置全局默认值。公开执行配置为 `agent`，其中 `adapter_type` 选择接入实现；不支持旧的外层 `adapter` 字段。
 

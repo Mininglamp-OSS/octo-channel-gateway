@@ -5,15 +5,15 @@ import { createServer } from "node:http";
 import { performance } from "node:perf_hooks";
 import test from "node:test";
 import { WebSocketServer } from "ws";
-import { ImRuntime } from "../dist/packages/gateway/src/application/im-channel.js";
-import { ImChannelManager } from "../dist/packages/gateway/src/lifecycle/manager.js";
-import { verifyBotIdentity } from "../dist/packages/gateway/src/transport/auth.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
-import { ImConnectionError } from "../dist/packages/gateway/src/transport/connection-error.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/application/im-channel.js";
+import { ImChannelManager } from "../packages/octo-channel-gateway-sdk/dist/lifecycle/manager.js";
+import { verifyBotIdentity } from "../packages/octo-channel-gateway-sdk/dist/transport/auth.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
+import { ImConnectionError } from "../packages/octo-channel-gateway-sdk/dist/transport/connection-error.js";
 import {
   WukongConnection,
   registerBot,
-} from "../dist/packages/gateway/src/transport/wukong.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 
 const bot = (patch = {}) => ({
   bot_id: "state-machine-bot",

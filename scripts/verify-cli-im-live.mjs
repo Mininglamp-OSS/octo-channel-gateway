@@ -5,9 +5,9 @@ import { join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { attachKernel } from "@mininglamp-oss/octo-runtime-client";
-import { readStatus } from "../dist/apps/cli/src/control.js";
-import { runtimeEndpoint } from "../dist/apps/cli/src/runtime-endpoint.js";
-import { getChannelMessages } from "../dist/packages/gateway/src/transport/api/conversations.js";
+import { readStatus } from "../apps/cli/dist/control.js";
+import { runtimeEndpoint } from "../apps/cli/dist/runtime-endpoint.js";
+import { getChannelMessages } from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 import { executeVerificationCommand as execute } from "./verification-command.mjs";
 
 // 仅手动运行；凭据从指定文件读取，通过 stdin/env 传递，不进入命令参数或报告。
@@ -42,7 +42,7 @@ for (const account of [receiver, sender]) {
   assert.ok(JSON.stringify(groups).includes(groupId), "Both test Bots must already belong to the QA group");
 }
 const home = await mkdtemp(join(tmpdir(), "gateway-cli-im-"));
-const entry = resolve("dist/apps/cli/src/index.js");
+const entry = resolve("apps/cli/dist/index.js");
 const client = attachKernel({ endpoint: runtimeEndpoint(join(homedir(), ".octo-runtime")) });
 const before = await client.status();
 let child, completion;

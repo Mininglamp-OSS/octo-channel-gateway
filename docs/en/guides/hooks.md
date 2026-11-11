@@ -21,7 +21,7 @@ register stores Hook definitions without executing their functions. Rejected mes
 
 Call the instance method `await gateway.register(bot, agent, hooks)`. The third argument is an array whose entries contain type and hook; there is no name field or additional options wrapper. Omitting hooks means an empty array. One Gateway can register different business Hooks for different Bots.
 
-The interface shape is shown below; see [hooks.ts](../../../packages/gateway/src/hooks.ts) for the public types:
+The interface shape is shown below; see [hooks.ts](../../../packages/octo-channel-gateway-sdk/src/hooks.ts) for the public types:
 
 ```text
 hooks: [{ type: "pre_dispatch" | "pre_invoke", hook }]
@@ -69,7 +69,7 @@ Implementation and integration locations:
 | --- | --- |
 | [apps/cli/src/hooks.ts](../../../apps/cli/src/hooks.ts) | createCliHooks(agent, log): creates the instruction pre_dispatch and debug pre_invoke |
 | [apps/cli/src/main.ts](../../../apps/cli/src/main.ts) | Creates CLI Hooks and passes them as the third gateway.register argument for each Bot |
-| [packages/gateway/src/hooks.ts](../../../packages/gateway/src/hooks.ts) | SDK public types, sequential execution, result validation and mutation boundaries; contains no CLI business policy |
+| [packages/octo-channel-gateway-sdk/src/hooks.ts](../../../packages/octo-channel-gateway-sdk/src/hooks.ts) | SDK public types, sequential execution, result validation and mutation boundaries; contains no CLI business policy |
 | [docs/examples/hooks.mts](../../examples/hooks.mts) | SDK/Electron examples: asynchronous reads, application-selected turns and complete input logging |
 | [scripts/verify-gateway-hooks.mjs](../../../scripts/verify-gateway-hooks.mjs) | Explicit checks for first-turn behavior, images, logging failures, frozen retries, reset and shutdown |
 

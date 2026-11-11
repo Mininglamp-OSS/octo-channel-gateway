@@ -1,8 +1,8 @@
 import { assertCanonicalEvent } from "@mininglamp-oss/octo-runtime-client/protocol";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImRunProjector } from "../dist/packages/gateway/src/presentation/run-projector.js";
-import { buildReasoningFrame } from "../dist/packages/gateway/src/transport/reasoning-frame.js";
+import { ImRunProjector } from "../packages/octo-channel-gateway-sdk/dist/presentation/run-projector.js";
+import { buildReasoningFrame } from "../packages/octo-channel-gateway-sdk/dist/transport/reasoning-frame.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
 const { CodexEventNormalizer } = await runtimeModule(
   "adapter-codex",

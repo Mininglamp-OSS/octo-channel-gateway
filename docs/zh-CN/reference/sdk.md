@@ -2,7 +2,7 @@
 
 [English](../../en/reference/sdk.md) | [文档目录](../README.md)
 
-从 `@mininglamp-oss/octo-channel-gateway` 导入入口和类型，从公开 Runtime client 导入 KernelClient。详见[导出](../../../packages/gateway/src/index.ts)与[实现](../../../packages/gateway/src/gateway.ts)。
+从 `@mininglamp-oss/octo-channel-gateway` 导入入口和类型，从公开 Runtime client 导入 KernelClient。详见[导出](../../../packages/octo-channel-gateway-sdk/src/index.ts)与[实现](../../../packages/octo-channel-gateway-sdk/src/gateway.ts)。
 
 ## ChannelGateway
 

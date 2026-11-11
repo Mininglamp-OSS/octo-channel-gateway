@@ -2,8 +2,8 @@ import { validateImBots } from "@mininglamp-oss/octo-channel-gateway";
 import { assertJsonByteLimit } from "@mininglamp-oss/octo-runtime-client/protocol";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImRuntime } from "../dist/packages/gateway/src/application/im-channel.js";
-import { ImChannelManager } from "../dist/packages/gateway/src/lifecycle/manager.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/application/im-channel.js";
+import { ImChannelManager } from "../packages/octo-channel-gateway-sdk/dist/lifecycle/manager.js";
 
 const bot = (id = "qa") => ({
   bot_id: id,

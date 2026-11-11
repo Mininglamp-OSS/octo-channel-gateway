@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { attachKernel } from '@mininglamp-oss/octo-runtime-client';
-import { ImRuntime, ChannelGateway } from '../dist/packages/gateway/src/index.js';
-import { GatewayTransport } from '../dist/packages/gateway/src/transport/channel.js';
+import { ImRuntime, ChannelGateway } from '../packages/octo-channel-gateway-sdk/dist/index.js';
+import { GatewayTransport } from '../packages/octo-channel-gateway-sdk/dist/transport/channel.js';
 
 const endpoint = '/Users/lvsijia/.octo-runtime/executor-kernel.sock';
 const client = attachKernel({ endpoint });

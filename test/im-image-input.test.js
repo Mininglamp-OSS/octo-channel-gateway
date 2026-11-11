@@ -4,14 +4,14 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import test from "node:test";
 import { setImmediate as settle } from "node:timers/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import {
   downloadImageInput,
   imagePart,
   imageUrl,
-} from "../dist/packages/gateway/src/transport/image-input.js";
-import { acceptsImMessage } from "../dist/packages/gateway/src/transport/normalize.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/image-input.js";
+import { acceptsImMessage } from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=",
   "base64",

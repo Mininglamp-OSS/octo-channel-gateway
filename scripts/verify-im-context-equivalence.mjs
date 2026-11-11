@@ -16,13 +16,19 @@ const schema = 'octo.context-envelope/v3';
 const png = Buffer.from('89504e470d0a1a0a00000000', 'hex');
 const image = { type: 'image', mimeType: 'image/png', data: png.toString('base64'), byteSize: png.length, sha256: createHash('sha256').update(png).digest('hex') };
 async function capture(directory, baseline = false) {
-  const load = path => import(pathToFileURL(join(directory, 'dist', path)).href);
-  const api = await load('packages/gateway/src/index.js');
+  const load = path => {
+    const output = baseline
+      ? join('dist', path.replace('packages/octo-channel-gateway-sdk/src', 'packages/gateway/src'))
+      : path.replace('packages/octo-channel-gateway-sdk/src', 'packages/octo-channel-gateway-sdk/dist')
+        .replace('apps/cli/src', 'apps/cli/dist');
+    return import(pathToFileURL(join(directory, output)).href);
+  };
+  const api = await load('packages/octo-channel-gateway-sdk/src/index.js');
   // 此分支只用于比较独立保存的重构前产物；生产代码不保留旧入口。
   const build = baseline ? api.build_im_contexts : api.buildImContexts;
-  const { GatewayTransport } = await load('packages/gateway/src/transport/channel.js');
+  const { GatewayTransport } = await load('packages/octo-channel-gateway-sdk/src/transport/channel.js');
   const { createCliHooks } = await load('apps/cli/src/hooks.js');
-  const { MessageIdentityCache } = await load('packages/gateway/src/transport/message-identities.js');
+  const { MessageIdentityCache } = await load('packages/octo-channel-gateway-sdk/src/transport/message-identities.js');
   const original = { fetch: globalThis.fetch, start: GatewayTransport.prototype.start, close: GatewayTransport.prototype.close };
   const records = [], wires = [], controls = [], requests = [];
   let receive, sequence = 100, active = '', rulesVersion = 1, rulesStatus = 'present', historyFailure = false, failNext = false;

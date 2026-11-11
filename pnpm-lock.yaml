@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@mininglamp-oss/octo-channel-gateway-cli':
+        specifier: workspace:*
+        version: link:apps/cli
+      '@mininglamp-oss/octo-channel-gateway-sdk':
+        specifier: workspace:*
+        version: link:packages/octo-channel-gateway-sdk
       '@mininglamp-oss/octo-runtime-client':
         specifier: ^1.1.14
         version: 1.1.14
@@ -36,6 +42,63 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  apps/cli:
+    dependencies:
+      '@mininglamp-oss/octo-channel-gateway-cross-service':
+        specifier: workspace:*
+        version: link:../../packages/cross-service
+      '@mininglamp-oss/octo-channel-gateway-sdk':
+        specifier: workspace:*
+        version: link:../../packages/octo-channel-gateway-sdk
+      '@mininglamp-oss/octo-runtime-client':
+        specifier: ^1.1.14
+        version: 1.1.14
+      commander:
+        specifier: ^15.0.0
+        version: 15.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/cross-service:
+    dependencies:
+      iconv-lite:
+        specifier: 0.7.3
+        version: 0.7.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/octo-channel-gateway-sdk:
+    dependencies:
+      '@mininglamp-oss/octo-runtime-client':
+        specifier: ^1.1.14
+        version: 1.1.14
+      mdast-util-from-markdown:
+        specifier: ^2.1.0
+        version: 2.1.0
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import {
   acceptsImMessage,
   mentionsBot,
-} from "../dist/packages/gateway/src/transport/normalize.js";
-import { WukongConnection } from "../dist/packages/gateway/src/transport/wukong.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/normalize.js";
+import { WukongConnection } from "../packages/octo-channel-gateway-sdk/dist/transport/wukong.js";
 
 const config = {
   bot_id: "bot",

@@ -6,12 +6,12 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ImRuntime } from "@mininglamp-oss/octo-channel-gateway";
-import { getCardProfile } from "../dist/packages/gateway/src/transport/api/cards.js";
-import { parseOctoJson } from "../dist/packages/gateway/src/transport/api/client.js";
+import { getCardProfile } from "../packages/octo-channel-gateway-sdk/dist/transport/api/cards.js";
+import { parseOctoJson } from "../packages/octo-channel-gateway-sdk/dist/transport/api/client.js";
 import {
   fetchBotGroups,
   getChannelMessages,
-} from "../dist/packages/gateway/src/transport/api/conversations.js";
+} from "../packages/octo-channel-gateway-sdk/dist/transport/api/conversations.js";
 
 // 仅指定 QA 账号及既有 Channel_QA 群；默认可控故障注入，可选真实 Codex 正常回复。
 const origin = "https://im-test.deepminer.com.cn";

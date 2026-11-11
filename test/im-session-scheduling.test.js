@@ -15,9 +15,9 @@ const channels = [
 ];
 
 for (const [name, suffix, transportName, platform] of channels) {
-  const { ImRuntime } = await import(`../dist/packages/gateway/src/index.js`);
+  const { ImRuntime } = await import(`../packages/octo-channel-gateway-sdk/dist/index.js`);
   const { [transportName]: Transport } = await import(
-    `../dist/packages/gateway/src/transport/channel.js`
+    `../packages/octo-channel-gateway-sdk/dist/transport/channel.js`
   );
 
   async function fixture(
@@ -241,7 +241,7 @@ for (const [name, suffix, transportName, platform] of channels) {
   if (suffix === "gateway")
     test("Octo adds missing names to legacy bindings without replacing their native handle", async (t) => {
       const { MemoryImSessionStore } =
-        await import("../dist/packages/gateway/src/index.js");
+        await import("../packages/octo-channel-gateway-sdk/dist/index.js");
       const sessions = new MemoryImSessionStore();
       t.after(() => sessions.close());
       const save = sessions.save.bind(sessions);
@@ -268,7 +268,7 @@ for (const [name, suffix, transportName, platform] of channels) {
   if (suffix === "gateway")
     test("Octo repairs persisted invalid display names without resetting native continuity", async (t) => {
       const { MemoryImSessionStore } =
-        await import("../dist/packages/gateway/src/index.js");
+        await import("../packages/octo-channel-gateway-sdk/dist/index.js");
       const sessions = new MemoryImSessionStore();
       t.after(() => sessions.close());
       const save = sessions.save.bind(sessions);

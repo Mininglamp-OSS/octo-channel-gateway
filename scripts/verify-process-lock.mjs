@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { acquireProcessLock, inspectProcessLock } from "../dist/apps/cli/src/lock.js";
-import { processStartIdentity } from "../dist/apps/cli/src/process-identity.js";
+import { acquireProcessLock, inspectProcessLock } from "../apps/cli/dist/lock.js";
+import { processStartIdentity } from "../apps/cli/dist/process-identity.js";
 
 async function fixture(t) {
   const home = await mkdtemp(join(tmpdir(), "gw-start-lock-"));

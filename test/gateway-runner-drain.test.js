@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImRuntime } from "../dist/packages/gateway/src/application/im-channel.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/application/im-channel.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import { kernelFixture } from "./kernel-fixture.js";
 import { kernelRelay } from "./kernel-relay.js";
 import { waitFor } from "./runtime-fixture.js";

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ImRuntime } from "../dist/packages/gateway/src/index.js";
-import { GatewayTransport } from "../dist/packages/gateway/src/transport/channel.js";
+import { ImRuntime } from "../packages/octo-channel-gateway-sdk/dist/index.js";
+import { GatewayTransport } from "../packages/octo-channel-gateway-sdk/dist/transport/channel.js";
 import { kernelFixture } from "./kernel-fixture.js";
 import { kernelRelay } from "./kernel-relay.js";
 import { waitFor } from "./runtime-fixture.js";
@@ -56,7 +56,7 @@ test("Gateway consumes actual Kernel invoke results for delivery; ACK loss execu
   assert.match(replies[0], /Handled: hello/);
   assert.deepEqual(relay.client.invocations.snapshot(), []);
   const source = await readFile(
-    "packages/gateway/src/execution/task.ts",
+    "packages/octo-channel-gateway-sdk/src/execution/task.ts",
     "utf8",
   );
   assert.doesNotMatch(source, /\.submit\(|\.subscribe\(|["']agent_run\.(?:invoke|submit|subscribe)["']/);

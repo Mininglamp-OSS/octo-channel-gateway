@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { prepareKernelInput } from "../dist/packages/gateway/src/execution/kernel-input.js";
-import { sanitizePublicValue } from "../dist/packages/gateway/src/support/public-display.js";
+import { prepareKernelInput } from "../packages/octo-channel-gateway-sdk/dist/execution/kernel-input.js";
+import { sanitizePublicValue } from "../packages/octo-channel-gateway-sdk/dist/support/public-display.js";
 const request = () => ({
   inputs: [{ type: "text", text: "current question" }],
   freshFallbackModelInputParts: [{ type: "text", text: "explicit recovery history" }],
