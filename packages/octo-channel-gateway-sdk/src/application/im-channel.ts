@@ -317,7 +317,6 @@ export class ImRuntime {
           this.#restToken = token;
         },
       },
-      this.dependencies.log,
     );
     this.#connector = connector;
     try {

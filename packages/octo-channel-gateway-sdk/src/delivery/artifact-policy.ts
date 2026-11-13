@@ -3,7 +3,6 @@ import type {
   ContextItem,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { OctoBotConfig } from "../contracts.js";
-import { ARTIFACT_TYPES } from "./artifact-types.js";
 
 export interface ImArtifactPolicy {
   mode: "channel" | "tools";
@@ -23,7 +22,7 @@ export const ARTIFACT_LIMITS = {
   timeout_ms: 30_000,
 } as const;
 
-/** 固定白名单由代码执行；仅可信宿主配置可额外限制 MIME 与根目录。 */
+/** 本地引用均按 Gateway 文件系统尝试读取；仅可信宿主配置可额外限制根目录。 */
 export function artifactPolicy(
   config: OctoBotConfig,
   context: ContextEnvelope,
@@ -56,7 +55,7 @@ export function artifactContext(policy: ImArtifactPolicy): ContextItem {
     payload: {
       guidance:
         policy.mode === "channel"
-          ? `For supported local files, use Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path). Supported extensions: ${Object.keys(ARTIFACT_TYPES).join(", ")}. Directories and other file types are displayed as names without automatic upload.`
+          ? "If your final deliverable is a local file, reference it using Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path)."
           : [
               "This channel does not automatically upload output files.",
               "Use normal tool calls when the task requires file delivery and return recipient-accessible URLs.",
@@ -64,7 +63,6 @@ export function artifactContext(policy: ImArtifactPolicy): ContextItem {
               "Do not send a duplicate final reply with a messaging tool.",
             ].join("\n"),
       mode: policy.mode,
-      ...(policy.mode === "channel" ? { supportedExtensions: Object.keys(ARTIFACT_TYPES) } : {}),
       ...(policy.workspace ? { workspace: policy.workspace } : {}),
       ...(policy.roots !== undefined ? { allowedRoots: policy.roots } : {}),
       ...(policy.mimeTypes ? { allowedMimeTypes: policy.mimeTypes } : {}),

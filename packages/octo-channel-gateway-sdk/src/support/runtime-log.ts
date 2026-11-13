@@ -215,14 +215,6 @@ export class RuntimeLogging {
       )
         safe.diagnostic_id = diagnosticId;
       const stage = data?.stage;
-      if (event === "delivery.failure") {
-        if (typeof stage === "string" && ["reference", "read", "upload", "card"].includes(stage)) safe.stage = stage;
-        const effectId = data?.effect_id;
-        if (typeof effectId === "string" && /^[0-9a-f]{64}$/.test(effectId)) safe.effect_id = effectId;
-        const status = data?.http_status;
-        if (typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599)
-          safe.http_status = status;
-      }
       if (
         typeof stage === "string" &&
         [

@@ -50,9 +50,6 @@ import { observesImScope } from "./normalize.js";
 import { prepareArtifacts } from "../delivery/artifacts.js";
 import { uploadChatAttachment } from "./api/files.js";
 import { MessageIdentityCache } from "./message-identities.js";
-import { GatewayError, logGatewayError, type GatewayErrorCode } from "../errors/gateway-error.js";
-import { gatewayFailureMessage } from "../errors/user-message.js";
-import type { RuntimeLog } from "../support/runtime-log.js";
 
 /** Octo IM 平台连接器：WuKong 与 Octo REST 适配；不是 MCP 连接器。 */
 export class GatewayTransport {
@@ -105,7 +102,6 @@ export class GatewayTransport {
       /** 身份及空间准入后同步发布凭据；候选值不得提前供旧任务读取。 */
       acceptToken?: (token: string) => void;
     },
-    readonly log?: RuntimeLog,
   ) {
     this.identity = imBotIdentity(config);
     this.botId = config.bot_id;
@@ -395,10 +391,9 @@ export class GatewayTransport {
                             uploadSignal,
                             this.#dispatchRestDelivery,
                           ),
-                        { log: this.log, effectKey },
                       )
                     : { text, files: [] };
-                  const failures: GatewayErrorCode[] = [];
+                  const failures: string[] = [];
                   // 每张最终文件卡首发后最多重试三次；整段准备仅一次，文本重试不重开预算或上传。
                   for (const [index, file] of delivered.files.entries()) {
                     finalSignal.throwIfAborted();
@@ -431,22 +426,16 @@ export class GatewayTransport {
                           finalSignal.aborted || Boolean(options?.obsolete()),
                       },
                     );
-                    if (receipt.state !== "delivered") {
-                      const failure = new GatewayError(receipt.state === "failed"
-                        ? "OV_DELIVERY_CARD_FAILED" : "OV_DELIVERY_CARD_UNCONFIRMED", "card", {
-                          deliveryState: receipt.state === "failed" ? "failed" : "unknown",
-                          cause: { code: receipt.code },
-                        });
-                      failures.push(failure.code);
-                      logGatewayError(this.log, failure, key);
-                    }
+                    if (receipt.state !== "delivered")
+                      failures.push(
+                        `${file.name.replace(/[\r\n\x60[\]<>]/g, "_").slice(0, 120)} (${receipt.state}: ${receipt.code ?? "IM_DELIVERY_UNKNOWN"})`,
+                      );
                   }
                   const finalText =
                     delivered.text +
-                    [
-                      gatewayFailureMessage(failures.filter((code) => code === "OV_DELIVERY_CARD_FAILED"), "cardFailed"),
-                      gatewayFailureMessage(failures.filter((code) => code === "OV_DELIVERY_CARD_UNCONFIRMED"), "cardUnknown"),
-                    ].filter(Boolean).map((message) => `\n\n${message}`).join("");
+                    (failures.length
+                      ? `\n\nFile card delivery unconfirmed: ${failures.join("; ")}. The attachment download links above remain available; generation was not rerun.`
+                      : "");
                   // 新增失败事实不在先前 assistant 中，不能因它由本机发送而过滤。
                   finalOutputCovered =
                     !delivered.incomplete && failures.length === 0;

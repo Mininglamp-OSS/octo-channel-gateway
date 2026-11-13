@@ -11,29 +11,6 @@ import {
   type HttpRequestDispatch,
 } from "./client.js";
 import { trimTrailingSlashes } from "./url.js";
-import { OctoApiError } from "./errors.js";
-
-/** HTTP 拒绝保留状态；错误正文和签名地址不进入诊断，清理失败不能覆盖已知状态。 */
-async function assertUploadAccepted(
-  response: Response,
-  stage: "presign" | "put",
-  signal: AbortSignal,
-): Promise<void> {
-  if (response.ok) return;
-  const error = new OctoApiError({
-    status: response.status,
-    path: `upload-${stage}`,
-    body: "upload-rejected",
-    retryAfterMs: 0,
-  });
-  try {
-    await response.body?.cancel();
-  } catch {
-    // 非成功响应的清理异常不改变 HTTP 失败分类。
-  }
-  signal.throwIfAborted();
-  throw error;
-}
 
 /** 校验服务端返回的长期下载地址；不把 PUT 地址、签名有效期或 Bot 鉴权路由冒充附件。 */
 export function attachmentUrl(raw: unknown, apiUrl: string): string {
@@ -95,8 +72,8 @@ export async function uploadChatAttachment(
     },
     dispatchRequest,
   );
-  await assertUploadAccepted(response, "presign", signal);
   const body = await readResponseText(response, 64 << 10);
+  if (!response.ok) throw new Error("upload-rejected");
   let result: {
     method?: unknown;
     uploadUrl?: unknown;
@@ -172,9 +149,9 @@ export async function uploadChatAttachment(
     },
     dispatchRequest,
   );
-  await assertUploadAccepted(stored, "put", signal);
   await stored.body?.cancel();
   signal.throwIfAborted();
+  if (!stored.ok) throw new Error("upload-rejected");
   return download;
 }
 
