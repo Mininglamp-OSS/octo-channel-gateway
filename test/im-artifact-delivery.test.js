@@ -2495,6 +2495,50 @@ test("OV: upload status and timeout map to stable codes without exposing causes"
   }
 });
 
+test("OV: production upload adapter preserves HTTP failure status", async (t) => {
+  const cases = [
+    ...["GET", "PUT"].flatMap((method) => [413, 408, 504, 500].map((status) => ({ method, status, body: "normal" }))),
+    { method: "GET", status: 413, body: "broken" },
+    { method: "GET", status: 504, body: "oversized" },
+    { method: "PUT", status: 408, body: "cancel-rejected" },
+  ];
+  for (const { method, status, body } of cases) await t.test(`${method} ${status} ${body}`, async (t) => {
+    const { workspace, policy } = await fixture(t);
+    await writeFile(join(workspace, "file.txt"), "x");
+    const calls = [];
+    const logs = [];
+    t.mock.method(globalThis, "fetch", async (_url, init) => {
+      calls.push(init.method);
+      if (init.method === "GET" && method === "PUT") return Response.json({
+        method: "PUT", uploadUrl: "https://storage.example.com/object?signature=PRIVATE_SIGNATURE",
+        downloadUrl: "https://cdn.example.com/file.txt",
+      });
+      assert.equal(init.method, method);
+      const stream = body === "broken" ? new ReadableStream({
+        start(controller) { controller.error(new Error("PRIVATE_BODY_ERROR")); },
+      }) : "PRIVATE_RESPONSE token";
+      const response = new Response(stream, {
+        status, headers: body === "oversized" ? { "Content-Length": String(128 << 10) } : {},
+      });
+      if (body === "cancel-rejected") t.mock.method(response.body, "cancel", async () => {
+        throw new Error("PRIVATE_CANCEL_ERROR");
+      });
+      return response;
+    });
+    const result = await prepareArtifactReply("[a](file.txt) [b](./file.txt)", policy, signal,
+      (bytes, name, mime, uploadSignal) => uploadChatAttachment(config().api_url, "PRIVATE_TOKEN", bytes, name, mime, uploadSignal),
+      { log: (...args) => logs.push(args) });
+    const code = status === 413 ? "OV_DELIVERY_FILE_SIZE_LIMIT" : status === 500 ? "OV_DELIVERY_UPLOAD_FAILED" : "OV_DELIVERY_TIMEOUT";
+    assert.equal(result.incomplete, true);
+    assert.deepEqual(result.files, []);
+    assert.equal(result.text.split(code).length - 1, 1);
+    assert.deepEqual(calls, method === "GET" ? ["GET"] : ["GET", "PUT"]);
+    assert.ok(logs.length > 0);
+    assert.ok(logs.every(([, event, data]) => event === "delivery.failure" && data.http_status === status));
+    assert.doesNotMatch(result.text + JSON.stringify(logs), /PRIVATE_|signature=|upload-rejected|generation was not rerun/);
+  });
+});
+
 test("OV: file mutation during descriptor reads is rejected before upload", async (t) => {
   const { workspace, policy } = await fixture(t);
   const filename = join(workspace, "file.txt");
