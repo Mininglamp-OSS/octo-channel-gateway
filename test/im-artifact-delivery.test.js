@@ -1,7 +1,9 @@
 import { kernelMock } from "../test-support/kernel-mock.js";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { fromMarkdown } from "mdast-util-from-markdown";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -27,6 +29,10 @@ import { ImDeliveryIdentity } from "../packages/octo-channel-gateway-sdk/dist/de
 import { OctoApiError } from "../packages/octo-channel-gateway-sdk/dist/transport/api/errors.js";
 import { OctoConnector } from "../packages/octo-channel-gateway-sdk/dist/transport/connector.js";
 import { symlinkFixture } from "../test-support/symlink-fixture.mjs";
+import { ARTIFACT_TYPES } from "../packages/octo-channel-gateway-sdk/dist/delivery/artifact-types.js";
+import { GatewayError, GATEWAY_ERROR_CODES, logGatewayError } from "../packages/octo-channel-gateway-sdk/dist/errors/gateway-error.js";
+import { gatewayFailureMessage } from "../packages/octo-channel-gateway-sdk/dist/errors/user-message.js";
+import { RuntimeLogging } from "../packages/octo-channel-gateway-sdk/dist/support/runtime-log.js";
 
 const prepareArtifacts = async (...args) =>
   (await prepareArtifactReply(...args)).text;
@@ -1031,7 +1037,7 @@ for (const failure of ["upload", "peer", "group"]) {
       "successful uploads stay cached",
     );
     if (failure === "upload")
-      assert.match(f.sends.at(-1).args[2], /Attachment delivery failed/);
+      assert.match(f.sends.at(-1).args[2], /OV_DELIVERY_UPLOAD_FAILED/);
     else assert.match(f.sends.at(-1).args[2], /@Owner/);
   });
 }
@@ -1522,8 +1528,8 @@ for (const scenario of [
       options;
     if (scenario === "file") {
       const { workspace, policy } = await fixture(t);
-      await writeFile(join(workspace, "game.html"), "html");
-      text = "[Game](game.html)";
+      await writeFile(join(workspace, "game.md"), "game");
+      text = "[Game](game.md)";
       options = {
         artifacts: policy,
         signal: owner.signal,
@@ -1623,7 +1629,7 @@ for (const scenario of [
 }
 
 for (const links of ["ordinary paths", "symlink aliases"]) {
-  test(`HTML games, arbitrary files and mixed images retain exact Markdown while realpaths upload once: ${links}`, async (t) => {
+  test(`unsupported files downgrade while supported files retain exact Markdown and upload once: ${links}`, async (t) => {
     const { workspace, policy } = await fixture(t);
     const uploads = [];
     for (const name of [
@@ -1677,9 +1683,11 @@ for (const links of ["ordinary paths", "symlink aliases"]) {
       },
     );
     let expected = text;
+    expected = expected
+      .replace('[PDF](./report.pdf)', '***report\\.pdf***')
+      .replace('[custom](unknown.custom)', '***unknown\\.custom***');
     for (const name of [
       "game.html",
-      "report.pdf",
       "deck.pptx",
       "notes.md",
       "a.png",
@@ -1690,10 +1698,6 @@ for (const links of ["ordinary paths", "symlink aliases"]) {
         `https://cdn.example.com/${name}`,
       );
     expected = expected.replace("./alias.png", "https://cdn.example.com/a.png");
-    expected = expected.replace(
-      "unknown.custom",
-      "https://cdn.example.com/unknown.custom",
-    );
     for (const name of ["a.webp", "a.gif", "a.svg", "a.bmp", "a.tiff"])
       expected = expected.replace(
         `](${name})`,
@@ -1712,11 +1716,8 @@ for (const links of ["ordinary paths", "symlink aliases"]) {
       "https://cdn.example.com/notes.md",
     );
     assert.equal(result, expected);
-    assert.equal(uploads.length, 13);
-    assert.equal(
-      uploads.find((u) => u.name === "unknown.custom").mime,
-      "application/octet-stream",
-    );
+    assert.equal(uploads.length, 11);
+    assert.equal(uploads.some((u) => /pdf|custom/.test(u.name)), false);
     assert.equal(uploads.find((u) => u.name === "a.tiff").mime, "image/tiff");
   });
 }
@@ -1756,9 +1757,9 @@ test("code, HTML, quotes and unused definitions are untouched, including definit
 test("protected reference expansions retain nested image uploads without overlapping edits", async (t) => {
   const { workspace, policy } = await fixture(t);
   await writeFile(join(workspace, "a.png"), "image");
-  await writeFile(join(workspace, "game.html"), "game");
+  await writeFile(join(workspace, "game.md"), "game");
   for (const image of ["![alt](./a.png)", "![alt][image]"]) {
-    const text = `> [example][game]\n\n> ![example][image]\n\n[${image} play][game]\n\n[game]: ./game.html 'Play'\n\n[image]: ./a.png 'Image'`;
+    const text = `> [example][game]\n\n> ![example][image]\n\n[${image} play][game]\n\n[game]: ./game.md 'Play'\n\n[image]: ./a.png 'Image'`;
     const uploads = [];
     const result = await prepareArtifacts(
       text,
@@ -1776,15 +1777,15 @@ test("protected reference expansions retain nested image uploads without overlap
       result,
       text.replace(
         `[${image} play][game]`,
-        `[${nested} play](<https://cdn.example.com/game.html> 'Play')`,
+        `[${nested} play](<https://cdn.example.com/game.md> 'Play')`,
       ),
     );
-    assert.deepEqual(uploads.sort(), ["a.png", "game.html"]);
+    assert.deepEqual(uploads.sort(), ["a.png", "game.md"]);
   }
 });
 
 for (const links of ["ordinary paths", "symlink escape"]) {
-  test(`partial failure preserves successful URLs and reports inaccessible, forbidden and non-file paths: ${links}`, async (t) => {
+  test(`partial failure preserves successful URLs, silently skips directories and reports OV errors: ${links}`, async (t) => {
     const { workspace, policy } = await fixture(t);
     const outside = await mkdtemp(join(tmpdir(), "octo-outside-"));
     t.after(() => rm(outside, { recursive: true, force: true }));
@@ -1799,29 +1800,29 @@ for (const links of ["ordinary paths", "symlink escape"]) {
     )
       return;
     await mkdir(join(workspace, "directory"));
-    await writeFile(join(workspace, "good.html"), "game");
+    await writeFile(join(workspace, "good.md"), "game");
     const calls = [];
     const upload = async (_bytes, name) => {
       calls.push(name);
-      return "https://cdn.example.com/good.html";
+      return "https://cdn.example.com/good.md";
     };
     const escape = links === "symlink escape" ? "[escape](escape.txt) " : "";
     // 盘符路径在 Windows 合法；编码分隔符的 file URL 在所有平台均不可转换为本地路径。
-    const text = `[good](good.html) [missing](missing.pdf) ${escape}[dir](directory) [outside](${join(outside, "secret.txt")}) [windows](C:/provider/out.pdf) [invalid](file:///invalid%2Fpath)`;
+    const text = `[good](good.md) [missing](missing.txt) ${escape}[dir](directory) [outside](${join(outside, "secret.txt")}) [windows](C:/provider/out.txt) [invalid](file:///invalid%2Fpath.txt)`;
     const result = await prepareArtifacts(text, policy, signal, upload);
-    assert.deepEqual(calls, ["good.html"]);
-    assert.match(result, /\[good\]\(https:\/\/cdn.example.com\/good.html\)/);
+    assert.deepEqual(calls, ["good.md"]);
+    assert.match(result, /\[good\]\(https:\/\/cdn.example.com\/good.md\)/);
     for (const reason of [
-      "file-unavailable",
-      "directory-policy",
-      "not-regular-file",
-      "path-unavailable",
+      "OV_DELIVERY_READ_FAILED",
+      "OV_DELIVERY_POLICY_DENIED",
+      "OV_DELIVERY_PATH_INVALID",
     ])
       assert.ok(result.includes(reason), reason);
-    assert.match(result, /generation was not rerun/);
+    assert.doesNotMatch(result, /generation was not rerun|not-regular-file/);
+    assert.ok(result.includes("***directory***"));
+    assert.equal(result.includes(outside), false);
     if (links === "symlink escape") {
-      assert.match(result, /\[escape\]\(escape.txt\)/);
-      assert.ok(result.includes("escape.txt (directory-policy)"));
+      assert.ok(result.includes("***escape\\.txt***"));
     }
     assert.equal(
       await readFile(join(outside, "secret.txt"), "utf8"),
@@ -1835,11 +1836,11 @@ test("size, total, count, MIME and root policies reject before transfer", async 
   await writeFile(join(workspace, "one.txt"), "1234");
   await writeFile(join(workspace, "two.txt"), "1234");
   for (const [override, reason, expectedCalls] of [
-    [{ maxFileBytes: 3 }, "file-size-limit", 0],
-    [{ maxTotalBytes: 5 }, "total-size-limit", 1],
-    [{ maxFiles: 1 }, "file-count-limit", 1],
-    [{ mimeTypes: [] }, "type-policy", 0],
-    [{ roots: [] }, "directory-policy", 0],
+    [{ maxFileBytes: 3 }, "OV_DELIVERY_FILE_SIZE_LIMIT", 0],
+    [{ maxTotalBytes: 5 }, "OV_DELIVERY_TOTAL_SIZE_LIMIT", 1],
+    [{ maxFiles: 1 }, "OV_DELIVERY_FILE_COUNT_LIMIT", 1],
+    [{ mimeTypes: [] }, "OV_DELIVERY_POLICY_DENIED", 0],
+    [{ roots: [] }, "OV_DELIVERY_POLICY_DENIED", 0],
   ]) {
     let calls = 0;
     const output = await prepareArtifacts(
@@ -1870,7 +1871,8 @@ test("upload failure is cached across aliases and owner cancellation stops prepa
     },
   );
   assert.equal(calls, 1);
-  assert.match(failure, /service-rejected/);
+  assert.match(failure, /OV_DELIVERY_UPLOAD_FAILED/);
+  assert.doesNotMatch(failure, /service-rejected/);
   const owner = new AbortController();
   const operation = prepareArtifacts(
     "[a](file.txt)",
@@ -1896,7 +1898,7 @@ test("upload failure is cached across aliases and owner cancellation stops prepa
       );
     },
   );
-  assert.match(timed, /delivery-timeout/);
+  assert.match(timed, /OV_DELIVERY_TIMEOUT/);
 });
 
 test("chat upload uses signed PUT headers and exposes only the persistent download URL", async (t) => {
@@ -2054,14 +2056,9 @@ test("invocation establishes the contract before execution and cannot accept for
     assert.deepEqual(contract.payload.allowedRoots, [process.cwd()]);
     if (mode) assert.match(contract.payload.guidance, /does not automatically upload/);
     else {
-      assert.equal(
-        contract.payload.guidance,
-        "If your final deliverable is a local file, reference it using Markdown with an absolute path: [label](/absolute/path); for images, use ![alt](/absolute/path).",
-      );
-      assert.doesNotMatch(
-        contract.payload.guidance,
-        /upload|tool calls|Do not send|publish/,
-      );
+      assert.match(contract.payload.guidance, /Supported extensions/);
+      assert.deepEqual(contract.payload.supportedExtensions, Object.keys(ARTIFACT_TYPES));
+      assert.match(contract.payload.guidance, /Directories and other file types/);
     }
     assert.deepEqual(submitted, original);
   }
@@ -2117,7 +2114,7 @@ test("invocation freezes delivery mode and allowed roots before SDK configuratio
 for (const cardState of ["failed", "unknown"]) {
   test(`transport preserves links and finalized file budgets across text retries, with explicit ${cardState} card receipts`, async (t) => {
     const { workspace, policy } = await fixture(t);
-    await writeFile(join(workspace, "game.html"), "html");
+    await writeFile(join(workspace, "game.md"), "game");
     await writeFile(join(workspace, "notes.md"), "markdown");
     await writeFile(join(workspace, "image.png"), "image");
     const token = `bf_${randomUUID()}`;
@@ -2208,7 +2205,7 @@ for (const cardState of ["failed", "unknown"]) {
       payload: { type: 1, content: "create a game" },
     });
     const text =
-      "[Play](game.html) [Again](./game.html) [Notes][n] ![Image](image.png) @[owner:Owner]\n\n[n]: notes.md";
+      "[Play](game.md) [Again](./game.md) [Notes][n] ![Image](image.png) @[owner:Owner]\n\n[n]: notes.md";
     const options = {
       artifacts: policy,
       signal,
@@ -2227,7 +2224,7 @@ for (const cardState of ["failed", "unknown"]) {
       "text retries cannot reopen file delivery budgets",
     );
     assert.equal(
-      cards.filter((args) => args[2].name === "game.html").length,
+      cards.filter((args) => args[2].name === "game.md").length,
       1,
     );
     assert.equal(
@@ -2236,10 +2233,10 @@ for (const cardState of ["failed", "unknown"]) {
     );
     assert.equal(new Set(cards.map((args) => args[3])).size, 2);
     assert.deepEqual(cards[0][2], {
-      url: "https://cdn.example.com/chat/generated-game.html",
-      name: "game.html",
+      url: "https://cdn.example.com/chat/generated-game.md",
+      name: "game.md",
       size: 4,
-      extension: "html",
+      extension: "md",
     });
     assert.notEqual(cards[0][3], cards[1][3]);
     assert.equal(transport.status.cardDeliveries, 2);
@@ -2247,12 +2244,12 @@ for (const cardState of ["failed", "unknown"]) {
     assert.equal(sends[0][3], sends[1][3]);
     assert.ok(
       sends[1][2].startsWith(
-        "[Play](https://cdn.example.com/chat/generated-game.html)",
+        "[Play](https://cdn.example.com/chat/generated-game.md)",
       ),
     );
     assert.match(
       sends[1][2],
-      /\[Again\]\(https:\/\/cdn.example.com\/chat\/generated-game.html\)/,
+      /\[Again\]\(https:\/\/cdn.example.com\/chat\/generated-game.md\)/,
     );
     assert.match(
       sends[1][2],
@@ -2264,10 +2261,9 @@ for (const cardState of ["failed", "unknown"]) {
     );
     assert.match(
       sends[1][2],
-      new RegExp(
-        `File card delivery unconfirmed: notes.md \\(${cardState}: IM_SEND_TEST_RECEIPT\\)`,
-      ),
+      new RegExp(cardState === "failed" ? "OV_DELIVERY_CARD_FAILED" : "OV_DELIVERY_CARD_UNCONFIRMED"),
     );
+    assert.doesNotMatch(sends[1][2], /IM_SEND_TEST_RECEIPT|generation was not rerun|File card delivery/);
     const mention = sends[1][5].entities[0];
     assert.equal(
       sends[1][2].slice(mention.offset, mention.offset + mention.length),
@@ -2334,6 +2330,227 @@ for (const links of ["ordinary paths", "symlink aliases"]) {
   });
 }
 
+test("OV: supported extensions upload with their declared MIME, including uppercase and empty files", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  for (const [extension, mime] of Object.entries({
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".zip": "application/zip", ".json": "application/json", ".xml": "application/xml",
+    ".csv": "text/csv", ".tsv": "text/tab-separated-values",
+    ".yaml": "text/yaml", ".toml": "application/toml", ".html": "text/html",
+  })) assert.equal(ARTIFACT_TYPES[extension], mime);
+  for (const [extension, mime] of Object.entries(ARTIFACT_TYPES)) {
+    const name = `empty${extension.toUpperCase()}`;
+    await writeFile(join(workspace, name), "");
+    const result = await prepareArtifactReply(`[file](${name})`, policy, signal, async (bytes, filename, type) => {
+      assert.equal(bytes.length, 0);
+      assert.equal(filename, name);
+      assert.equal(type, mime);
+      return "https://cdn.example.com/empty";
+    });
+    assert.equal(result.incomplete, undefined);
+    assert.equal(result.files.length, 1);
+  }
+});
+
+test("OV: directories, unsupported references and FIFO are silent and do not consume budgets", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  await mkdir(join(workspace, "dir.md"));
+  await writeFile(join(workspace, "last.txt"), "x");
+  const targets = ["skills/", "dir.md/", "missing.mp3", "missing.pdf", "missing", "missing.txt.mp3", "C:/private/sound.mp3"];
+  if (process.platform !== "win32") {
+    execFileSync("mkfifo", [join(workspace, "pipe.txt")]);
+    targets.push("pipe.txt");
+  }
+  let uploads = 0;
+  const result = await prepareArtifactReply(
+    `${targets.map((target) => `[label](${target})`).join(" ")} [last](last.txt)`,
+    { ...policy, maxFiles: 1, maxTotalBytes: 1, maxFileBytes: 1 }, signal,
+    async () => { uploads++; return "https://cdn.example.com/last"; },
+  );
+  assert.equal(uploads, 1);
+  assert.equal(result.incomplete, undefined);
+  assert.doesNotMatch(result.text, /OV_|private|\[label\]/);
+  assert.match(result.text, /\*\*\*skills\*\*\*/);
+  assert.match(result.text, /\[last\]\(https:\/\/cdn.example.com\/last\)/);
+  const noRoots = await prepareArtifactReply("[dir](dir.md)", { ...policy, roots: [] }, signal, () => assert.fail());
+  assert.equal(noRoots.incomplete, undefined);
+});
+
+test("OV: downgrade handles reference forms, protected definitions and nested links without uploading hidden children", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  await writeFile(join(workspace, "a.png"), "image");
+  const text = [
+    "before [label](<./song name.mp3> 'title') after",
+    "[r] [r][] [alias][r] ![picture][r]",
+    "[r]: ./song%20name.mp3 'title'",
+    "[r]: ./duplicate.mp3",
+    "[![hidden](./a.png)](./movie.mp3)",
+    "> [example][shared]",
+    "[live][shared]",
+    "[shared]: ./protected.mp3",
+    "[![visible](./a.png)](https://example.com/outer)",
+    "`[code](./private.mp3)`",
+  ].join("\n\n");
+  let uploads = 0;
+  const result = await prepareArtifactReply(text, policy, signal, async () => {
+    uploads++; return "https://cdn.example.com/a.png";
+  });
+  assert.equal(uploads, 1);
+  assert.equal(result.incomplete, undefined);
+  assert.ok(result.text.startsWith("before ***song name\\.mp3*** after"));
+  assert.doesNotMatch(result.text, /\[r\]:|\[hidden\]|duplicate.mp3/);
+  assert.ok(result.text.includes("> [example][shared]"));
+  assert.ok(result.text.includes("[shared]: ./protected.mp3"));
+  assert.ok(result.text.includes("***protected\\.mp3***"));
+  assert.ok(result.text.includes("[![visible](https://cdn.example.com/a.png)](https://example.com/outer)"));
+  assert.ok(result.text.includes("`[code](./private.mp3)`"));
+  assert.equal((result.text.match(/\*\*\*song name/g) ?? []).length, 5);
+});
+
+test("OV: names are decoded once, bounded and escaped without injecting Markdown", async (t) => {
+  const { policy } = await fixture(t);
+  const name = "file*_[x]&amp;\\evil.mp3";
+  const encoded = encodeURIComponent(name);
+  const result = await prepareArtifactReply(`[x](./${encoded}) [percent](./literal%2520name.mp3)`, policy, signal, () => assert.fail());
+  const values = [];
+  const walk = (node) => {
+    if (node.type === "text") values.push(node.value);
+    assert.notEqual(node.type, "link");
+    assert.notEqual(node.type, "html");
+    for (const child of node.children ?? []) walk(child);
+  };
+  walk(fromMarkdown(result.text));
+  // 反斜杠属于路径分隔符；文件名不得带出此前的路径部分。
+  assert.ok(values.includes("evil.mp3"));
+  assert.ok(values.includes("literal%20name.mp3"));
+  const long = await prepareArtifactReply(`[x](./${"a".repeat(130)}.mp3)`, policy, signal, () => assert.fail());
+  assert.equal(long.text, `***${"a".repeat(120)}***`);
+  const punctuated = await prepareArtifactReply(`[x](./${encodeURIComponent("a*_[x]&amp;.mp3")})`, policy, signal, () => assert.fail());
+  values.length = 0;
+  walk(fromMarkdown(punctuated.text));
+  assert.deepEqual(values, ["a*_[x]&amp;.mp3"]);
+});
+
+test("OV: a downgraded image inside a protected reference expansion uses nonoverlapping edits", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  await writeFile(join(workspace, "game.md"), "game");
+  const text = "> [example][g]\n\n[![alt](voice.mp3) play][g]\n\n[g]: ./game.md 'Play'";
+  const result = await prepareArtifactReply(text, policy, signal, async () => "https://cdn.example.com/game.md");
+  assert.equal(result.text, "> [example][g]\n\n[***voice\\.mp3*** play](<https://cdn.example.com/game.md> 'Play')\n\n[g]: ./game.md 'Play'");
+  const nestedOnly = "> ![example][image]\n\n[![alt][image]](movie.mp3)\n\n[image]: ./game.md";
+  const hidden = await prepareArtifactReply(nestedOnly, policy, signal, () => assert.fail("hidden file uploaded"));
+  assert.equal(hidden.text, "> ![example][image]\n\n***movie\\.mp3***\n\n[image]: ./game.md");
+});
+
+test("OV: a definition inside a protected quote survives active reference downgrade", async (t) => {
+  const { policy } = await fixture(t);
+  const result = await prepareArtifactReply("> [r]: ./song.mp3\n\n[live][r]", policy, signal, () => assert.fail());
+  assert.equal(result.text, "> [r]: ./song.mp3\n\n***song\\.mp3***");
+});
+
+test("OV: realpath aliases cannot expand supported types or bypass root policy", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  await writeFile(join(workspace, "audio.mp3"), "audio");
+  await writeFile(join(workspace, "photo.jpg"), "image");
+  await mkdir(join(workspace, "folder"));
+  for (const [alias, target] of [["alias.txt", "audio.mp3"], ["alias.jpeg", "photo.jpg"], ["folder.md", "folder"], ["different.txt", "photo.jpg"], ["dangling.md", "absent.md"]]) {
+    if (!(await symlinkFixture(t, join(workspace, target), join(workspace, alias)))) return;
+  }
+  let uploads = 0;
+  const result = await prepareArtifactReply("[a](alias.txt) [b](alias.jpeg) [c](folder.md) [d](different.txt)", policy, signal, async (_bytes, _name, mime) => {
+    uploads++; assert.equal(mime, "image/jpeg"); return "https://cdn.example.com/photo.jpg";
+  });
+  assert.equal(result.incomplete, undefined);
+  assert.equal(uploads, 1);
+  const dangling = await prepareArtifactReply("[missing](dangling.md)", policy, signal, () => assert.fail());
+  assert.match(dangling.text, /OV_DELIVERY_READ_FAILED/);
+});
+
+test("OV: upload status and timeout map to stable codes without exposing causes", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  await writeFile(join(workspace, "file.txt"), "x");
+  for (const [cause, code] of [
+    [Object.assign(new Error("PRIVATE_PATH token"), { status: 413 }), "OV_DELIVERY_FILE_SIZE_LIMIT"],
+    [new DOMException("PRIVATE_PATH", "TimeoutError"), "OV_DELIVERY_TIMEOUT"],
+    [Object.assign(new Error("PRIVATE_PATH"), { status: 408 }), "OV_DELIVERY_TIMEOUT"],
+    [Object.assign(new Error("PRIVATE_PATH"), { status: 504 }), "OV_DELIVERY_TIMEOUT"],
+    [Object.assign(new Error("PRIVATE_PATH"), { code: "ETIMEDOUT" }), "OV_DELIVERY_TIMEOUT"],
+    [new Error("PRIVATE_PATH token"), "OV_DELIVERY_UPLOAD_FAILED"],
+  ]) {
+    const logs = [];
+    const result = await prepareArtifactReply("[a](file.txt) [b](./file.txt)", policy, signal, async () => { throw cause; }, {
+      log: (...args) => logs.push(args), effectKey: "private-effect/path",
+    });
+    assert.equal(result.incomplete, true);
+    assert.equal(result.text.split(code).length - 1, 1);
+    assert.doesNotMatch(result.text, /PRIVATE_PATH|token|file.txt\)|generation/);
+    assert.equal(logs.length, 2);
+    assert.ok(logs.every(([, event, data]) => event === "delivery.failure" && data.stage === "upload" && /^diag_[0-9a-f]{32}$/.test(data.diagnostic_id)));
+    assert.doesNotMatch(JSON.stringify(logs), /PRIVATE_PATH|token|private-effect/);
+  }
+});
+
+test("OV: file mutation during descriptor reads is rejected before upload", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  const filename = join(workspace, "file.txt");
+  await writeFile(filename, "first");
+  const handle = await open(filename, "r");
+  const prototype = Object.getPrototypeOf(handle);
+  await handle.close();
+  const original = prototype.read;
+  t.mock.method(prototype, "read", async function (...args) {
+    const result = await original.apply(this, args);
+    await writeFile(filename, "changed and longer");
+    return result;
+  });
+  const result = await prepareArtifactReply("[a](file.txt)", policy, signal, () => assert.fail("changed file uploaded"));
+  assert.match(result.text, /OV_DELIVERY_READ_FAILED/);
+});
+
+test("OV: diagnostics reach worker logs without leaking into status mirrors", async (t) => {
+  const { workspace, policy } = await fixture(t);
+  const directory = join(workspace, "logs");
+  const statuses = [];
+  const logging = new RuntimeLogging({ directory, statusOutput: (record) => statuses.push(record) });
+  t.after(() => logging.close());
+  const result = await prepareArtifactReply("[missing](missing.md)", policy, signal, () => assert.fail(), {
+    log: logging.channel("channel-gateway"), effectKey: "final:private/path",
+  });
+  await logging.close();
+  const content = (await Promise.all((await readdir(join(directory, "channels"))).map((name) => readFile(join(directory, "channels", name), "utf8")))).join("");
+  const row = content.trim().split("\n").map(JSON.parse).find((entry) => entry.event === "delivery.failure");
+  assert.equal(row.data.code, "OV_DELIVERY_READ_FAILED");
+  assert.equal(row.data.stage, "read");
+  assert.equal(row.data.native_code, "ENOENT");
+  assert.match(row.data.diagnostic_id, /^diag_[0-9a-f]{32}$/);
+  assert.match(row.data.effect_id, /^[0-9a-f]{64}$/);
+  assert.deepEqual(statuses, []);
+  assert.equal(content.includes(workspace), false);
+  assert.doesNotMatch(content, /private\/path|missing.md|cause|stack/);
+  assert.match(result.text, /OV_DELIVERY_READ_FAILED/);
+});
+
+test("OV: shared registry, user messages and log failures remain independent", async (t) => {
+  assert.ok(Object.keys(GATEWAY_ERROR_CODES).every((code) => /^OV_[A-Z]+_[A-Z_]+$/.test(code)));
+  const error = new GatewayError("OV_DELIVERY_CARD_UNCONFIRMED", "card", { cause: Error("PRIVATE"), deliveryState: "unknown" });
+  assert.equal(error.category, "unknown");
+  assert.equal(error.deliveryState, "unknown");
+  assert.equal(error.cause.message, "PRIVATE");
+  assert.equal(gatewayFailureMessage([error.code, error.code], "cardUnknown"), "附件卡片发送未确认（OV_DELIVERY_CARD_UNCONFIRMED）。");
+  for (const log of [() => { throw Error("logger failed"); }, async () => { throw Error("logger rejected"); }]) {
+    logGatewayError(log, error);
+    const { policy } = await fixture(t);
+    const result = await prepareArtifactReply("[missing](missing.md)", policy, signal, () => assert.fail(), { log });
+    assert.match(result.text, /OV_DELIVERY_READ_FAILED/);
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+});
+
 for (const command of ["/stop", "/reset", "shutdown"]) {
   test(`${command} cancels in-flight final delivery without rerunning generation`, async (t) => {
     let receive,
@@ -2352,7 +2569,7 @@ for (const command of ["/stop", "/reset", "shutdown"]) {
           yield {
             protocolVersion: 2,
             type: "message.delta",
-            payload: { channel: "final", text: "[Game](game.html)" },
+            payload: { channel: "final", text: "[Game](game.md)" },
           };
           yield { protocolVersion: 2, type: "run.completed", payload: {} };
         },
@@ -2415,10 +2632,13 @@ for (const scenario of [
   "shutdown",
   "finish-error-stop",
   "complete",
+  "upload-failure",
+  "upload-timeout",
 ]) {
   test(`presentation cleanup retains final-delivery cancellation ownership: ${scenario}`, async (t) => {
+    const completes = ["complete", "upload-failure", "upload-timeout"].includes(scenario);
     const { workspace } = await fixture(t);
-    await writeFile(join(workspace, "game.html"), "game");
+    await writeFile(join(workspace, "game.md"), "game");
     let receive,
       release,
       finishing = false,
@@ -2444,7 +2664,7 @@ for (const scenario of [
           yield {
             protocolVersion: 2,
             type: "message.delta",
-            payload: { channel: "final", text: "[Game](game.html)" },
+            payload: { channel: "final", text: "[Game](game.md)" },
           };
           yield { protocolVersion: 2, type: "run.completed", payload: {} };
         },
@@ -2496,6 +2716,8 @@ for (const scenario of [
           options.signal,
           async (_bytes, name) => {
             uploads++;
+            if (scenario === "upload-failure") throw new Error("PRIVATE_UPLOAD_CAUSE");
+            if (scenario === "upload-timeout") throw new DOMException("PRIVATE_TIMEOUT", "TimeoutError");
             return `https://cdn.example.com/${name}`;
           },
         );
@@ -2512,7 +2734,7 @@ for (const scenario of [
     assert.equal(uploads, 0);
     if (scenario === "shutdown")
       await assert.rejects(runtime.close(), /IM_DISPOSE_FAILED/);
-    else if (scenario !== "complete") {
+    else if (!completes) {
       receive({
         ...message,
         messageId: "control",
@@ -2529,11 +2751,15 @@ for (const scenario of [
       "a confirmed completed execution must not be cancelled again",
     );
     assert.deepEqual(terminals, ["completed"]);
-    assert.equal(uploads, scenario === "complete" ? 1 : 0);
+    assert.equal(uploads, completes ? 1 : 0);
     assert.equal(cards, scenario === "complete" ? 1 : 0);
-    assert.equal(finals.length, scenario === "complete" ? 1 : 0);
+    assert.equal(finals.length, completes ? 1 : 0);
     if (scenario === "complete")
-      assert.equal(finals[0], "[Game](https://cdn.example.com/game.html)");
+      assert.equal(finals[0], "[Game](https://cdn.example.com/game.md)");
+    if (scenario === "upload-failure" || scenario === "upload-timeout") {
+      assert.match(finals[0], new RegExp(scenario === "upload-failure" ? "OV_DELIVERY_UPLOAD_FAILED" : "OV_DELIVERY_TIMEOUT"));
+      assert.doesNotMatch(finals[0], /PRIVATE_|generation|\[Game\]/);
+    }
     if (scenario !== "shutdown") {
       if (scenario === "/stop" || scenario === "finish-error-stop")
         assert.ok(replies.includes("已请求停止本轮执行。"));

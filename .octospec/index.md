@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [ORT-94：本地引用降级与统一 OV 错误约定](tasks/ort-94-delivery-ov-errors/brief.md)：待审规格、类型白名单、错误兼容边界与本地验收矩阵。
+
 - [Issue 36：源码工作区与根发行包分层](tasks/workspace-sdk-cli/brief.md)：[本地 CI 与宿主/归档验证](tasks/workspace-sdk-cli/validation.md)。
 
 - [ChannelGateway 注册协议复核](tasks/gateway-registration-protocol/brief.md)：Bot ID 必填、移除材料加载设计；[应用层 Hooks 设计](tasks/gateway-registration-protocol/hooks-draft.md)（数组入口）；[双轴审查](tasks/gateway-registration-protocol/review.md)；[Hooks 与 CLI 策略实施](tasks/gateway-registration-protocol/hooks-implementation.md)。

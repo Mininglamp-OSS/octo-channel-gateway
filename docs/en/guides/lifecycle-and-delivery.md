@@ -40,4 +40,38 @@ Final response accumulation has a separate limit of 128 messages and 1 MiB of UT
 
 artifact_delivery.mode defaults to channel. Explicit local file references in a successful final response are checked against frozen path, MIME, count, size, and cancellation budgets before delivery. This does not upload every path appearing in model output. tools mode disables automatic upload and expects business tools to provide recipient-accessible links.
 
+Channel mode uses this fixed, case-insensitive extension allowlist:
+
+| Category | Extensions |
+| --- | --- |
+| Markdown and plain text | `.md`, `.markdown`, `.txt`, `.log`, `.rst`, `.adoc` |
+| Data and configuration | `.json`, `.jsonl`, `.ndjson`, `.xml`, `.csv`, `.tsv`, `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`, `.properties` |
+| Web and SQL text | `.html`, `.htm`, `.css`, `.sql` |
+| Office and RTF | `.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`, `.rtf` |
+| Archive attachments | `.zip` |
+| Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`, `.tif`, `.tiff` |
+
+These formats support ordinary attachment delivery, not guaranteed inline previews. Gateway does not execute, inline, or extract Office, HTML, SVG, or ZIP contents. Directories (including names with supported extensions), nonregular files, and unlisted types such as mp3, PDF, or unknown extensions are silently skipped. Active local links become bold italic basenames without consuming attachment count or byte budgets. tools mode leaves the body unchanged. A symlink's reference name and real target must both be allowlisted with the same MIME type. `allowed_mime_types` can only narrow the fixed allowlist; an empty array denies all files.
+
+Unreadable, policy-denied, oversized, or failed supported files also lose their inaccessible local links. Other successful attachments are still delivered. File card failures retain successfully uploaded links. Notices contain only brief wording and stable OV codes, without local paths, underlying exceptions, or implementation notes about reexecution. Delivery failures never change the Agent terminal state or rerun the Agent or commands. Text retries for one final effect reuse completed attachment preparation.
+
+### OV error convention
+
+Gateway errors use `OV_<DOMAIN>_<REASON>` and a shared registry in the SDK `errors/` layer. Codes, categories, and user messages are maintained independently. This change integrates artifact preparation and file cards while preserving existing IM connection recovery/confirmation facts and Runtime execution codes. Future Gateway user errors follow the same convention; published codes must not change meaning.
+
+| OV code | Category | Meaning |
+| --- | --- | --- |
+| `OV_DELIVERY_PATH_INVALID` | validation | Invalid local path, missing resolution base, or unsupported path form on this host |
+| `OV_DELIVERY_READ_FAILED` | io | Missing or unreadable file, or a file that changed during reading |
+| `OV_DELIVERY_POLICY_DENIED` | permission | File violates host root or MIME policy |
+| `OV_DELIVERY_FILE_COUNT_LIMIT` | limit | Too many files |
+| `OV_DELIVERY_FILE_SIZE_LIMIT` | limit | Per-file byte limit, including upload HTTP 413 |
+| `OV_DELIVERY_TOTAL_SIZE_LIMIT` | limit | Total byte limit |
+| `OV_DELIVERY_TIMEOUT` | timeout | Artifact preparation or upload timed out |
+| `OV_DELIVERY_UPLOAD_FAILED` | network | Upload or upload confirmation failed |
+| `OV_DELIVERY_CARD_FAILED` | network | File card explicitly failed to send |
+| `OV_DELIVERY_CARD_UNCONFIRMED` | unknown | File card delivery is unconfirmed |
+
+Notices deduplicate codes within a reply, for example `部分附件未能发送（OV_DELIVERY_READ_FAILED）。`. When logging is configured, ordinary logs record `delivery.failure` with the code, stage, `diag_` diagnostic ID, sanitized native code, and a hashed effect correlation. Diagnostic causes, attachment contents, credentials, and local paths do not appear in user notices or component status mirrors. No additional log files are created without logging configuration. Owner cancellation, identity revocation, and shutdown retain their existing cancellation paths rather than becoming attachment timeouts.
+
 Default maximums are 20 MiB per file, 50 MiB total, 16 files, and 30 seconds. Configuration can tighten these bounds but cannot exceed them. Omitting allowed_roots adds no extra root restriction; an empty array denies all files. This changes neither the Agent workspace nor other path checks. Model Context cannot expand host policy. See [Configuration](../reference/configuration.md) and [artifact policy](../../../packages/octo-channel-gateway-sdk/src/delivery/artifact-policy.ts).
