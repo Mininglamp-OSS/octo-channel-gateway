@@ -3,8 +3,11 @@ import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fromMarkdown } from "mdast-util-from-markdown";
-import { inferContentType } from "../transport/api/files.js";
 import type { ImArtifactPolicy } from "./artifact-policy.js";
+import { artifactMime } from "./artifact-types.js";
+import { GatewayError, logGatewayError, type GatewayErrorCode, type GatewayErrorStage } from "../errors/gateway-error.js";
+import { gatewayFailureMessage } from "../errors/user-message.js";
+import type { RuntimeLog } from "../support/runtime-log.js";
 
 interface Span {
   start: number;
@@ -33,8 +36,9 @@ function span(node: Node): Span | undefined {
 /** AST 决定哪些引用有效，parser token 提供精确地址区间，避免重序列化破坏原 Markdown。 */
 function references(text: string): {
   targets: Target[];
+  candidates: Target[];
   fileTargets: Set<string>;
-  edits: (urls: Map<string, string>) => Target[];
+  edits: (urls: Map<string, string>, downgraded: Map<string, string>) => Target[];
 } {
   const tokens: Token[] = [];
   const tree = fromMarkdown(text, {
@@ -59,12 +63,14 @@ function references(text: string): {
     ],
   });
   const definitions = new Map<string, { node: Node; blocked: boolean }>();
+  const allDefinitions: { node: Node; blocked: boolean }[] = [];
   const uses: { node: Node; blocked: boolean }[] = [];
   const inline: Node[] = [];
   const visit = (node: Node, blocked = false): void => {
     blocked ||= ["blockquote", "code", "inlineCode", "html"].includes(
       node.type,
     );
+    if (node.type === "definition") allDefinitions.push({ node, blocked });
     if (
       node.type === "definition" &&
       node.identifier &&
@@ -92,11 +98,13 @@ function references(text: string): {
     );
   };
   const targets: Target[] = [];
+  const candidates: Target[] = [];
   const fileTargets = new Set<string>();
   for (const node of inline) {
     const destination = within(node, "resourceDestinationString");
     if (destination && node.url) {
       targets.push({ ...destination, url: node.url });
+      candidates.push({ ...span(node)!, url: node.url });
       if (node.type === "link") fileTargets.add(node.url);
     }
   }
@@ -110,6 +118,7 @@ function references(text: string): {
     if (!definition?.node.url) continue;
     const destination = within(definition.node, "definitionDestinationString");
     if (!destination) continue;
+    candidates.push({ ...span(use.node)!, url: definition.node.url });
     if (use.node.type === "linkReference") fileTargets.add(definition.node.url);
     const protectedExample =
       definition.blocked ||
@@ -139,8 +148,9 @@ function references(text: string): {
   }
   return {
     targets,
+    candidates: candidates.sort((a, b) => a.start - b.start || b.end - a.end),
     fileTargets,
-    edits: (urls) => {
+    edits: (urls, downgraded) => {
       let edits: Target[] = targets
         .filter(
           (target) =>
@@ -150,12 +160,18 @@ function references(text: string): {
           const url = urls.get(target.url);
           return url ? [{ ...target, url }] : [];
         });
-      // 内层图片先替换，再将已替换的 label 合入外层引用，避免区间重叠破坏 Markdown。
+      // 先降级整条活动引用，再合成外层共享引用；外层降级覆盖内部编辑。
+      const collapsed = candidates.filter((entry) => downgraded.has(entry.url));
+      for (const entry of collapsed.sort((a, b) => b.start - a.start || a.end - b.end)) {
+        edits = edits.filter((edit) => edit.start < entry.start || edit.end > entry.end);
+        edits.push({ ...entry, url: downgraded.get(entry.url)! });
+      }
+      // 内层图片（包括已降级文本）先替换，再合入外层 label，避免相交区间。
       for (const entry of expansions.sort(
         (a, b) => a.range.end - a.range.start - (b.range.end - b.range.start),
       )) {
         const url = urls.get(entry.url);
-        if (!url) continue;
+        if (!url || collapsed.some((range) => range.start <= entry.range.start && range.end >= entry.range.end)) continue;
         let label = text.slice(entry.label.start, entry.label.end);
         const nested = edits.filter(
           (edit) =>
@@ -175,6 +191,15 @@ function references(text: string): {
           url: `${label}(<${url}>${entry.title ? ` ${text.slice(entry.title.start, entry.title.end)}` : ""})`,
         });
       }
+      for (const { node, blocked } of allDefinitions) {
+        if (blocked) continue;
+        const activeUses = uses.filter((use) => use.node.identifier === node.identifier);
+        if (!activeUses.length || activeUses.some((use) => use.blocked)) continue;
+        if (activeUses.every((use) => {
+          const range = span(use.node)!;
+          return collapsed.some((entry) => entry.start <= range.start && entry.end >= range.end);
+        })) edits.push({ ...span(node)!, url: "" });
+      }
       return edits;
     },
   };
@@ -184,13 +209,13 @@ function localPath(target: string, workspace?: string): string | undefined {
   if (/^file:/i.test(target)) {
     try {
       return fileURLToPath(target);
-    } catch {
-      throw new Error("path-unavailable");
+    } catch (cause) {
+      throw new GatewayError("OV_DELIVERY_PATH_INVALID", "reference", { cause });
     }
   }
   // 其他操作系统的盘符/UNC 也是本地引用，不能当作外部 URL 跳过或在本机错误拼接。
   if (/^[a-z]:[\\/]/i.test(target) || target.startsWith("\\\\")) {
-    if (process.platform !== "win32") throw new Error("path-unavailable");
+    if (process.platform !== "win32") throw new GatewayError("OV_DELIVERY_PATH_INVALID", "reference");
     return target;
   }
   if (
@@ -203,13 +228,13 @@ function localPath(target: string, workspace?: string): string | undefined {
   let decoded: string;
   try {
     decoded = decodeURIComponent(clean);
-  } catch {
-    throw new Error("invalid-path");
+  } catch (cause) {
+    throw new GatewayError("OV_DELIVERY_PATH_INVALID", "reference", { cause });
   }
   if (!decoded || decoded.includes("\0") || decoded.startsWith("~"))
-    throw new Error("invalid-path");
+    throw new GatewayError("OV_DELIVERY_PATH_INVALID", "reference");
   if (path.isAbsolute(decoded)) return decoded;
-  if (!workspace) throw new Error("workspace-unavailable");
+  if (!workspace) throw new GatewayError("OV_DELIVERY_PATH_INVALID", "reference");
   return path.resolve(workspace, decoded);
 }
 
@@ -223,9 +248,20 @@ function contained(root: string, file: string): boolean {
   );
 }
 
-function failureName(target: string): string {
-  const name = target.split(/[\\/]/).at(-1)?.split(/[?#]/, 1)[0] || "file";
-  return name.replace(/[\r\n`[\]<>]/g, "_").slice(0, 120);
+function referencePath(target: string): string | undefined {
+  if (!/^file:/i.test(target) && !/^[a-z]:[\\/]/i.test(target) && !target.startsWith("\\\\") &&
+    (/^[a-z][a-z\d+.-]*:/i.test(target) || target.startsWith("//") || target.startsWith("#"))) return undefined;
+  const clean = /^file:/i.test(target) ? new URL(target).pathname : target.split(/[?#]/, 1)[0]!;
+  return decodeURIComponent(clean);
+}
+
+function downgradedName(target: string): string {
+  let decoded: string;
+  try { decoded = referencePath(target) ?? ""; } catch { decoded = ""; }
+  const name = decoded.replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) || "文件";
+  const safe = ([...name.replace(/[\x00-\x1f\x7f]/g, " ").trim()].slice(0, 120).join("").trim() || "文件")
+    .replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/g, "\\$&");
+  return `***${safe}***`;
 }
 
 export type ArtifactUpload = (
@@ -255,6 +291,7 @@ export async function prepareArtifacts(
   policy: ImArtifactPolicy,
   ownerSignal: AbortSignal,
   upload: ArtifactUpload,
+  diagnostics?: { log?: RuntimeLog; effectKey?: string },
 ): Promise<PreparedArtifacts> {
   if (policy.mode === "tools") return { text, files: [] };
   ownerSignal.throwIfAborted();
@@ -264,32 +301,52 @@ export async function prepareArtifacts(
     AbortSignal.timeout(policy.timeoutMs),
   ]);
   const urls = new Map<string, string>();
+  const downgraded = new Map<string, string>();
+  const processed = new Set<string>();
   const files = new Map<string, Promise<ArtifactFile>>();
   const cards = new Map<string, ArtifactFile>();
-  const failures: string[] = [];
+  const failures: GatewayErrorCode[] = [];
   let total = 0;
   let count = 0;
   let roots: string[] | undefined;
-  for (const target of new Set(parsed.targets.map((entry) => entry.url))) {
+  let hiddenUntil = -1;
+  for (const candidate of parsed.candidates) {
+    if (candidate.start < hiddenUntil) continue;
+    const target = candidate.url;
+    if (processed.has(target)) {
+      if (downgraded.has(target)) hiddenUntil = candidate.end;
+      continue;
+    }
+    processed.add(target);
+    let stage: GatewayErrorStage = "reference";
     try {
+      const decoded = referencePath(target);
+      if (decoded === undefined) continue;
+      if (!artifactMime(decoded)) {
+        downgraded.set(target, downgradedName(target));
+        continue;
+      }
       const file = localPath(target, policy.workspace);
       if (file === undefined) continue;
+      stage = "read";
+      const resolved = await realpath(file);
+      const entry = await lstat(resolved);
+      const mime = artifactMime(resolved);
+      if (!entry.isFile() || !mime || mime !== artifactMime(decoded)) {
+        downgraded.set(target, downgradedName(target));
+        continue;
+      }
       signal.throwIfAborted();
       if (policy.roots !== undefined && !roots)
         roots = await Promise.all(policy.roots.map((root) => realpath(root)));
-      const resolved = await realpath(file).catch(() => {
-        throw new Error("file-unavailable");
-      });
       if (roots && !roots.some((root) => contained(root, resolved)))
-        throw new Error("directory-policy");
+        throw new GatewayError("OV_DELIVERY_POLICY_DENIED", "read");
       let result = files.get(resolved);
       if (!result) {
-        if (++count > policy.maxFiles) throw new Error("file-count-limit");
+        if (++count > policy.maxFiles) throw new GatewayError("OV_DELIVERY_FILE_COUNT_LIMIT", "read");
         result = (async () => {
           let handle: FileHandle | undefined;
           try {
-            const entry = await lstat(resolved);
-            if (!entry.isFile()) throw new Error("not-regular-file");
             handle = await open(
               resolved,
               constants.O_RDONLY |
@@ -303,14 +360,13 @@ export async function prepareArtifacts(
               stat.ino !== entry.ino ||
               (await realpath(file)) !== resolved
             )
-              throw new Error("file-changed");
+              throw new GatewayError("OV_DELIVERY_READ_FAILED", "read");
             if (stat.size > policy.maxFileBytes)
-              throw new Error("file-size-limit");
+              throw new GatewayError("OV_DELIVERY_FILE_SIZE_LIMIT", "read");
             if (total + stat.size > policy.maxTotalBytes)
-              throw new Error("total-size-limit");
-            const mime = inferContentType(resolved);
+              throw new GatewayError("OV_DELIVERY_TOTAL_SIZE_LIMIT", "read");
             if (policy.mimeTypes && !policy.mimeTypes.includes(mime))
-              throw new Error("type-policy");
+              throw new GatewayError("OV_DELIVERY_POLICY_DENIED", "read");
             total += stat.size;
             signal.throwIfAborted();
             // 同一描述符读取且预分配有界容量，文件增长也不能绕过已核验的字节预算。
@@ -324,7 +380,7 @@ export async function prepareArtifacts(
                 Math.min(64 << 10, bytes.length - offset),
                 offset,
               );
-              if (!read.bytesRead) throw new Error("file-changed");
+              if (!read.bytesRead) throw new GatewayError("OV_DELIVERY_READ_FAILED", "read");
               offset += read.bytesRead;
             }
             const after = await handle.stat();
@@ -333,11 +389,22 @@ export async function prepareArtifacts(
               after.mtimeMs !== stat.mtimeMs ||
               after.ctimeMs !== stat.ctimeMs
             )
-              throw new Error("file-changed");
+              throw new GatewayError("OV_DELIVERY_READ_FAILED", "read");
             signal.throwIfAborted();
             const name = path.basename(resolved);
+            let url: string;
+            try {
+              url = await upload(bytes, name, mime, signal);
+            } catch (cause) {
+              const native = cause as { status?: unknown; code?: unknown } | undefined;
+              const status = native?.status;
+              const timeout = (cause instanceof Error && cause.name === "TimeoutError") ||
+                status === 408 || status === 504 || native?.code === "ETIMEDOUT";
+              throw new GatewayError(status === 413 ? "OV_DELIVERY_FILE_SIZE_LIMIT" : timeout
+                ? "OV_DELIVERY_TIMEOUT" : "OV_DELIVERY_UPLOAD_FAILED", "upload", { cause });
+            }
             return {
-              url: await upload(bytes, name, mime, signal),
+              url,
               name,
               size: bytes.length,
               extension: path.extname(name).slice(1).toLowerCase(),
@@ -363,17 +430,20 @@ export async function prepareArtifacts(
       );
     } catch (error) {
       ownerSignal.throwIfAborted();
-      const reason = signal.aborted
-        ? "delivery-timeout"
-        : error instanceof Error && /^[a-z-]+$/.test(error.message)
-          ? error.message
-          : "upload-failed";
-      failures.push(`${failureName(target)} (${reason})`);
+      const failure = signal.aborted
+        ? new GatewayError("OV_DELIVERY_TIMEOUT", error instanceof GatewayError ? error.stage : stage, { cause: error })
+        : error instanceof GatewayError ? error
+        : new GatewayError(stage === "reference" ? "OV_DELIVERY_PATH_INVALID" : "OV_DELIVERY_READ_FAILED", stage, { cause: error });
+      downgraded.set(target, downgradedName(target));
+      failures.push(failure.code);
+      logGatewayError(diagnostics?.log, failure, diagnostics?.effectKey);
+    } finally {
+      if (downgraded.has(target)) hiddenUntil = candidate.end;
     }
   }
   ownerSignal.throwIfAborted();
   let output = text;
-  const edits = parsed.edits(urls);
+  const edits = parsed.edits(urls, downgraded);
   // 同一定义可能被多个 reference 使用，重复区间只替换一次。
   for (const edit of [
     ...new Map(
@@ -382,7 +452,7 @@ export async function prepareArtifacts(
   ].sort((a, b) => b.start - a.start))
     output = output.slice(0, edit.start) + edit.url + output.slice(edit.end);
   if (failures.length)
-    output += `\n\nAttachment delivery failed: ${failures.join("; ")}. These local references are unavailable to channel recipients; generation was not rerun.`;
+    output += `\n\n${gatewayFailureMessage(failures)}`;
   return {
     text: output,
     files: [...cards.values()],
