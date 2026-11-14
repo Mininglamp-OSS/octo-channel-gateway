@@ -54,6 +54,14 @@ supersedes: []
 
 SDK 不提供或调用 `waitForShutdown()`，不启动只为保持进程存活而存在的循环，不接管 `process.exit` 或 Electron app 生命周期，也不要求宿主使用某一种主循环。CLI 已有 online 逻辑时直接复用，并在退出/失败路径 await close；Electron 在自己的异步退出协调中 await close。已有其他 PID 运行时，查找实例、通过控制 IPC 通知它或重启它均由宿主决定；SDK 不跨进程寻找或修改另一实例。此约束不禁止 SDK 用公开 client 连接 Runtime 的执行 IPC。
 
+## 模型静默与执行超时
+
+Runtime 独占模型静默时钟、工具/审批等待分类及执行预算的强制执行。Gateway 不维护模型静默状态机、周期计时或 300 秒静默取消，也不提供旧逻辑兼容层。默认删除 `model_idle_policy: observe` 和旧 `first_frame_timeout_ms: 310000` 覆盖，沿用 Runtime 的 enforce、300000 ms 模型空闲及 60000 ms 首帧默认值；run/tool 的一天预算及逻辑任务总截止、重试恢复预算保持。
+
+业务可通过 AgentEnv 的 `octo.execution/limits` 显式覆盖预算或策略。显式 observe 原样透传，不拒绝、不强制改写；它关闭模型空闲预算的强制执行，因此由此造成的超长等待属于本项目超时保障约定之外的 invalid 用法，不能宣称 Runtime 协议拒绝该值。
+
+Gateway 仅从 `run.notice` 的 `model_output_idle` 及 `params.silenceMs` 投影卡片静默提示，不按通知到达时间补算。周期刷新需要实际 Runtime 周期下发 60/120/180 秒通知；每条新事实更新原卡片，无事件就不生成静默秒数。新公开文本及真实阶段/终态驱动后续展示，用户 Stop、所属执行清理和真实超时终态仍走原流程。首帧、模型空闲与工具预算不同，不能将五分钟解释为整次任务最长耗时。
+
 ## 迁移状态
 
 ChannelGateway 为当前公开接口，已移除 ChannelRegistry、ChannelDefinition、ChannelRegistration，不设兼容层。CLI 显式 attachKernel，先 await gateway.close 再关闭自己的 client；SDK 接入示例同步反映此所有权。

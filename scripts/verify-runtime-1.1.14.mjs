@@ -179,7 +179,7 @@ test("actual client/Kernel preserves private items, ordered images and complete 
     else process.env.OCTO_CHANNEL_GATEWAY_DEBUG = setting;
     const task = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {
       executionEnvOverrides: { env_variables: [{ key: "TOKEN", value: "full-debug-credential" }] },
-    }, () => {}, undefined, undefined, invokeHooks((level, event, data) => { sdkLogs.push({ level, event, data }); log(level, event, data); }));
+    }, () => {}, undefined, invokeHooks((level, event, data) => { sdkLogs.push({ level, event, data }); log(level, event, data); }));
     assert.equal((await Array.fromAsync(task.events())).at(-1).type, "run.completed");
   }
   assert.deepEqual(input, before);
@@ -205,7 +205,7 @@ test("actual client/Kernel preserves private items, ordered images and complete 
     () => ({ then(_resolve, reject) { reject(new Error("thenable log failure")); } }),
     () => new Promise(() => {}),
   ]) {
-    const faulty = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {}, () => {}, undefined, undefined, invokeHooks(sink));
+    const faulty = new ImTask(client, { ...input, runId: randomUUID(), invocationId: randomUUID() }, "octobuddy", bot, {}, () => {}, undefined, invokeHooks(sink));
     assert.equal((await Array.fromAsync(faulty.events())).at(-1).type, "run.completed");
     // 让未处理拒绝有机会触发；node:test 会将其判为失败，不安装吞错监听器。
     await new Promise((resolve) => setImmediate(resolve));

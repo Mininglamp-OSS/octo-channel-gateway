@@ -15,7 +15,6 @@ import { prepareInvokeInput } from "@mininglamp-oss/octo-runtime/executor-core";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createImInvocation } from "../packages/octo-channel-gateway-sdk/dist/execution/dispatcher.js";
-import { ImModelWait } from "../packages/octo-channel-gateway-sdk/dist/execution/model-wait.js";
 import { ImTask } from "../packages/octo-channel-gateway-sdk/dist/execution/task.js";
 import { validateImConfig } from "../packages/octo-channel-gateway-sdk/dist/index.js";
 import { runtimeModule } from "../test-support/runtime-module.mjs";
@@ -193,8 +192,8 @@ test("IM defaults to one day, accepts explicit long and short limits, validates 
   const f = fixture(async function* () {});
   assert.equal(invocationRuntimeLimits(f.request).runTimeoutMs, 86_400_000);
   assert.equal(invocationRuntimeLimits(f.request).toolTimeoutMs, 86_400_000);
-  assert.equal(invocationRuntimeLimits(f.request).firstFrameTimeoutMs, 310_000);
-  assert.equal(invocationRuntimeLimits(f.request).modelIdlePolicy, "observe");
+  assert.equal(invocationRuntimeLimits(f.request).firstFrameTimeoutMs, undefined);
+  assert.equal(invocationRuntimeLimits(f.request).modelIdlePolicy, undefined);
   for (const ms of [100, 60_000, 86_400_000]) {
     validateImConfig({ ...config, run_timeout_ms: ms });
     assert.equal(
@@ -248,7 +247,8 @@ test("IM limits allow a quiet 15-minute tool and preserve explicit watchdog over
             run_timeout_ms: 60_000,
             tool_timeout_ms: 10_000,
             first_frame_timeout_ms: 20_000,
-            model_idle_policy: "enforce",
+            model_idle_policy: "observe",
+            model_idle_timeout_ms: 600_000,
           },
         },
       ],
@@ -257,7 +257,8 @@ test("IM limits allow a quiet 15-minute tool and preserve explicit watchdog over
   assert.equal(invocationRuntimeLimits(explicit.request).runTimeoutMs, 60_000);
   assert.equal(invocationRuntimeLimits(explicit.request).toolTimeoutMs, 10_000);
   assert.equal(invocationRuntimeLimits(explicit.request).firstFrameTimeoutMs, 20_000);
-  assert.equal(invocationRuntimeLimits(explicit.request).modelIdlePolicy, "enforce");
+  assert.equal(invocationRuntimeLimits(explicit.request).modelIdlePolicy, "observe");
+  assert.equal(invocationRuntimeLimits(explicit.request).modelIdleTimeoutMs, 600_000);
 });
 
 test("active tools pass 120 seconds and ten minutes; one day still cancels", async () => {
@@ -282,7 +283,7 @@ test("active tools pass 120 seconds and ten minutes; one day still cancels", asy
 });
 
 for (const kind of ["executing_tool", "waiting_approval", "waiting_input"]) {
-  test(`IM and Core exclude activity-only ${kind}, then allow a fresh model wait`, () => {
+  test(`Runtime excludes activity-only ${kind}, then enforces a fresh model wait`, () => {
     const f = fixture(async function* () {});
     const controller = new AbortController();
     const watchdog = new InvocationWatchdog(
@@ -291,13 +292,7 @@ for (const kind of ["executing_tool", "waiting_approval", "waiting_input"]) {
       () => {},
       f.time,
     );
-    let timeouts = 0;
-    const waiting = new ImModelWait(
-      f.time,
-      () => {},
-      () => timeouts++,
-    );
-    waiting.start();
+    watchdog.canonical(event("model_step.started", { stepId: "step" }));
     const started = event("activity.started", {
       activityId: "blocking",
       kind,
@@ -307,20 +302,14 @@ for (const kind of ["executing_tool", "waiting_approval", "waiting_input"]) {
       },
     });
     watchdog.canonical(started);
-    waiting.accept(started);
     f.time.tick(900_000);
     assert.equal(controller.signal.aborted, false);
-    assert.equal(timeouts, 0);
     const finished = event("activity.finished", { activityId: "blocking" });
     watchdog.canonical(finished);
-    waiting.accept(finished);
     f.time.tick(299_999);
     assert.equal(controller.signal.aborted, false);
-    assert.equal(timeouts, 0);
     f.time.tick(1);
-    assert.equal(timeouts, 1);
-    assert.equal(controller.signal.aborted, false);
-    waiting.stop();
+    assert.equal(controller.signal.aborted, true);
     watchdog.finish();
     assert.equal(f.timers.size, 0);
   });

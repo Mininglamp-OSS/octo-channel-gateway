@@ -36,6 +36,14 @@ Electron 应在主进程持有 Gateway。在正常 before-quit 中同步 prevent
 
 final 正文累计另限 128 条消息、合计 1 MiB UTF-8。任一超限报告 `IM_FINAL_OUTPUT_LIMIT_EXCEEDED`，进入既有中断与结果未知流程；不将残缺正文作为成功 final 投递，也不触发自动产物上传。无效交互表单逐事件诊断并 ACK，使后续有效卡片动作继续处理；传输和 ACK 失败保留原重试行为。
 
+## 模型静默与超时
+
+Runtime 通过 `agent_run.event` 承载 canonical `run.notice`，以 `model_output_idle` 和源端 `params.silenceMs` 报告模型静默。Gateway 在原卡片展示“模型已 N 秒无输出”。延迟收到的 60000 ms 通知仍显示 60 秒；Gateway 不启动静默时钟、不补算静默时长，也不因本地经过五分钟而取消执行。
+
+卡片周期更新依赖 Runtime 服务在 60、120、180 秒等后续分钟节点发出新通知。每条新时长通过正常渲染与去重更新同一张卡片。Runtime main 提交 `67a44ebc` 已增加周期行为；已发布的 Runtime 1.1.14 每段静默只通知一次。client 1.1.14 的 notice payload 已支持两者。获得周期刷新需要部署包含该变更的 Runtime；Gateway 不提供计时回退、补发错过分钟或兼容层。
+
+增长的公开 assistant 输出清除提示，工具/审批阶段和终态按普通流程更新卡片。私有 reasoning、心跳、usage 与未增长的文本快照不冒充新模型输出。默认 `enforce` 下的五分钟模型空闲预算仅由 Runtime 执行；显式预算和 `observe` 退出约定见[执行预算](../reference/configuration.md)。用户 Stop 与所属执行清理仍走原有取消路径，超时文案来自真实上游终态。
+
 ## 产物
 
 artifact_delivery.mode 默认 channel：成功 final 中明确的本地文件引用按本轮冻结的路径、MIME、数量、大小和取消预算检查后交付。它不是“把所有模型输出路径都上传”。tools 模式不自动上传，由业务工具提供接收方可访问的链接。

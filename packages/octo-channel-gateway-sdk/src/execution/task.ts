@@ -17,7 +17,6 @@ import {
   type InvokeEnvironment,
 } from "@mininglamp-oss/octo-runtime-client/protocol";
 import type { ImBotConfig, ImTaskAttempt } from "../contracts.js";
-import { ImModelWait, MODEL_WAIT_TIMEOUT_MESSAGE } from "./model-wait.js";
 
 export const DEFAULT_CODEX_RETRY = Object.freeze({
   enabled: true,
@@ -57,7 +56,6 @@ interface ActiveAttempt {
 /** 预算内最多 101 次尝试；只保留身份和终态，不在此缓存模型历史。 */
 export class ImTask {
   readonly attempts: ImTaskAttempt[] = [];
-  readonly modelWait: ImModelWait;
   /** 与 Channel 展示、诊断共用的本次未提交事实；不注入执行源事件。 */
   notSubmittedFailure?: FailureEnvelope;
   readonly #policy;
@@ -82,7 +80,6 @@ export class ImTask {
     readonly environment: InvokeEnvironment,
     readonly onAttempt: (request: ImInvocationInput) => void,
     readonly time: ImTaskClock = clock,
-    readonly onModelWaitChanged: () => void = () => {},
     readonly beforeInvoke?: (request: ImInvocationInput, input: GatewayHookResult, signal: AbortSignal) => Promise<GatewayHookResult>,
   ) {
     this.#policy = { ...DEFAULT_CODEX_RETRY, ...config.codex_retry };
@@ -90,14 +87,6 @@ export class ImTask {
       this.#abort.signal,
       ...(environment.signal ? [environment.signal] : []),
     ]);
-    this.modelWait = new ImModelWait(time, onModelWaitChanged, () => {
-      this.stopReason = "IM_MODEL_SILENCE_TIMEOUT";
-      void this.cancelExecution(this.stopReason)
-        .then((accepted) => {
-          if (!accepted) this.modelWait.unconfirmed();
-        })
-        .catch(() => this.modelWait.unconfirmed());
-    });
   }
   /** reset 只阻止后续尝试，不把 reset 变成取消当前 Provider 执行。 */
   stopRetries(): void {
@@ -105,8 +94,6 @@ export class ImTask {
   }
   /** owner stop 只取消执行和后续尝试；当前订阅须继续消费真实终态。 */
   async drain(reason = "IM shutdown"): Promise<void> {
-    this.modelWait.stop();
-    this.onModelWaitChanged();
     this.#draining = true;
     this.stopRetries();
     const active = this.#active;
@@ -138,11 +125,6 @@ export class ImTask {
   }
   /** 展示故障只请求停止执行及重试，保留观察 signal；返回取消受理结果，不代表执行终态。 */
   async cancelExecution(reason: string): Promise<boolean> {
-    // 超时自身还需保留取消确认宽限；其他停止来源立即清掉等待通知和全部计时。
-    if (reason !== "IM_MODEL_SILENCE_TIMEOUT") {
-      this.modelWait.stop();
-      this.onModelWaitChanged();
-    }
     this.stopRetries();
     if (!this.#active || this.#active.completion === "not_submitted")
       return true;
@@ -197,7 +179,6 @@ export class ImTask {
     return true;
   }
   #observe(event: CanonicalEvent): void {
-    this.modelWait.accept(event);
     // 工具和交互可能产生外部副作用；首次出现后不再自动重放本轮。
     if (
       event.type.startsWith("tool_call.") ||
@@ -266,11 +247,6 @@ export class ImTask {
       () => this.#stop("IM_TASK_DEADLINE"),
       deadline - this.time.now(),
     );
-    const stopWaiting = () => {
-      this.modelWait.stop();
-      this.onModelWaitChanged();
-    };
-    this.#signal.addEventListener("abort", stopWaiting, { once: true });
     let request = this.request;
     try {
       while (!this.#signal.aborted && !this.#draining) {
@@ -307,7 +283,6 @@ export class ImTask {
           }),
         };
         this.#active = active;
-        this.modelWait.start();
         this.#cancelPending = undefined;
         const attempt: ImTask["attempts"][number] = {
           runId: request.runId,
@@ -320,13 +295,13 @@ export class ImTask {
         const ignoredAsyncQuestions = new Set<string>();
         try {
           const run = this.kernel.invoke(prepared.inputs, request.sessionId, request.providerSession, prepared.agentEnv);
-          const interrupt = () => { void this.cancelExecution("IM owner aborted").catch(() => this.modelWait.unconfirmed()); };
+          const interrupt = () => { void this.cancelExecution("IM owner aborted").catch(() => undefined); };
           this.#signal.addEventListener("abort", interrupt, { once: true });
           if (this.#signal.aborted) interrupt();
           try {
           for await (const event of run) {
             if (terminal) throw new Error("IM_FRAME_AFTER_TERMINAL");
-            // Gateway 尚不接入异步表单；成对忽略交互事件，避免暂停等待钟或改变卡片状态。
+            // Gateway 尚不接入异步表单；成对忽略交互事件，避免改变卡片状态。
             // 消息正文仍正常投影，原流继续消费；已出现交互的尝试仍禁止自动重放。
             if (
               event.type === "interaction.requested" &&
@@ -366,7 +341,6 @@ export class ImTask {
           // 看到终态后仍须正常耗尽：终态后的传输/控制错误不能被 drain 当成成功。
           if (!terminal) throw new Error("IM_RUN_WITHOUT_TERMINAL");
           completion = "terminal_confirmed";
-          this.modelWait.confirmTermination();
         } catch (error) {
           if (isInvocationNotSubmitted(error)) {
             completion = "not_submitted";
@@ -385,7 +359,6 @@ export class ImTask {
           } else attempt.outcome = "unknown";
           throw error;
         } finally {
-          this.modelWait.stop();
           // 必须等待消费结束及取消回执；未知结果不会进入下一次 invoke。
           await this.#settleCancellation();
           this.#active = undefined;
@@ -453,8 +426,6 @@ export class ImTask {
       }
       yield this.#stoppedEvent();
     } finally {
-      this.#signal.removeEventListener("abort", stopWaiting);
-      this.modelWait.stop();
       clearDeadline();
       this.#recoveryTimer?.();
     }
@@ -469,9 +440,7 @@ export class ImTask {
             message:
               this.stopReason === "IM_TASK_DEADLINE"
                 ? "本轮任务已达到总运行时限。"
-                : this.stopReason === "IM_MODEL_SILENCE_TIMEOUT"
-                  ? MODEL_WAIT_TIMEOUT_MESSAGE
-                  : "模型服务连续故障，已达到自动恢复预算。",
+                : "模型服务连续故障，已达到自动恢复预算。",
           },
         }
       : {

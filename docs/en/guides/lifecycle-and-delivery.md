@@ -36,6 +36,14 @@ Each Bot has at most 64 work slots and each logical session has a separate queue
 
 Final response accumulation has a separate limit of 128 messages and 1 MiB of UTF-8 text. Exceeding either reports `IM_FINAL_OUTPUT_LIMIT_EXCEEDED` and enters the existing interrupt/result-unknown path. Partial text is not delivered as a successful final response and does not trigger automatic artifact upload. Invalid interaction form submissions are diagnosed and acknowledged individually so later valid card actions can proceed; transport and acknowledgement failures retain their retry behavior.
 
+## Model silence and timeouts
+
+Runtime reports model silence using `agent_run.event` carrying canonical `run.notice`, code `model_output_idle`, and source `params.silenceMs`. Gateway renders this duration as `模型已 N 秒无输出` on the existing card. A delayed 60000 ms notice still displays 60 seconds. Gateway never starts a silence clock, extrapolates elapsed silence, or cancels an execution because five minutes passed locally.
+
+Periodic card updates require a Runtime service that emits new notices at 60, 120, 180 seconds and subsequent minute boundaries. Each new source duration updates the same card through normal rendering and deduplication. Runtime main commit `67a44ebc` adds this periodic behavior; published Runtime 1.1.14 only emits once per silence interval. The client 1.1.14 notice payload already supports both. Deploy a Runtime containing the periodic change to obtain periodic updates; Gateway has no timer fallback, missed-minute catch-up, or compatibility layer.
+
+Growing public assistant output clears the notice. Ordinary tool/approval phases and terminal events update the card normally; private reasoning, heartbeats, usage and unchanged text snapshots do not invent new model output. Runtime alone enforces the default five-minute model-idle budget under `enforce`; see [execution limits](../reference/configuration.md) for explicit overrides and the `observe` opt-out. User Stop and owned-execution cleanup retain their existing cancellation paths. Timeout wording follows the actual upstream terminal result.
+
 ## Artifacts
 
 artifact_delivery.mode defaults to channel. Explicit local file references in a successful final response are checked against frozen path, MIME, count, size, and cancellation budgets before delivery. This does not upload every path appearing in model output. tools mode disables automatic upload and expects business tools to provide recipient-accessible links.

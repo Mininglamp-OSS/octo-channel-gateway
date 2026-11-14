@@ -19,6 +19,10 @@ register 不向 Kernel 注册插件或渠道定义，只在当前进程装配本
 
 实现入口：[ChannelGateway](../../../packages/octo-channel-gateway-sdk/src/gateway.ts)、[公开导出](../../../packages/octo-channel-gateway-sdk/src/index.ts)、[执行输入边界](../../../packages/octo-channel-gateway-sdk/src/execution/kernel-input.ts)。
 
+## 执行超时归属
+
+Runtime 负责模型静默时钟和执行超时控制。Gateway 沿用默认 `enforce` 与五分钟模型空闲预算，只将源端静默通知投影到卡片。用户显式填写的 `observe` 原样透传，但退出空闲强制执行属于本项目超时保障约定之外的 invalid 用法。Gateway 不维护本地静默取消或兼容状态机。详见[执行预算](../reference/configuration.md)和[源端通知驱动的卡片更新](../guides/lifecycle-and-delivery.md)。
+
 ## 公开入口与宿主生命周期
 
 公开入口是 **ChannelGateway**：一个实例持有多组 Bot ↔ Agent 绑定，并在两端之间转发消息。Registry 更适合内部注册集合的名称。操作为 `await gateway.register(bot, agent)`，返回 `Promise<void>`，最后通过幂等的 `await gateway.close()` 统一关闭，不暴露每次注册的独立句柄。Bot 与 Agent 是两个参数，Agent 使用 ImAgentConfig。

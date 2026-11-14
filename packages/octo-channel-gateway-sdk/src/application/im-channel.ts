@@ -37,7 +37,6 @@ import { imBotIdentity, validateImConfig } from "../lifecycle/configuration.js";
 import { GatewayTransport } from "../transport/channel.js";
 import { createImInvocation } from "../execution/dispatcher.js";
 import { ImTask } from "../execution/task.js";
-import { MODEL_WAIT_TIMEOUT_MESSAGE } from "../execution/model-wait.js";
 import { ImDeliveryIdentity } from "../delivery/identity.js";
 import { ImDeliveryDispatcher } from "../delivery/dispatcher.js";
 import { ImRunProjector } from "../presentation/run-projector.js";
@@ -1481,7 +1480,6 @@ export class ImRuntime {
         } else task.stopRetries();
       },
       undefined,
-      () => updatePresentation(),
       this.#hooks.length ? async (attempt, input, signal) => {
         const invokingIdentity = { id: session.id, generation: session.generation };
         const result = await runHooks(this.#hooks, "pre_invoke", hookContext({
@@ -1505,7 +1503,6 @@ export class ImRuntime {
       ...projector.snapshot(),
       seq: ++presentationSeq,
       elapsedMs: Math.round(performance.now() - startedAt),
-      modelWait: task.modelWait.snapshot,
       attempts: task.attempts.map((attempt) => ({ ...attempt })),
     });
     const controls = this.#runControls(message, key, request.invocationId);
@@ -1514,7 +1511,7 @@ export class ImRuntime {
     let presentationFailed = false;
     let localFailure: FailureEnvelope | undefined;
     const delivery = new AbortController();
-    // 时钟和源事件走同一投影出口，保留原卡片的序号、预算与终态屏障。
+    // 源事件走同一投影出口，保留原卡片的序号、预算与终态屏障。
     const updatePresentation = () => {
       if (presentationFailed || this.#closed || this.#signal.aborted) return;
       try {
@@ -1658,10 +1655,7 @@ export class ImRuntime {
             }
           }
           projector.accept(event);
-          controls.failed =
-            projector.snapshot().terminal === "failed" ||
-            (projector.snapshot().terminal === "cancelled" &&
-              task.modelWait.snapshot.timeout === "terminated");
+          controls.failed = projector.snapshot().terminal === "failed";
           updatePresentation();
         }
         if (!projector.snapshot().terminal)
@@ -1849,18 +1843,7 @@ export class ImRuntime {
           delivery.signal.aborted
         )
           return;
-        const { text, allowMention } =
-          task.modelWait.snapshot.timeout &&
-          projector.snapshot().terminal !== "completed"
-            ? {
-                text:
-                  MODEL_WAIT_TIMEOUT_MESSAGE +
-                  (task.modelWait.snapshot.timeout === "terminated"
-                    ? "已确认执行结束，可以重试。"
-                    : "尚未确认执行停止，请核查运行记录，避免重复执行。"),
-                allowMention: false,
-              }
-            : projector.finalReply;
+        const { text, allowMention } = projector.finalReply;
         const obsolete = () => {
           const binding = this.#sessionStore.read(key);
           return (

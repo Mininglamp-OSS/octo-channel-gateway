@@ -1,5 +1,7 @@
 # 工程知识目录
 
+- [ORT-93：Runtime 静默通知卡片展示](tasks/ort-93-runtime-idle-notice/brief.md)：删除旧静默逻辑、默认 enforce、Runtime 超时归属；[本地验证](tasks/ort-93-runtime-idle-notice/validation.md)、[双轴审查](tasks/ort-93-runtime-idle-notice/review.md)。
+
 - [ORT-94：本地引用降级与统一 OV 错误约定](tasks/ort-94-delivery-ov-errors/brief.md)：待审规格、类型白名单、错误兼容边界与本地验收矩阵。
 
 - [Issue 36：源码工作区与根发行包分层](tasks/workspace-sdk-cli/brief.md)：[本地 CI 与宿主/归档验证](tasks/workspace-sdk-cli/validation.md)。

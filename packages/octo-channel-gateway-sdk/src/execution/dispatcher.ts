@@ -120,9 +120,7 @@ export function createImInvocation(
         name: "limits",
         payload: {
           run_timeout_ms: config.run_timeout_ms ?? 86_400_000,
-          // 模型静默由 Gateway 按公开内容计时；Core 保留总期限和工具预算，不抢先触发首帧超时。
-          first_frame_timeout_ms: 310_000,
-          model_idle_policy: "observe",
+          // 首帧和模型空闲预算沿用 Runtime 默认值；业务显式 limits 仍可覆盖。
           // IM 的长工具可能长时间无输出；业务可通过本轮 limits 显式收紧。
           tool_timeout_ms: 86_400_000,
         },
