@@ -135,7 +135,18 @@ if (process.argv[2] === '--baseline') {
   expected = { description: 'Actual pre_invoke captures before im-context refactor; only random UUIDs and workspace path normalized. Fixed local API responses; no external traffic.', records: reference.records };
   await mkdir(resolve(fixture, '..'), { recursive: true });
   await writeFile(fixture, JSON.stringify(expected, null, 2) + '\n');
+} else if (process.argv[2] === '--reference-root') {
+  assert.ok(process.argv[3], 'Supply a built current-main checkout');
+  expected = await capture(resolve(process.argv[3]));
+  // ORT-93 仅删除这两个默认覆盖，其余输入与最新 main 的真实采集逐字段相等。
+  for (const record of expected.records) {
+    const limits = record.agentEnv.items.find(item => item.namespace === 'octo.execution' && item.name === 'limits').payload;
+    assert.equal(limits.first_frame_timeout_ms, 310000);
+    assert.equal(limits.model_idle_policy, 'observe');
+    delete limits.first_frame_timeout_ms;
+    delete limits.model_idle_policy;
+  }
 } else expected = JSON.parse(await readFile(fixture, 'utf8'));
 const current = await capture(root);
 assert.deepEqual(current.records, expected.records);
-console.log(`PASS ${current.records.length} actual pre_invoke snapshots match the pre-refactor baseline (including images, AgentEnv, recovery, updated/empty/deleted rules, reset and frozen retry).`);
+console.log(`PASS ${current.records.length} actual pre_invoke snapshots match ${process.argv[2] === '--reference-root' ? 'current main (apart from the two removed legacy limits)' : 'the pre-refactor baseline'} (including images, AgentEnv, recovery, updated/empty/deleted rules, reset and frozen retry).`);

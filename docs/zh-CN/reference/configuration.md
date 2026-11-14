@@ -109,6 +109,25 @@ CLI 将 Bot 配置映射为 SDK 注册参数。高级宿主可通过 `agent.item
 
 CLI 配置提供 bot.agent；SDK 通过 register 第二个参数提供同一业务执行定义，Gateway 将 source、Adapter、模型、审批、MCP/envs 和预算编译为仅含 schema/items 的 AgentEnv；没有旧 AgentConfig 投影。OpenClaw 的 provider_agent_id 编译为私有 adapter.openclaw/options 的 agentId。workspace 仅传 path，不接受 mode；显式目录须已存在且可读写访问，未指定时由 Gateway 准备 ~/octo-runtime/channels/<bot_id>。OpenClaw 不需要本地工作目录。
 
+## 执行预算
+
+Runtime 负责执行超时控制。Gateway 默认提供一天的 `run_timeout_ms` 与 `tool_timeout_ms`，首帧沿用 Runtime 的 `first_frame_timeout_ms: 60000`，模型空闲沿用 `model_idle_timeout_ms: 300000`、`model_idle_policy: "enforce"`。五分钟是模型空闲预算，不是整次任务或正在执行的工具的最长耗时。Gateway 保留逻辑任务总截止和重试恢复预算，但不持有模型静默计时器，不因静默主动取消。
+
+通过 `agent.items` 提供显式 limits（编译后进入 `agentEnv.items`），例如：
+
+```json
+{
+  "namespace": "octo.execution",
+  "name": "limits",
+  "payload": {
+    "model_idle_policy": "enforce",
+    "model_idle_timeout_ms": 600000
+  }
+}
+```
+
+显式字段覆盖编译后的默认值，未提供的字段保留默认值。用户显式填写 `observe` 时原样透传，不拒绝、不强制改写。它关闭模型空闲预算的强制执行，首帧及整次执行等其他预算仍然有效。由此造成的超长等待属于本项目超时保障约定之外的 invalid 用法；`observe` 本身仍是合法 Runtime 协议值。普通渠道运行应使用 `enforce` 并调整合适的预算。见[静默展示](../guides/lifecycle-and-delivery.md)。
+
 ## 完整请求调试日志
 
 进程环境变量 `OCTO_CHANNEL_GATEWAY_DEBUG=1`（名称按此拼写）启用 `agent_run.client_input` debug 事件，在每次 client 调用前记录完整 inputs 和 agentEnv，包括 fallback、图片 part 的 mimeType/data/byteSize/sha256 和工具凭据。保留完整 base64，不转文本占位或截断。CLI pre_invoke Hook 将该事件写入既有 channels/channel-gateway-YYYYMMDDTHH.log。SDK 不读取此环境变量或自动记录完整输入，嵌入宿主自行安装日志 Hook。开关为其他值时不生成该事件；不写入状态镜像。

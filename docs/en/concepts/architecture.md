@@ -19,6 +19,10 @@ This repository contains no WebUI/WeCom and defines no Extra discovery or univer
 
 Implementation: [ChannelGateway](../../../packages/octo-channel-gateway-sdk/src/gateway.ts), [public exports](../../../packages/octo-channel-gateway-sdk/src/index.ts), [execution input boundary](../../../packages/octo-channel-gateway-sdk/src/execution/kernel-input.ts).
 
+## Execution timeout ownership
+
+Runtime owns the model-silence clock and execution timeout enforcement. Gateway inherits default `enforce` with a five-minute model-idle budget and only projects source silence notices onto cards. Explicit user `observe` passes through, but opting out of idle enforcement is invalid usage under the project's timeout guarantee. Gateway has no local silence cancellation or compatibility state machine. See [execution limits](../reference/configuration.md) and [source-driven card updates](../guides/lifecycle-and-delivery.md).
+
 ## Facade and host lifecycle
 
 The public facade is **ChannelGateway**: one instance owns multiple Bot ↔ Agent bindings and routes messages between them. Registry describes an internal collection rather than this connection/lifecycle facade. The operations are `await gateway.register(bot, agent)`, returning `Promise<void>`, and one idempotent `await gateway.close()` for all bindings. There is no per-registration public handle. Bot and Agent are separate arguments; agent uses ImAgentConfig.

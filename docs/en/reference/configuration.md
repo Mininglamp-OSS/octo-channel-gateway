@@ -109,6 +109,25 @@ The CLI maps its Bot configuration to the SDK registration arguments. Advanced h
 
 CLI configuration supplies bot.agent; SDK callers pass the same business execution definition as the second register argument. Gateway compiles source, Adapter, model, approval, MCP/envs and limits into an AgentEnv containing only schema/items, with no old AgentConfig projection. OpenClaw provider_agent_id maps to agentId in the private adapter.openclaw/options item. Workspace contains only path; mode is rejected. An explicit directory must already exist and permit read/write/access. Otherwise Gateway prepares ~/octo-runtime/channels/<bot_id>. OpenClaw needs no local workspace.
 
+## Execution limits
+
+Runtime owns execution timeout enforcement. Gateway supplies one-day `run_timeout_ms` and `tool_timeout_ms` defaults, and inherits Runtime's `first_frame_timeout_ms: 60000`, `model_idle_timeout_ms: 300000`, and `model_idle_policy: "enforce"`. Five minutes is the model-idle budget, not a maximum duration for the entire task or an active tool. Gateway retains the logical task deadline and retry recovery budgets, but has no local model-silence timer or silence-triggered cancellation.
+
+Supply explicit limits through `agent.items` (compiled into `agentEnv.items`), for example:
+
+```json
+{
+  "namespace": "octo.execution",
+  "name": "limits",
+  "payload": {
+    "model_idle_policy": "enforce",
+    "model_idle_timeout_ms": 600000
+  }
+}
+```
+
+Explicit fields override the compiled defaults; omitted fields retain their defaults. An explicit `observe` is passed through without rejection or rewriting. It disables enforcement of the model-idle budget, not other budgets such as first-frame or total runtime limits. Excessive waiting caused by this opt-out is invalid usage under this project's timeout guarantee; `observe` remains a valid Runtime protocol value. Use `enforce` with an appropriate budget for normal channel operation. See [silence presentation](../guides/lifecycle-and-delivery.md).
+
 ## Complete request debug logging
 
 The process environment variable `OCTO_CHANNEL_GATEWAY_DEBUG=1` (spelled exactly as shown) enables the `agent_run.client_input` debug event before each client call. It records complete inputs and agentEnv, including fallback parts, image mimeType/data/byteSize/sha256 and tool credentials. Base64 remains complete, without placeholders or truncation. The CLI pre_invoke Hook emits this event to the existing channels/channel-gateway-YYYYMMDDTHH.log file. The SDK does not read this environment variable or emit full inputs automatically; embedded hosts install a logging Hook explicitly. Other variable values do not emit this event. It never enters status mirrors.

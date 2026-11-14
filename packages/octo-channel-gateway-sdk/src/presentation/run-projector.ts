@@ -9,7 +9,6 @@ import type {
 import { sanitizePublicValue } from "../support/public-display.js";
 import type { ImTaskAttempt } from "../contracts.js";
 import { fromMarkdown } from "mdast-util-from-markdown";
-import type { ModelWaitSnapshot } from "../execution/model-wait.js";
 
 export interface ProgressItem {
   id: string;
@@ -51,7 +50,6 @@ export interface RunPresentation {
     message: string;
   };
   retryNoticeCount?: number;
-  modelWait?: ModelWaitSnapshot;
 }
 
 const publicExposures = new Set([
@@ -83,6 +81,7 @@ export class ImRunProjector {
       hidden: boolean;
       counted: boolean;
       stableId: boolean;
+      textLength?: number;
     }
   >();
   readonly #stepTools = new Map<string, string | undefined>();
@@ -90,7 +89,7 @@ export class ImRunProjector {
   #hasClosedStep = false;
   readonly #finalMessages = new Map<
     string,
-    { text: string; stableId: boolean }
+    { text: string; stableId: boolean; textLength: number }
   >();
   #finalBytes = 0;
   #finalLimitExceeded = false;
@@ -251,6 +250,22 @@ export class ImRunProjector {
         (p.role && p.role !== "assistant")
       )
         return;
+      // 复用已有消息身份记录判断新增文本，不为静默提示维护独立消息缓存或时钟。
+      const previousLength =
+        channel === "final"
+          ? (this.#finalMessages.get(id)?.textLength ?? 0)
+          : (identity?.textLength ?? 0);
+      const textLength =
+        typeof p.text !== "string"
+          ? previousLength
+          : event.type === "message.delta"
+            ? previousLength + p.text.length
+            : p.text.length;
+      if (
+        typeof p.text === "string" && p.text.trim() &&
+        (event.type === "message.delta" || textLength > previousLength)
+      )
+        this.#label = undefined;
       if (channel === "final") {
         this.#stepMessages.delete(id);
         const text =
@@ -275,13 +290,18 @@ export class ImRunProjector {
           throw new Error("IM_FINAL_OUTPUT_LIMIT_EXCEEDED");
         }
         this.#finalBytes = bytes;
-        this.#finalMessages.set(id, { text, stableId: hasStableId });
+        this.#finalMessages.set(id, {
+          text,
+          stableId: hasStableId,
+          textLength: Math.max(previousLength, textLength),
+        });
         const step = stepId && this.#steps.get(stepId);
         if (step) step.content = previewText(text);
       } else {
         if (this.#retired.has(`message:${id}`) && !identity) return;
         // 同一步骤内的迟到更新仍使用原分类和计数；已淘汰正文不回窗。
         if (identity?.hidden) {
+          identity.textLength = Math.max(previousLength, textLength);
           if (channel === "analysis" && !identity.counted) {
             this.#reasoningCount++;
             identity.counted = true;
@@ -305,6 +325,7 @@ export class ImRunProjector {
             hidden: true,
             counted: channel === "analysis" || !!identity?.counted,
             stableId: hasStableId,
+            textLength: Math.max(previousLength, textLength),
           });
           this.#retire(`message:${id}`);
           return;
@@ -324,6 +345,7 @@ export class ImRunProjector {
           hidden: false,
           counted: channel === "analysis" || !!identity?.counted,
           stableId: hasStableId,
+          textLength: Math.max(previousLength, textLength),
         });
         const item = this.#item(
           `message:${id}`,
@@ -345,7 +367,6 @@ export class ImRunProjector {
           : channel === "analysis"
             ? "thinking"
             : "commentary";
-      this.#label = undefined;
     }
     if (event.type === "tool_call.create") {
       const p = event.payload;
@@ -464,6 +485,7 @@ export class ImRunProjector {
         model_rerouted: "已切换模型",
         config_warning: "执行配置提示",
         provider_diagnostic: "执行遇到问题，等待最终结果",
+        model_output_idle: `模型已 ${Math.floor(Number(p.params.silenceMs) / 1000)} 秒无输出`,
       };
       this.#label = labels[p.code];
     }
