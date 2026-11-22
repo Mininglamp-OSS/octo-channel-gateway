@@ -32,7 +32,7 @@ importers:
     devDependencies:
       '@mininglamp-oss/octo-runtime':
         specifier: ^1.1.14
-        version: 1.1.14
+        version: 1.1.15
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
@@ -111,8 +111,8 @@ packages:
     bundledDependencies:
       - '@mininglamp-oss/octo-runtime-protocol'
 
-  '@mininglamp-oss/octo-runtime@1.1.14':
-    resolution: {integrity: sha512-y4giUoopcBIm8Gplk3gGY3/Kfu/KDoIQOauVo5M6SmuAyXJ63t+2Q3yHrRul7d+jo4v2mjmARCNHVDK1sfd/og==}
+  '@mininglamp-oss/octo-runtime@1.1.15':
+    resolution: {integrity: sha512-ZMbLrcgPrBG80gCB1VCOI2+O4HOK5eN/WP0mafnL5WQvLjFl/EnQ19g8Y021PtcZSczobLHfn4t3ebvLYbPDBA==}
     engines: {node: ^24.0.0 || ^26.0.0}
     hasBin: true
     bundledDependencies:
@@ -436,7 +436,7 @@ snapshots:
 
   '@mininglamp-oss/octo-runtime-client@1.1.14': {}
 
-  '@mininglamp-oss/octo-runtime@1.1.14': {}
+  '@mininglamp-oss/octo-runtime@1.1.15': {}
 
   '@types/debug@4.1.13':
     dependencies:
